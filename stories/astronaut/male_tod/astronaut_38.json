@@ -1,0 +1,171 @@
+{
+  "11": {
+    "inputs": {
+      "filename_prefix": [
+        "22",
+        0
+      ],
+      "images": [
+        "71",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "22": {
+    "inputs": {
+      "text1": [
+        "50",
+        0
+      ],
+      "text2": [
+        "51",
+        0
+      ],
+      "separator": "_"
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "40": {
+    "inputs": {
+      "text": [
+        "70",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
+      "font_color": "white",
+      "align": "center",
+      "justify": "right",
+      "margins": 0,
+      "line_spacing": 0,
+      "position_x": -250,
+      "position_y": -870,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "58",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "50": {
+    "inputs": {
+      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
+      "multiline": false,
+      "select": 0
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "51": {
+    "inputs": {
+      "value": "02"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "58": {
+    "inputs": {
+      "image": "Firefly 20250417131958.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "60": {
+    "inputs": {
+      "strings": "and Zyro have arrived on lunar soil.",
+      "multiline": true,
+      "select": 3
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "65": {
+    "inputs": {
+      "value": "kush"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "69": {
+    "inputs": {
+      "text1": [
+        "65",
+        0
+      ],
+      "text2": [
+        "60",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "70": {
+    "inputs": {
+      "strings": "Touchdown complete",
+      "multiline": true,
+      "select": 3
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "71": {
+    "inputs": {
+      "text": [
+        "69",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
+      "font_color": "white",
+      "align": "center",
+      "justify": "right",
+      "margins": 0,
+      "line_spacing": 0,
+      "position_x": -250,
+      "position_y": -810,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "40",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  }
+}

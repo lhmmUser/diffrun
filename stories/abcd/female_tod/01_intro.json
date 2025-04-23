@@ -1,0 +1,143 @@
+{
+  "11": {
+    "inputs": {
+      "filename_prefix": [
+        "22",
+        0
+      ],
+      "images": [
+        "63",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "22": {
+    "inputs": {
+      "text1": [
+        "50",
+        0
+      ],
+      "text2": [
+        "51",
+        0
+      ],
+      "separator": "_"
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "46": {
+    "inputs": {
+      "value": "Aayat"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "47": {
+    "inputs": {
+      "strings": " begins her exciting journey to learn the alphabets.\nEvery page is a step in her world of discovery, \nfilled with wonder, learning and joy.\n",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "49": {
+    "inputs": {
+      "text1": [
+        "46",
+        0
+      ],
+      "text2": [
+        "47",
+        0
+      ],
+      "separator": ""
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "50": {
+    "inputs": {
+      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
+      "multiline": false,
+      "select": 0
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "51": {
+    "inputs": {
+      "value": "01"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "58": {
+    "inputs": {
+      "image": "Firefly 20250411182830 (1) (2).png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "63": {
+    "inputs": {
+      "text": [
+        "49",
+        0
+      ],
+      "font_name": "comic.ttf",
+      "font_size": 60,
+      "font_color": "black",
+      "align": "center",
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 0,
+      "position_x": 0,
+      "position_y": 0,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "58",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "64": {
+    "inputs": {
+      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
+      "multiline": false,
+      "select": 0
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  }
+}

@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Gradient Animation */
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 300% 300%;
+  animation: gradientAnimation 5s ease infinite;
+}
+
+/* Shake Animation */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Fade-In Animation */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 1s ease-in-out;
+}
+
+/* Aspect Ratio Classes */
+.aspect-square {
+  aspect-ratio: 1 / 1; 
+}
+
+.aspect-video {
+  aspect-ratio: 16 / 9; 
+}
+
+.aspect-portrait {
+  aspect-ratio: 3 / 4; 
+}
+
+@media (max-width: 640px) {
+  .aspect-square,
+  .aspect-video,
+  .aspect-portrait {
+    aspect-ratio: 1 / 1; 
+  }
+}
+
+/* Custom pagination bullet styles */
+.swiper-pagination-bullet-custom {
+  width: 0.75rem; /* 12px */
+  height: 0.75rem; /* 12px */
+  background-color: #454545;
+  border-radius: 9999px; /* Fully rounded */
+  margin: 0 0.25rem; /* 4px spacing */
+  opacity: 1; /* Ensure bullets are visible */
+  transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+.swiper-pagination-bullet-active-custom {
+  background-color: #FF6B6B; /* Active bullet color */
+}
+
+/* Add to your global CSS */
+.swiper-slide {
+  transition: opacity 0.6s ease-in-out;
+}
+
+.swiper-slide-active {
+  opacity: 1;
+}
+
+.swiper-slide-next,
+.swiper-slide-prev {
+  opacity: 0;
+}
+
+.animate-spin-slow {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.text-shadow-brutalist {
+  text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-brutalist {
+  box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.3);
+}

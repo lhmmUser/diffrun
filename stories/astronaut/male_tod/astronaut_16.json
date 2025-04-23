@@ -1,0 +1,608 @@
+{
+  "1": {
+    "inputs": {
+      "seed": 513919203704482,
+      "steps": 9,
+      "cfg": 3.7,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 0.85,
+      "model": [
+        "3",
+        0
+      ],
+      "positive": [
+        "3",
+        1
+      ],
+      "negative": [
+        "3",
+        2
+      ],
+      "latent_image": [
+        "19",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "2": {
+    "inputs": {
+      "ckpt_name": "pixlAnimeCartoonComic_v10.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "3": {
+    "inputs": {
+      "weight": 0.75,
+      "start_at": 0,
+      "end_at": 1,
+      "instantid": [
+        "4",
+        0
+      ],
+      "insightface": [
+        "5",
+        0
+      ],
+      "control_net": [
+        "6",
+        0
+      ],
+      "image": [
+        "16",
+        0
+      ],
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "8",
+        0
+      ],
+      "image_kps": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "ApplyInstantID",
+    "_meta": {
+      "title": "Apply InstantID"
+    }
+  },
+  "4": {
+    "inputs": {
+      "instantid_file": "SDXL\\ip-adapter.bin"
+    },
+    "class_type": "InstantIDModelLoader",
+    "_meta": {
+      "title": "Load InstantID Model"
+    }
+  },
+  "5": {
+    "inputs": {
+      "provider": "CPU"
+    },
+    "class_type": "InstantIDFaceAnalysis",
+    "_meta": {
+      "title": "InstantID Face Analysis"
+    }
+  },
+  "6": {
+    "inputs": {
+      "control_net_name": "SDXL\\instantid\\diffusion_pytorch_model.safetensors"
+    },
+    "class_type": "ControlNetLoader",
+    "_meta": {
+      "title": "Load ControlNet Model"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "Storybook illustration of a Young boy smiling, black hair,\n\nmasterpiece, professional, artisty",
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "text": "photography, realistic, bad hands, distorted, disfigured, bad",
+      "clip": [
+        "2",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "samples": [
+        "1",
+        0
+      ],
+      "vae": [
+        "2",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "11": {
+    "inputs": {
+      "filename_prefix": [
+        "22",
+        0
+      ],
+      "images": [
+        "81",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "12": {
+    "inputs": {
+      "image": "White.jpg",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "13": {
+    "inputs": {
+      "image": "White.jpg",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "14": {
+    "inputs": {
+      "image": "White.jpg",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "15": {
+    "inputs": {
+      "image1": [
+        "12",
+        0
+      ],
+      "image2": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "ImageBatch",
+    "_meta": {
+      "title": "Batch Images"
+    }
+  },
+  "16": {
+    "inputs": {
+      "image1": [
+        "15",
+        0
+      ],
+      "image2": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "ImageBatch",
+    "_meta": {
+      "title": "Batch Images"
+    }
+  },
+  "17": {
+    "inputs": {
+      "image": "clipspace-mask-6058692.300000001.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "18": {
+    "inputs": {
+      "pixels": [
+        "17",
+        0
+      ],
+      "vae": [
+        "2",
+        2
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "19": {
+    "inputs": {
+      "samples": [
+        "18",
+        0
+      ],
+      "mask": [
+        "17",
+        1
+      ]
+    },
+    "class_type": "SetLatentNoiseMask",
+    "_meta": {
+      "title": "Set Latent Noise Mask"
+    }
+  },
+  "20": {
+    "inputs": {
+      "image": "p11c.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "22": {
+    "inputs": {
+      "text1": [
+        "50",
+        0
+      ],
+      "text2": [
+        "51",
+        0
+      ],
+      "separator": "_"
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "50": {
+    "inputs": {
+      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
+      "multiline": false,
+      "select": 0
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "51": {
+    "inputs": {
+      "value": "02"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "57": {
+    "inputs": {
+      "x": 706,
+      "y": 1090,
+      "resize_source": false,
+      "destination": [
+        "58",
+        0
+      ],
+      "source": [
+        "10",
+        0
+      ],
+      "mask": [
+        "17",
+        1
+      ]
+    },
+    "class_type": "ImageCompositeMasked",
+    "_meta": {
+      "title": "ImageCompositeMasked"
+    }
+  },
+  "58": {
+    "inputs": {
+      "image": "p11 (5).png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "65": {
+    "inputs": {
+      "text1": [
+        "72",
+        0
+      ],
+      "text2": [
+        "74",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "70": {
+    "inputs": {
+      "text1": [
+        "77",
+        0
+      ],
+      "text2": [
+        "79",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "71": {
+    "inputs": {
+      "text": [
+        "65",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 50,
+      "font_color": "custom",
+      "align": "center",
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": 620,
+      "position_y": -800,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "72": {
+    "inputs": {
+      "strings": "Affirmative! I’m Zyro,\nyour onboard assistant.\nWelcome aboard, Commander \n",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "73": {
+    "inputs": {
+      "value": "Kush"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "74": {
+    "inputs": {
+      "text1": [
+        "73",
+        0
+      ],
+      "text2": [
+        "75",
+        0
+      ],
+      "separator": ""
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "75": {
+    "inputs": {
+      "strings": "!",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "76": {
+    "inputs": {
+      "text": [
+        "70",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 50,
+      "font_color": "custom",
+      "align": "center",
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": -500,
+      "position_y": -560,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "71",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "77": {
+    "inputs": {
+      "strings": "Commander \n",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "78": {
+    "inputs": {
+      "value": "Kush"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "79": {
+    "inputs": {
+      "text1": [
+        "78",
+        0
+      ],
+      "text2": [
+        "80",
+        0
+      ],
+      "separator": ""
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "80": {
+    "inputs": {
+      "strings": "! I like the sound of that!\nThanks! It’s my first time in space.\nand it's so much fun.",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "81": {
+    "inputs": {
+      "text": [
+        "82",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 50,
+      "font_color": "white",
+      "align": "center",
+      "justify": "left",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": 450,
+      "position_y": -1275,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "76",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "82": {
+    "inputs": {
+      "text1": [
+        "84",
+        0
+      ],
+      "text2": [
+        "83",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "83": {
+    "inputs": {
+      "strings": "saw the robot and went closer to take a goo look. \nHe had never seen an actual robot before.",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "84": {
+    "inputs": {
+      "value": "Kush"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  }
+}
