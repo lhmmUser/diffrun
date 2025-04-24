@@ -1,17 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 const Purchase = () => {
   const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<"hardcover" | "paperback" | null>(null);
-  const router = useRouter();
 
   const jobId = searchParams.get("job_id") || "";
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
-  const gender = searchParams.get("gender") || "";
   const previewUrl = searchParams.get("preview_url") || "";
 
   const handleSelectOption = (option: "hardcover" | "paperback") => {
@@ -32,7 +30,7 @@ const Purchase = () => {
     };
 
     try {
-      const response = await fetch("https://diffrun.com/create_checkout", {
+      const response = await fetch("http://localhost:8000/create_checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -53,35 +51,46 @@ const Purchase = () => {
     <div className="flex flex-col items-center justify-center bg-gray-100 py-20 min-h-screen p-4 md:p-0">
       <div className="w-full max-w-4xl border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)]">
         <h1 className="text-2xl font-extrabold bg-black text-white py-4 px-6">
-          John&apos;s Personalized Storybook
+          {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
         </h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 p-6">
           <div
             onClick={() => handleSelectOption("hardcover")}
             className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "hardcover"
-                ? "bg-yellow-200"
-                : "hover:bg-gray-100"
+              ? "bg-yellow-200"
+              : "hover:bg-gray-100"
               }`}
           >
             <div className="absolute top-2 right-2 bg-black text-white text-xs px-4 py-2">
               {selectedOption === "hardcover" ? "Selected" : "Popular Choice"}
             </div>
+            <img
+              src={`/hardcover-${bookId}.png`}
+              alt="Hardcover Book"
+              className="w-full h-48 object-cover mb-4 rounded-md"
+            />
             <h2 className="text-xl font-bold text-black mb-2">Hardcover</h2>
             <p className="text-sm text-gray-700 mb-4">
               Durable, premium binding with matte finish.
             </p>
             <span className="text-lg font-extrabold">₹ 2250</span>
           </div>
+
           <div
             onClick={() => handleSelectOption("paperback")}
             className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "paperback"
-                ? "bg-yellow-200"
-                : "hover:bg-gray-100"
+              ? "bg-yellow-200"
+              : "hover:bg-gray-100"
               }`}
           >
             <div className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1">
               {selectedOption === "paperback" ? "Selected" : ""}
             </div>
+            <img
+              src={`/softpaper-${bookId}.png`}
+              alt="Paperback Book"
+              className="w-full h-48 object-cover mb-4 rounded-md"
+            />
             <h2 className="text-xl font-bold text-black mb-2">Paperback</h2>
             <p className="text-sm text-gray-700 mb-4">
               Lightweight and portable softcover edition.
@@ -94,20 +103,19 @@ const Purchase = () => {
             onClick={handleCheckout}
             disabled={!selectedOption}
             className={`relative px-8 py-3 text-lg font-bold text-white bg-black border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,0.2)] transition-all duration-200 active:translate-y-1 active:shadow-none ${!selectedOption
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-gray-800 hover:border-gray-800"
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-gray-800 hover:border-gray-800"
               }`}
           >
             Proceed to Checkout
           </button>
         </div>
-        <div className="p-6 border-t-4 border-black">
-          <p className="text-sm">
-            <strong>Adaptable:</strong> Need a change? Edit your order within 12
-            hours!
+        <div className="p-6 border-t-4 border-black text-center">
+          <p className="text-sm font-semibold">
+            You can still make edits within 12 hours after placing your order
           </p>
           <p className="text-sm mt-2">
-            <strong>Delivery:</strong> Printing and delivery take up to 10 days.
+            Printing and shipping may take up to 10 days
           </p>
         </div>
         <div className="text-center bg-indigo-500 text-white text-sm font-bold py-2">

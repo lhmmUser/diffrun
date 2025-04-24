@@ -1,47 +1,5 @@
 import Link from "next/link";
-
-interface CardProps {
-  imageSrc: string;
-  title: string;
-  description: string;
-  category: "story" | "comic";
-  bookKey: string;
-}
-
-const cards: CardProps[] = [
-  {
-    imageSrc: "/abcd-book.jpg",
-    title: "ABCD",
-    description:
-      "An engaging and colorful storybook that introduces the alphabet through fun characters, vibrant illustrations, and playful rhymes that kids love.",
-    category: "story",
-    bookKey: "abcd",
-  },
-  {
-    imageSrc: "/astronaut-book.jpg",
-    title: "Astronaut in Space",
-    description:
-      "Blast off on a galactic adventure! Follow a brave astronaut exploring distant planets, alien life, and the wonders of outer space.",
-    category: "story",
-    bookKey: "astronaut",
-  },
-  {
-    imageSrc: "/wigu-book.jpg",
-    title: "When I Grow Up",
-    description:
-      "An inspiring journey through childhood dreams—join curious kids as they explore exciting careers, big dreams, and how imagination leads the way.",
-    category: "story",
-    bookKey: "wigu",
-  },
-  // {
-  //   imageSrc: "/aerospace-comic.png",
-  //   title: "Aerospace Comic",
-  //   description:
-  //     "A high-flying comic series that dives into the world of aerospace innovation—perfect for young engineers, dreamers, and thrill-seekers.",
-  //   category: "comic",
-  //   bookKey: "aerospace",
-  // },
-];
+import { Cards } from "@/data/data";
 
 export default function Books() {
   return (
@@ -53,7 +11,7 @@ export default function Books() {
       </div>
 
       <div className="grid gap-10 max-w-4xl mx-auto">
-        {cards.map((card, index) => (
+        {Cards.map((card, index) => (
           <div
             key={index}
             className="bg-white border border-gray-900 shadow-[8px_8px_0px_rgba(0,0,0,0.9)] rounded-none transition-transform duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0px_rgba(0,0,0,1)]"

@@ -1,57 +1,14 @@
 "use client";
 import Link from "next/link";
 import AnimatedBackground from "@/components/animated/Particles";
-
-interface CardProps {
-  imageSrc: string;
-  shortImg: string;
-  title: string;
-  category: "story" | "comic";
-  bookKey: string;
-  age: string;
-}
-
-const cards: CardProps[] = [
-  {
-    imageSrc: "/abcd-book.jpg",
-    shortImg: "/short-aayat.png",
-    title: "My A to Z Quest",
-    category: "story",
-    bookKey: "abcd",
-    age: "2 - 4"
-  },
-  {
-    imageSrc: "/astronaut-book.jpg",
-    shortImg: "/short-kush.png",
-    title: "Astronaut in Space",
-    category: "story",
-    bookKey: "astronaut",
-    age: "4 - 10"
-  },
-  {
-    imageSrc: "/wigu-book.jpg",
-    shortImg: "/short-aayat.png",
-    title: "When I Grow Up",
-    category: "story",
-    bookKey: "wigu",
-    age: "3 - 7"
-  },
-  {
-    imageSrc: "/White.jpg",
-    shortImg: "/short-kush.png",
-    title: "Test Book",
-    category: "story",
-    bookKey: "test",
-    age: "2 - 10"
-  },
-];
+import { Cards } from "@/data/data";
 
 export default function Home() {
   return (
     <main className="w-full min-h-screen relative overflow-hidden">
       <AnimatedBackground />
       <img
-        src="/banner-2.jpg"
+        src="/bannner-2.jpg"
         alt="Large Banner Image"
         className="w-full object-cover hidden md:block"
         loading="lazy"
@@ -96,13 +53,13 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 lg:gap-20 w-full max-w-4xl p-12 [grid-auto-rows:1fr]">
-          {cards.map((card, index) => (
+        <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 lg:gap-20 w-full max-w-5xl p-12 [grid-auto-rows:1fr]">
+          {Cards.map((card, index) => (
             <div
               key={index}
               className="flex flex-col h-full bg-white border border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(0,0,0,1)]"
             >
-              <div className="relative h-[24rem] w-full">
+              <div className="relative h-auto w-full">
                 <img
                   src={card.imageSrc}
                   alt={card.title}
@@ -114,8 +71,8 @@ export default function Home() {
                 <div className="flex gap-2 flex-wrap">
                   <span
                     className={`px-3 py-1 text-xs sm:text-sm font-medium tracking-wide border border-gray-900 ${card.category === "story"
-                        ? "bg-teal-100 text-teal-900"
-                        : "bg-indigo-200 text-indigo-900"
+                      ? "bg-teal-100 text-teal-900"
+                      : "bg-indigo-200 text-indigo-900"
                       }`}
                   >
                     {card.category.charAt(0).toUpperCase() + card.category.slice(1)}
@@ -130,13 +87,26 @@ export default function Home() {
 
 
 
-                <Link href={`/child-details?job_type=${card.category}&book_id=${card.bookKey}`}>
-                  <button
-                    className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
-                  >
-                    Personalize your book
-                  </button>
-                </Link>
+                <div className="flex flex-col gap-4 mt-4">
+                  <Link href={`/child-details?job_type=${card.category}&book_id=${card.bookKey}`} className="flex-1">
+                    <button
+                      className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    >
+                      Personalize this book
+                    </button>
+                  </Link>
+
+                  {card.link && (
+      <Link href={card.link} className="flex-1" target="_blank" rel="noopener noreferrer">
+        <button
+          className="w-full bg-white text-gray-900 py-2 px-4 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
+        >
+          View Sample
+        </button>
+      </Link>
+    )}
+                </div>
+
               </div>
             </div>
           ))}

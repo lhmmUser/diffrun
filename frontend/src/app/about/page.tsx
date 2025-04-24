@@ -32,7 +32,7 @@ const About: React.FC = () => {
               <span className="text-[#8c0000] bg-[#ffdede] px-3 py-1">Interactive Storybooks</span>
             </h1>
             <p className="text-xl md:text-2xl mb-8 font-medium tracking-wide">
-              Candyman turns your memories into magical, interactive experiences
+              We turn your memories into magical, interactive experiences
               with AI-powered storytelling.
             </p>
             <Link href="/books">

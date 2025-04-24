@@ -22,7 +22,7 @@ const Comic: React.FC = () => {
       }
   
       try {
-        const res = await fetch("https://diffrun.com/run-combined-workflow", {
+        const res = await fetch("http://localhost:8000/run-combined-workflow", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({ job_id: jobId }),
@@ -39,7 +39,7 @@ const Comic: React.FC = () => {
       try {
         const pollForImage = async (retries = 10) => {
           for (let i = 0; i < retries; i++) {
-            const response = await fetch(`https://diffrun.com/get-combined-image?job_id=${jobId}`);
+            const response = await fetch(`http://localhost:8000/get-combined-image?job_id=${jobId}`);
             if (response.ok) {
               const data = await response.json();
               setImage(data.image);
@@ -71,7 +71,7 @@ const Comic: React.FC = () => {
 
     try {
 
-      const response = await fetch(`https://diffrun.com/generate-comic-pdf?job_id=${jobId}`);
+      const response = await fetch(`http://localhost:8000/generate-comic-pdf?job_id=${jobId}`);
 
       if (!response.ok) throw new Error("PDF generation failed");
 
