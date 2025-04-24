@@ -124,7 +124,7 @@ const Form: React.FC = () => {
 
       console.log("📤 Sending form data to /store-user-details");
 
-      const storeResponse = await fetch("https://diffrun.com/store-user-details", {
+      const storeResponse = await fetch("http://127.0.0.1:8000/store-user-details", {
         method: "POST",
         body: formData,
       });
@@ -139,7 +139,7 @@ const Form: React.FC = () => {
       console.log("✅ User details stored:", data);
       console.log("📤 Triggering workflow execution");
 
-      const workflowResponse = await fetch("https://diffrun.com/execute-workflow", {
+      const workflowResponse = await fetch("http://127.0.0.1:8000/execute-workflow", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({

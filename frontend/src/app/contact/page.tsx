@@ -41,7 +41,7 @@ const Contact: React.FC = () => {
           initial={{ opacity: 0, y: 50 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-5xl md:text-7xl font-extrabold font-mono text-center mb-8 text-[#333] shadow-brutalist"
+          className="text-5xl md:text-7xl font-extrabold font-mono text-center mb-8 text-[#333]"
         >
           Let's Talk!
         </motion.h1>

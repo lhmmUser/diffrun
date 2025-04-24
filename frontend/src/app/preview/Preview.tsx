@@ -45,9 +45,7 @@ const Preview: React.FC = () => {
   const [visibleCarousels, setVisibleCarousels] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showContent, setShowContent] = useState(false);
-
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
   const [jobType, setJobType] = useState<"story" | "comic">("story");
 
   const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => {
@@ -62,25 +60,32 @@ const Preview: React.FC = () => {
   };
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
+    if (workflowStatus !== "initiated" || showContent) return;
+  
+    let intervalId: NodeJS.Timeout;
+  
     const handleLoading = () => {
-      if (loadingProgress < 100) {
-        setLoadingProgress((prevProgress) => prevProgress + 1);
-      } else {
-        clearInterval(intervalId!);
-        setShowContent(true);
-      }
+      setLoadingProgress((prevProgress) => {
+        if (prevProgress >= 100) {
+          clearInterval(intervalId);
+          setShowContent(true);
+          return 100;
+        }
+        return prevProgress + 1;
+      });
     };
-
+  
     intervalId = setInterval(handleLoading, 900);
+  
+    return () => clearInterval(intervalId);
+  }, [workflowStatus, showContent]);
 
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [loadingProgress]);
+  useEffect(() => {
+    if (workflowStatus === "completed") {
+      setShowContent(true);
+      setLoading(false); 
+    }
+  }, [workflowStatus]);  
 
   useEffect(() => {
     const initialize = async () => {
@@ -114,16 +119,18 @@ const Preview: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log("🚀 useEffect triggered with jobId:", jobId);
     if (!jobId) return;
 
     const fetchJobStatus = async () => {
       try {
-        const response = await fetch(`https://diffrun.com/get-job-status/${jobId}`);
+        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job status.");
         }
 
         const data = await response.json();
+        console.log("🧾 get-job-status response:", data);
         const backendPaid = data.paid || false;
         const backendApproved = data.approved || false;
 
@@ -137,6 +144,8 @@ const Preview: React.FC = () => {
         setPaid(backendPaid);
         setApproved(backendApproved);
         setWorkflowStatus(data.workflow_status);
+        console.log("✅ Set workflowStatus to:", data.workflow_status);
+
       } catch (err: any) {
         console.error("Error fetching job status:", err.message);
         setError(err.message || "An error occurred while fetching job status.");
@@ -151,7 +160,7 @@ const Preview: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`https://diffrun.com/get-job-status/${jobId}`);
+        const res = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.workflow_status === "completed") {
@@ -175,7 +184,7 @@ const Preview: React.FC = () => {
   const pollImages = async () => {
     try {
       console.log("📊 Polling images for job ID:", jobId);
-      const response = await fetch(`https://diffrun.com/poll-images?job_id=${jobId}&t=${Date.now()}`);
+      const response = await fetch(`http://127.0.0.1:8000/poll-images?job_id=${jobId}&t=${Date.now()}`);
       if (!response.ok) throw new Error("Failed to fetch images.");
       const data = await response.json();
       console.log("🖼️ New images received:", data);
@@ -354,7 +363,7 @@ const Preview: React.FC = () => {
         typeof selectedImage === "string"
           ? selectedImage
           : selectedImage?.url?.startsWith("data:")
-            ? `https://diffrun.com/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
+            ? `http://127.0.0.1:8000/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
             : selectedImage?.url || "";
 
       const basePath = jobType === "comic" ? "/comic1" : "/user-details";
@@ -387,7 +396,7 @@ const Preview: React.FC = () => {
         return;
       }
 
-      const response = await fetch("https://diffrun.com/approve", {
+      const response = await fetch("http://127.0.0.1:8000/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -467,7 +476,7 @@ const Preview: React.FC = () => {
 
       setRegeneratingWorkflow(workflowIndex);
 
-      const response = await fetch('https://diffrun.com/regenerate-workflow', {
+      const response = await fetch('http://127.0.0.1:8000/regenerate-workflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -498,7 +507,7 @@ const Preview: React.FC = () => {
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
         {!showContent ? (
           <div className="max-w-4xl mx-auto text-center px-4 py-10">
-            <h1 className="text-2xl sm:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-[#ff0202] to-[#c838cf] drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
+            <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900">
               {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Book Preview
             </h1>
             <p className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2">
@@ -548,7 +557,7 @@ const Preview: React.FC = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="text-2xl sm:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-[#ff0202] to-[#c838cf] drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900"
               >
                 {approved ? (
                   `${name.charAt(0).toUpperCase() + name.slice(1)}'s Finalized Book`
@@ -675,6 +684,28 @@ const Preview: React.FC = () => {
                               </div>
                             </SwiperSlide>
                           )}
+                          <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
+                        <button
+                          className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                          aria-label="Previous slide"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24">
+                            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className={`next-${workflowIndex} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
+                        <button
+                          className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                          aria-label="Next slide"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24">
+                            <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div className="swiper-pagination absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"></div>
                         </Swiper>
                       )}
                       {carousel.images.length === 0 ||
@@ -761,12 +792,12 @@ const Preview: React.FC = () => {
                   <button
                     onClick={handleApprove}
                     disabled={!jobId || loading || carousels.length < 2}
-                    className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white
+                    className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white
                 ${carousels.length >= 2
-                        ? 'bg-[#4ECDC4] hover:bg-[#40baba] active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
+                        ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
                         : 'bg-gray-300 cursor-not-allowed'}`}
                   >
-                    Approve
+                    Approve for printing
                   </button>
                 )}
 
