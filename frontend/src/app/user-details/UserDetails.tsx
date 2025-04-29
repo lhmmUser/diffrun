@@ -41,7 +41,7 @@ const UserDetails: React.FC = () => {
         user_name: username,
       };
 
-      const response = await fetch("https://arm-fired-consumers-gross.trycloudflare.com/save-user-details", {
+      const response = await fetch("https://backend.diffrun.com/save-user-details", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
