@@ -1,5 +1,6 @@
 "use client";
 
+import { label } from "framer-motion/client";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -15,6 +16,7 @@ const Header = () => {
     { label: "Books for Kids", href: "/books" },
     { label: "About Us", href: "/about" },
     { label: "Contact Us", href: "/contact" },
+    { label: "FAQ", href: "/faq"}
   ];
 
   return (
