@@ -18,9 +18,6 @@ const Preview: React.FC = () => {
   const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
   const forceContinueUntil = useRef<number>(Date.now() + 10000);
   type ImageType = string | { filename: string; url: string };
-  interface LoadingBarProps {
-    progress: number;
-  }
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [name, setName] = useState<string>("");
@@ -43,49 +40,9 @@ const Preview: React.FC = () => {
   const [regeneratingIndexes, setRegeneratingIndexes] = useState<number[]>([]);
   const [workflowStatus, setWorkflowStatus] = useState<string | null>(null);
   const [visibleCarousels, setVisibleCarousels] = useState(0);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [showContent, setShowContent] = useState(false);
+
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [jobType, setJobType] = useState<"story" | "comic">("story");
-
-  const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => {
-    return (
-      <div className="w-full sm:w-2/3 h-3 bg-gray-300 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-green-500 transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-    );
-  };
-
-  useEffect(() => {
-    if (workflowStatus !== "initiated" || showContent) return;
-  
-    let intervalId: NodeJS.Timeout;
-  
-    const handleLoading = () => {
-      setLoadingProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(intervalId);
-          setShowContent(true);
-          return 100;
-        }
-        return prevProgress + 1;
-      });
-    };
-  
-    intervalId = setInterval(handleLoading, 900);
-  
-    return () => clearInterval(intervalId);
-  }, [workflowStatus, showContent]);
-
-  useEffect(() => {
-    if (workflowStatus === "completed") {
-      setShowContent(true);
-      setLoading(false); 
-    }
-  }, [workflowStatus]);  
 
   useEffect(() => {
     const initialize = async () => {
@@ -124,7 +81,7 @@ const Preview: React.FC = () => {
 
     const fetchJobStatus = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job status.");
         }
@@ -160,7 +117,7 @@ const Preview: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const res = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/get-job-status/${jobId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.workflow_status === "completed") {
@@ -177,6 +134,39 @@ const Preview: React.FC = () => {
   }, [jobId, workflowStatus]);
 
   useEffect(() => {
+    const checkUserDetailsAndRedirect = async () => {
+      try {
+        if (!jobId) return;
+  
+        // Fetch job status and details from the backend
+        const response = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/get-job-status/${jobId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch job details.");
+        }
+  
+        const data = await response.json();
+        console.log("Job Details:", data);
+  
+        // Check if email and username are null or empty
+        const isEmailMissing = !data.email || data.email.trim() === "";
+        const isUsernameMissing = !data.username || data.username.trim() === "";
+  
+        // Preserve original query parameters
+        const queryParams = new URLSearchParams(window.location.search).toString();
+  
+        if (!isEmailMissing || !isUsernameMissing) {
+          router.push(`/purchase?${queryParams}`);
+        } 
+      } catch (err: any) {
+        console.error("Error checking user details:", err.message);
+        setError(err.message || "An error occurred while fetching job details.");
+      }
+    };
+  
+    checkUserDetailsAndRedirect();
+  }, [jobId, router]);
+
+  useEffect(() => {
     const lastCarousel = document.getElementById(`carousel-${visibleCarousels - 1}`);
     if (lastCarousel) lastCarousel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [visibleCarousels]);
@@ -184,7 +174,7 @@ const Preview: React.FC = () => {
   const pollImages = async () => {
     try {
       console.log("📊 Polling images for job ID:", jobId);
-      const response = await fetch(`http://127.0.0.1:8000/poll-images?job_id=${jobId}&t=${Date.now()}`);
+      const response = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/poll-images?job_id=${jobId}&t=${Date.now()}`);
       if (!response.ok) throw new Error("Failed to fetch images.");
       const data = await response.json();
       console.log("🖼️ New images received:", data);
@@ -281,10 +271,6 @@ const Preview: React.FC = () => {
         setSelectedSlides(updatedSlides);
       }
 
-      const shouldKeepPolling =
-        regeneratingIndexes.length > 0 ||
-        Date.now() < forceContinueUntil.current;
-
       const hasPlaceholders = Object.values(placeholders).some((count) => count > 0);
 
       pollingRef.current = setTimeout(pollImages, 2000);
@@ -363,7 +349,7 @@ const Preview: React.FC = () => {
         typeof selectedImage === "string"
           ? selectedImage
           : selectedImage?.url?.startsWith("data:")
-            ? `http://127.0.0.1:8000/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
+            ? `https://arm-fired-consumers-gross.trycloudflare.com/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
             : selectedImage?.url || "";
 
       const basePath = jobType === "comic" ? "/comic1" : "/user-details";
@@ -396,7 +382,7 @@ const Preview: React.FC = () => {
         return;
       }
 
-      const response = await fetch("http://127.0.0.1:8000/approve", {
+      const response = await fetch("https://arm-fired-consumers-gross.trycloudflare.com/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -476,7 +462,7 @@ const Preview: React.FC = () => {
 
       setRegeneratingWorkflow(workflowIndex);
 
-      const response = await fetch('http://127.0.0.1:8000/regenerate-workflow', {
+      const response = await fetch('https://arm-fired-consumers-gross.trycloudflare.com/regenerate-workflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -505,53 +491,6 @@ const Preview: React.FC = () => {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
-        {!showContent ? (
-          <div className="max-w-4xl mx-auto text-center px-4 py-10">
-            <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900">
-              {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Book Preview
-            </h1>
-            <p className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2">
-              Creating storybook magic...
-            </p>
-
-            <div className="flex flex-col items-center justify-center space-y-3 mt-10">
-              <LoadingBar progress={loadingProgress} />
-              <p className="text-sm text-black font-bold tracking-wide">
-                Progress: {loadingProgress}%
-              </p>
-            </div>
-
-            <div className="mt-8 italic">
-              <p>Good things take a few seconds... Great images take a little longer!</p>
-            </div>
-
-            <div className="text-base mt-14 font-mono text-black">
-              <p>Don&apos;t want to wait?</p>
-              <div className="mt-4">
-                <button
-                  onClick={() => {
-                    const query = new URLSearchParams({
-                      job_id: jobId || "",
-                      name,
-                      gender,
-                      job_type: jobType,
-                      book_id: bookId,
-                      selected: LZString.compressToEncodedURIComponent(
-                        JSON.stringify(selectedSlides)
-                      ),
-                    });
-                    router.push(`/email-preview-request?${query.toString()}`);
-                  }}
-                  className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
-                >
-                  Email me the Preview Link
-                </button>
-              </div>
-            </div>
-          </div>
-
-        ) : (
-          <>
             <header className="max-w-4xl mx-auto mb-12 text-center">
               <motion.h1
                 initial={{ opacity: 0, y: -20 }}
@@ -648,41 +587,57 @@ const Preview: React.FC = () => {
                           ))}
                           {!approved && (
                             <SwiperSlide key="generate-more">
-                              <div className="flex flex-col items-center justify-center w-full h-full bg-white p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
-                                <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-6">Generate More Options</h2>
-                                <button
-                                  onClick={() => handleRegenerate(workflowIndex)}
-                                  disabled={regeneratingWorkflow === workflowIndex}
-                                  className={`px-6 py-3 text-lg font-bold rounded-md transition-all duration-200 
-                        ${regeneratingWorkflow === workflowIndex
-                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                      : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
-                                    }`}
-                                  aria-label="Regenerate more options"
-                                >
-                                  {regeneratingWorkflow === workflowIndex ? (
-                                    <>
-                                      <svg
-                                        className="animate-spin h-6 w-6 text-black inline-block mr-2"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path
-                                          className="opacity-75"
-                                          fill="currentColor"
-                                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                        />
-                                      </svg>
-                                      <span>Regenerating...</span>
-                                    </>
-                                  ) : (
-                                    "Regenerate"
-                                  )}
-                                </button>
-                              </div>
-                            </SwiperSlide>
+                            <div className="flex flex-col items-center justify-center w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+                              <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                Not Happy with the Previously Generated Image?
+                              </h3>
+                          
+                              <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                Generate More Options
+                              </p>
+                          
+                              <button
+                                onClick={() => handleRegenerate(workflowIndex)}
+                                disabled={regeneratingWorkflow === workflowIndex}
+                                className={`
+                                  px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 
+                                  ${regeneratingWorkflow === workflowIndex
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
+                                  }
+                                `}
+                                aria-label="Regenerate more options"
+                              >
+                                {regeneratingWorkflow === workflowIndex ? (
+                                  <>
+                                    <svg
+                                      className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-black inline-block mr-2"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      />
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                      />
+                                    </svg>
+                                    <span className="text-xs sm:text-sm">Regenerating...</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs sm:text-sm">Regenerate</span>
+                                )}
+                              </button>
+                            </div>
+                          </SwiperSlide>
                           )}
                           <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
                         <button
@@ -812,8 +767,7 @@ const Preview: React.FC = () => {
                 )}
               </div>
             </footer>
-          </>
-        )}
+         
       </div>
     </Suspense>
   );
