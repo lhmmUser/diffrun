@@ -81,7 +81,7 @@ const Preview: React.FC = () => {
 
     const fetchJobStatus = async () => {
       try {
-        const response = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/get-job-status/${jobId}`);
+        const response = await fetch(`https://backend.diffrun.com/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job status.");
         }
@@ -117,7 +117,7 @@ const Preview: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/get-job-status/${jobId}`);
+        const res = await fetch(`https://backend.diffrun.com/get-job-status/${jobId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.workflow_status === "completed") {
@@ -139,7 +139,7 @@ const Preview: React.FC = () => {
         if (!jobId) return;
   
         // Fetch job status and details from the backend
-        const response = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/get-job-status/${jobId}`);
+        const response = await fetch(`https://backend.diffrun.com/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job details.");
         }
@@ -174,7 +174,7 @@ const Preview: React.FC = () => {
   const pollImages = async () => {
     try {
       console.log("📊 Polling images for job ID:", jobId);
-      const response = await fetch(`https://arm-fired-consumers-gross.trycloudflare.com/poll-images?job_id=${jobId}&t=${Date.now()}`);
+      const response = await fetch(`https://backend.diffrun.com/poll-images?job_id=${jobId}&t=${Date.now()}`);
       if (!response.ok) throw new Error("Failed to fetch images.");
       const data = await response.json();
       console.log("🖼️ New images received:", data);
@@ -349,7 +349,7 @@ const Preview: React.FC = () => {
         typeof selectedImage === "string"
           ? selectedImage
           : selectedImage?.url?.startsWith("data:")
-            ? `https://arm-fired-consumers-gross.trycloudflare.com/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
+            ? `https://backend.diffrun.com/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
             : selectedImage?.url || "";
 
       const basePath = jobType === "comic" ? "/comic1" : "/user-details";
@@ -382,7 +382,7 @@ const Preview: React.FC = () => {
         return;
       }
 
-      const response = await fetch("https://arm-fired-consumers-gross.trycloudflare.com/approve", {
+      const response = await fetch("https://backend.diffrun.com/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -462,7 +462,7 @@ const Preview: React.FC = () => {
 
       setRegeneratingWorkflow(workflowIndex);
 
-      const response = await fetch('https://arm-fired-consumers-gross.trycloudflare.com/regenerate-workflow', {
+      const response = await fetch('https://backend.diffrun.com/regenerate-workflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
