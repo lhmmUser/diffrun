@@ -292,7 +292,7 @@ const Form: React.FC = () => {
                 checked={isConfirmed}
                 onChange={(e) => setIsConfirmed(e.target.checked)}
                 disabled={loading}
-                className="mt-1 h-5 w-5 text-indigo-600 border-2 border-black rounded focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="mt-1 h-5 w-5 text-indigo-600 border-2 border-black rounded"
               />
               <label htmlFor="confirmation" className="text-sm leading-5">
                 I confirm that I am at least 18 years old and have obtained consent from the child's parent or guardian to share this information for the purpose of creating a personalized storybook, in accordance with the <Link className="underline" href="/privacy-policy">Privacy Policy</Link>.
@@ -300,12 +300,22 @@ const Form: React.FC = () => {
             </div>
             <button
               type="submit"
-              disabled={!name || !gender || images.length < 1 || images.length > 3 || loading}
-              className={`w-full py-3 text-lg font-bold bg-indigo-500 text-white border-2 border-black rounded-sm shadow-[4px_4px_0px_rgba(0,0,0,0.8)] transition-all duration-200 ${loading ? "cursor-not-allowed" : "hover:bg-indigo-600"
+              disabled={
+                !name || !gender || images.length < 1 || images.length > 3 || loading || !isConfirmed
+              }
+              title={
+                !name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
+                  ? "Fill all details and confirm consent to continue"
+                  : ""
+              }
+              className={`w-full py-3 text-lg font-bold border-2 border-black rounded-sm shadow-[4px_4px_0px_rgba(0,0,0,0.8)] transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-indigo-500 text-white hover:bg-indigo-600"
                 }`}
             >
               {loading ? "Processing..." : "Preview your book"}
             </button>
+
             <p className="text-gray-800 text-center font-bold flex items-center justify-center gap-2">
               <span>We follow strict data privacy standards</span>
               <FcPrivacy className="text-xl" />
