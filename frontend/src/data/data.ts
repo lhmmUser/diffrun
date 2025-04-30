@@ -23,11 +23,11 @@ export const Cards: CardProps[] = [
     imageSrc: "/astronaut-book.jpg",
     shortImg: "/short-kush.png",
     title: "Astronaut in Space",
-    bookKey: "astronaut",
+    bookKey: "astro",
     age: "4 - 10",
     description:
       "Blast off on a galactic adventure! Follow a brave astronaut exploring distant planets, alien life, and the wonders of outer space.",
-    link: "https://abcd-book-sample.tiiny.site"
+    link: "https://diffrunassets.s3.ap-south-1.amazonaws.com/astronaut_book.pdf"
   },
   {
     imageSrc: "/wigu-book.jpg",
