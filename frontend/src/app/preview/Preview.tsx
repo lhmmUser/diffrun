@@ -88,7 +88,7 @@ const Preview: React.FC = () => {
 
     const fetchJobStatus = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`https://backend.diffrun.com/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job status.");
         }
@@ -124,7 +124,7 @@ const Preview: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const res = await fetch(`https://backend.diffrun.com/get-job-status/${jobId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.workflow_status === "completed") {
@@ -153,7 +153,7 @@ const Preview: React.FC = () => {
           return;
         }
 
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`https://backend.diffrun.com/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job details.");
         }
@@ -189,7 +189,7 @@ const Preview: React.FC = () => {
   const pollImages = async () => {
     try {
       console.log("📊 Polling images for job ID:", jobId);
-      const response = await fetch(`http://127.0.0.1:8000/poll-images?job_id=${jobId}&t=${Date.now()}`);
+      const response = await fetch(`https://backend.diffrun.com/poll-images?job_id=${jobId}&t=${Date.now()}`);
       if (!response.ok) throw new Error("Failed to fetch images.");
       const data = await response.json();
       console.log("🖼️ New images received:", data);
@@ -364,7 +364,7 @@ const Preview: React.FC = () => {
         typeof selectedImage === "string"
           ? selectedImage
           : selectedImage?.url?.startsWith("data:")
-            ? `http://127.0.0.1:8000/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
+            ? `https://backend.diffrun.com/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}`
             : selectedImage?.url || "";
 
       const basePath = jobType === "comic" ? "/comic1" : "/user-details";
@@ -403,7 +403,7 @@ const Preview: React.FC = () => {
       formData.append("gender", gender);
       formData.append("selectedSlides", JSON.stringify(selectedSlides));
 
-      const response = await fetch("http://127.0.0.1:8000/approve", {
+      const response = await fetch("https://backend.diffrun.com/approve", {
         method: "POST",
         body: formData,
       });
@@ -478,7 +478,7 @@ const Preview: React.FC = () => {
 
       setRegeneratingWorkflow(workflowIndex);
 
-      const response = await fetch('http://127.0.0.1:8000/regenerate-workflow', {
+      const response = await fetch('https://backend.diffrun.com/regenerate-workflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
