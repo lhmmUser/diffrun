@@ -30,7 +30,7 @@ export const Cards: CardProps[] = [
     link: "https://diffrunassets.s3.ap-south-1.amazonaws.com/astronaut_book.pdf"
   },
   {
-    imageSrc: "/wigu-book.jpg",
+    imageSrc: "/wigu-book.png",
     shortImg: "/short-aayat.png",
     title: "When I Grow Up",
     bookKey: "wigu",

@@ -6,8 +6,6 @@ const Footer = () => {
   const exploreLinks = {
     Home: '/',
     'Books for Kids': '/books',
-    'About Us': '/about',
-    'Contact Us': '/contact',
   };
 
   const legalLinks = {
