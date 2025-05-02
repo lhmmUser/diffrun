@@ -41,7 +41,7 @@ const UserDetails: React.FC = () => {
         user_name: username,
       };
 
-      const response = await fetch("http://127.0.0.1:8000/save-user-details", {
+      const response = await fetch("https://backend.diffrun.com/save-user-details", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
