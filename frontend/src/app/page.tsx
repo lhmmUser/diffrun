@@ -9,15 +9,24 @@ export default function Home() {
   return (
     <main className="w-full min-h-screen relative overflow-hidden">
       <AnimatedBackground />
+      <div className="relative w-full hidden md:block">
+  <img
+    src="/web-banner.jpg"
+    alt="Large Banner Image"
+    className="w-full object-cover"
+    loading="lazy"
+  />
+  <div className="absolute top-0 w-full flex flex-col items-center text-center mt-20 px-6">
+    <h1 className="text-3xl font-serif sm:text-4xl md:text-5xl font-bold text-white drop-shadow-md">
+      Turn photos into storybooks
+    </h1>
+    <p className="mt-2 text-xl sm:text-2xl text-white max-w-3xl drop-shadow-md">
+      Personalized books where they are the hero
+    </p>
+  </div>
+</div>
       <img
-        src="/bannner-2.jpg"
-        alt="Large Banner Image"
-        className="w-full object-cover hidden md:block"
-        loading="lazy"
-      />
-
-      <img
-        src="/small-banner.jpeg"
+        src="/banner_mobile.jpg"
         alt="Small Banner Image"
         className="w-full object-cover block md:hidden"
         loading="lazy"
