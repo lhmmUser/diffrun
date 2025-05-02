@@ -27,7 +27,7 @@ const EmailPreview: React.FC = () => {
         const preview_url = `https://diffrun.com/preview?job_id=${job_id}&paid=false&approved=false&selected=${selected}&job_type=${job_type}&book_id=${book_id}&name=${name}&gender=${gender}`;
       
         try {
-          const res = await fetch("http://127.0.0.1:8000/send-mail", {
+          const res = await fetch("https://backend.diffrun.com/send-mail", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
