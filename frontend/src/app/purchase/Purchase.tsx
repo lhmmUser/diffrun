@@ -32,7 +32,7 @@ const Purchase = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/create_checkout", {
+      const response = await fetch("https://backend.diffrun.com/create_checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
