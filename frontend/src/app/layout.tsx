@@ -74,7 +74,7 @@ export default function RootLayout({
           <p className="text-sm sm:text-base text-gray-800 font-medium">
             We're still in beta version. If you encounter any issues,{" "}
             <Link
-              href="https://forms.gle/example-form-link"
+              href="https://docs.google.com/forms/d/e/1FAIpQLScNkvCTCPXmSiGhW7ssAhkR_bHjOfuSD6mOBRL3X-MwjZtl_w/viewform?pli=1"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-950 underline hover:text-gray-600"
