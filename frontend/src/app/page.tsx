@@ -26,10 +26,10 @@ export default function Home() {
         />
 
         <div className="absolute top-0 w-full flex flex-col items-center text-center mt-6 sm:mt-10 lg:mt-20 px-4 sm:px-6">
-          <h1 className="w-full text-white font-serif font-bold drop-shadow-md text-2xl sm:text-4xl md:text-5xl lg:text-6xl">
+          <h1 className="w-full text-white font-serif font-bold drop-shadow-md text-xl sm:text-4xl md:text-5xl lg:text-6xl">
             Turn photos into storybooks
           </h1>
-          <p className="mt-2 text-white font-light drop-shadow-md max-w-3xl text-base sm:text-lg md:text-xl lg:text-2xl">
+          <p className="mt-2 text-white font-light drop-shadow-md text-sm sm:text-lg md:text-xl lg:text-2xl">
             Personalized books where they are the hero
           </p>
         </div>
