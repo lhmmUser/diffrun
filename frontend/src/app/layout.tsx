@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/custom/Header";
 import Footer from "@/components/custom/Footer";
+import Link from "next/link"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,6 +70,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Header />
+        <div className="w-full bg-indigo-100 text-center py-3">
+          <p className="text-sm sm:text-base text-gray-800 font-medium">
+            We're still in beta version. If you encounter any issues,{" "}
+            <Link
+              href="https://forms.gle/example-form-link"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-950 underline hover:text-gray-600"
+            >
+              let us know
+            </Link>.
+          </p>
+        </div>
         {children}
         <Footer />
       </body>
