@@ -19,13 +19,14 @@ const UserDetails: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     const fetchPreviewUrl = async () => {
       if (!jobId) return;
 
       try {
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
         if (!response.ok) throw new Error("Failed to fetch preview URL from server");
 
         const data = await response.json();
@@ -67,7 +68,7 @@ const UserDetails: React.FC = () => {
         user_name: username,
       };
   
-      const response = await fetch("http://127.0.0.1:8000/save-user-details", {
+      const response = await fetch(`${apiBaseUrl}/save-user-details`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -87,7 +88,7 @@ const UserDetails: React.FC = () => {
   
       // Step 2: Send preview email
       if (freshPreviewUrl && savedEmail && savedUsername && savedName) {
-        await fetch("http://127.0.0.1:8000/preview-email", {
+        await fetch(`${apiBaseUrl}/preview-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

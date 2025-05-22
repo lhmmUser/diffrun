@@ -40,10 +40,13 @@ const Preview: React.FC = () => {
   const [workflowStatus, setWorkflowStatus] = useState<string | null>(null);
   const [visibleCarousels, setVisibleCarousels] = useState(0);
   const [jobType, setJobType] = useState<"story" | "comic">("story");
+  const [approving, setApproving] = useState(false);
+
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const searchParams = useSearchParams();
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     setIsHydrated(true);
@@ -88,7 +91,7 @@ const Preview: React.FC = () => {
 
     const fetchJobStatus = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job status.");
         }
@@ -124,7 +127,7 @@ const Preview: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.workflow_status === "completed") {
@@ -153,7 +156,7 @@ const Preview: React.FC = () => {
           return;
         }
 
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job details.");
         }
@@ -190,7 +193,7 @@ const Preview: React.FC = () => {
 
     try {
       console.log("📊 Polling images for job ID:", jobId);
-      const response = await fetch(`http://127.0.0.1:8000/poll-images?job_id=${jobId}&t=${Date.now()}`);
+      const response = await fetch(`${apiBaseUrl}/poll-images?job_id=${jobId}&t=${Date.now()}`);
       if (!response.ok) throw new Error("Failed to fetch images.");
       const data = await response.json();
       console.log("🖼️ New images received:", data);
@@ -406,14 +409,19 @@ const Preview: React.FC = () => {
   
   const handleApprove = async () => {
     try {
+
       if (!jobId) throw new Error("Job ID is missing.");
+
+      console.log("selectedslides, carousal", selectedSlides.length, carousels.length) 
+
   
       if (selectedSlides.length !== carousels.length) {
+        
         console.warn("Mismatch between selected slides and carousels.");
         setSelectedSlides(Array(carousels.length).fill(0));
         return;
       }
-  
+      setApproving(true);
       console.log("📸 Final selectedSlides before submit:", selectedSlides);
   
       const sanitizedSlides = selectedSlides.map(i =>
@@ -426,7 +434,7 @@ const Preview: React.FC = () => {
       formData.append("gender", gender);
       formData.append("selectedSlides", JSON.stringify(sanitizedSlides));
   
-      const response = await fetch("http://127.0.0.1:8000/approve", {
+      const response = await fetch(`${apiBaseUrl}/approve`, {
         method: "POST",
         body: formData,
       });
@@ -453,7 +461,9 @@ const Preview: React.FC = () => {
       
     } catch (err: any) {
       console.error("Error approving:", err.message);
-    }
+    }  finally {
+    setApproving(false); // Re-enable if needed
+  }
   };  
 
   const startPolling = () => {
@@ -503,7 +513,7 @@ const Preview: React.FC = () => {
 
       setRegeneratingWorkflow(workflowIndex);
 
-      const response = await fetch('http://127.0.0.1:8000/regenerate-workflow', {
+      const response = await fetch(`${apiBaseUrl}/regenerate-workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -785,16 +795,18 @@ const Preview: React.FC = () => {
             )}
 
             {jobType !== "comic" && paid && !approved && (
-              <button
-                onClick={handleApprove}
-                disabled={!jobId || loading || carousels.length < 2}
-                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white
-                ${carousels.length >= 2
-                    ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
-                    : 'bg-gray-300 cursor-not-allowed'}`}
+             <button
+              onClick={handleApprove}
+              disabled={approving || !jobId || loading || carousels.length < 2}
+              className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white transition-all duration-200
+              ${carousels.length >= 2 && !approving
+              ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
+              : 'bg-gray-300 opacity-50 cursor-not-allowed'
+                }`}
               >
-                Approve for printing
+                {approving ? "Approving..." : "Approve for printing"}
               </button>
+
             )}
 
             {jobType === "comic" && (

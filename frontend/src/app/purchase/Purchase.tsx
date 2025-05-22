@@ -13,12 +13,13 @@ const Purchase = () => {
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     const fetchPreviewUrl = async () => {
       if (!jobId) return;
       try {
-        const response = await fetch(`http://127.0.0.1:8000/get-job-status/${jobId}`);
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
         if (!response.ok) throw new Error("Failed to fetch preview URL");
 
         const data = await response.json();
@@ -35,7 +36,7 @@ const Purchase = () => {
     setSelectedOption(option);
   
     try {
-      await fetch("http://127.0.0.1:8000/update-book-style", {
+      await fetch(`${apiBaseUrl}/update-book-style`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,7 +64,7 @@ const Purchase = () => {
     };
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/create_checkout", {
+      const response = await fetch(`${apiBaseUrl}/create_checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

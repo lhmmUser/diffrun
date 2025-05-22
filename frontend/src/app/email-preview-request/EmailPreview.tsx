@@ -20,6 +20,7 @@ const EmailPreview: React.FC = () => {
     const job_type = searchParams.get("job_type") || "";
     const book_id = searchParams.get("book_id") || "";
     const selected = searchParams.get("selected") || "";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -27,7 +28,7 @@ const EmailPreview: React.FC = () => {
         const preview_url = `https://diffrun.com/preview?job_id=${job_id}&paid=false&approved=false&selected=${selected}&job_type=${job_type}&book_id=${book_id}&name=${name}&gender=${gender}`;
       
         try {
-          const res = await fetch("http://127.0.0.1:8000/send-mail", {
+          const res = await fetch(`${apiBaseUrl}/send-mail`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
