@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 550684122802007,
+      "seed": 358661984229830,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -230,7 +230,7 @@
   },
   "17": {
     "inputs": {
-      "image": "clipspace-mask-12312832.3.png",
+      "image": "clipspace-mask-3557434.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -272,7 +272,7 @@
   },
   "20": {
     "inputs": {
-      "image": "Firefly 20250328190937 (1).png",
+      "image": "p2_C.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -303,15 +303,15 @@
         "61",
         0
       ],
-      "font_name": "comic.ttf",
-      "font_size": 80,
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
       "font_color": "white",
       "align": "center",
-      "justify": "center",
+      "justify": "left",
       "margins": 0,
-      "line_spacing": 0,
-      "position_x": 0,
-      "position_y": 750,
+      "line_spacing": 5,
+      "position_x": 200,
+      "position_y": -820,
       "rotation_angle": 0,
       "rotation_options": "text center",
       "font_color_hex": "#000000",
@@ -327,40 +327,12 @@
   },
   "46": {
     "inputs": {
-      "value": "kush"
+      "value": "kushi"
     },
     "class_type": "CPackInputString",
     "_meta": {
       "title": "String Input",
       "options": {}
-    }
-  },
-  "47": {
-    "inputs": {
-      "strings": "gazed out from space, watching Earth swirl\nwith life—a vibrant blue marble against the endless black.",
-      "multiline": true,
-      "select": 3
-    },
-    "class_type": "ImpactStringSelector",
-    "_meta": {
-      "title": "String Selector"
-    }
-  },
-  "49": {
-    "inputs": {
-      "text1": [
-        "46",
-        0
-      ],
-      "text2": [
-        "47",
-        0
-      ],
-      "separator": " "
-    },
-    "class_type": "CR Text Concatenate",
-    "_meta": {
-      "title": "🔤 CR Text Concatenate"
     }
   },
   "50": {
@@ -386,8 +358,8 @@
   },
   "57": {
     "inputs": {
-      "x": 1277,
-      "y": 497,
+      "x": 529,
+      "y": 369,
       "resize_source": false,
       "destination": [
         "58",
@@ -396,6 +368,10 @@
       "source": [
         "10",
         0
+      ],
+      "mask": [
+        "17",
+        1
       ]
     },
     "class_type": "ImageCompositeMasked",
@@ -405,7 +381,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Firefly 20250328190937.png",
+      "image": "p2.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -415,9 +391,9 @@
   },
   "60": {
     "inputs": {
-      "strings": "\n",
+      "strings": "finally steps into \nher spacesuit and becames an astronaut.",
       "multiline": true,
-      "select": 3
+      "select": 1
     },
     "class_type": "ImpactStringSelector",
     "_meta": {
@@ -427,11 +403,39 @@
   "61": {
     "inputs": {
       "text1": [
-        "60",
+        "65",
         0
       ],
       "text2": [
-        "49",
+        "66",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "65": {
+    "inputs": {
+      "strings": "And it did happen.",
+      "multiline": true,
+      "select": 1
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "66": {
+    "inputs": {
+      "text1": [
+        "46",
+        0
+      ],
+      "text2": [
+        "60",
         0
       ],
       "separator": " "

@@ -38,15 +38,15 @@
         "61",
         0
       ],
-      "font_name": "Roboto-Regular.ttf",
+      "font_name": "YoungSerif-Regular.ttf",
       "font_size": 60,
-      "font_color": "black",
+      "font_color": "brown",
       "align": "center",
-      "justify": "left",
+      "justify": "center",
       "margins": 140,
       "line_spacing": 10,
       "position_x": 0,
-      "position_y": -500,
+      "position_y": -200,
       "rotation_angle": 0,
       "rotation_options": "text center",
       "font_color_hex": "#000000",
@@ -62,7 +62,7 @@
   },
   "46": {
     "inputs": {
-      "value": "Kush"
+      "value": "Aayat"
     },
     "class_type": "CPackInputString",
     "_meta": {
@@ -72,7 +72,7 @@
   },
   "47": {
     "inputs": {
-      "strings": "grows up, he wants to be a wildlife conservationist\nand protect Earth’s amazing creatures!",
+      "strings": "will protect wild lands,\nHelping animals with gentle hands.\nHe’ll plant new trees and guard each stream,\nKeeping Earth safe like in a dream.\n\n\n\n\n\n\n",
       "multiline": true,
       "select": 1
     },
@@ -131,7 +131,7 @@
   },
   "60": {
     "inputs": {
-      "strings": "When",
+      "strings": "Perhaps",
       "multiline": true,
       "select": 1
     },

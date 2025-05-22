@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 808923764960452,
+      "seed": 299709701072999,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -31,7 +31,7 @@
   },
   "2": {
     "inputs": {
-      "ckpt_name": "CUSTOM_COMICS_SDXL BASE 1.safetensors"
+      "ckpt_name": "pixlAnimeCartoonComic_v10.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
@@ -110,7 +110,7 @@
   },
   "7": {
     "inputs": {
-      "text": "Storybook illustration of a Young boy smiling, black hair, looking down,\n\nmasterpiece, professional, artisty",
+      "text": "Storybook illustration of a Young boy smiling, black hair, \n\nmasterpiece, professional, artisty",
       "clip": [
         "2",
         1
@@ -157,7 +157,7 @@
         0
       ],
       "images": [
-        "40",
+        "74",
         0
       ]
     },
@@ -230,7 +230,7 @@
   },
   "17": {
     "inputs": {
-      "image": "clipspace/clipspace-mask-21344213.8.png [input]",
+      "image": "clipspace-mask-21344213.8.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -381,7 +381,7 @@
   },
   "58": {
     "inputs": {
-      "image": "29 copy (2)s.png",
+      "image": "29 copy (2)s (1).png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -454,6 +454,101 @@
   "68": {
     "inputs": {
       "strings": "has changed. \n\nSuch dreams don't vanish.\nThey stay.They grow.\nThey’ve already taken him one step closer to the stars.",
+      "multiline": true,
+      "select": 1
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "71": {
+    "inputs": {
+      "text": [
+        "73",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
+      "font_color": "white",
+      "align": "center",
+      "justify": "left",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": 225,
+      "position_y": -860,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "40",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "73": {
+    "inputs": {
+      "strings": "A soft alarm chimes",
+      "multiline": true,
+      "select": 1
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "74": {
+    "inputs": {
+      "text": [
+        "75",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
+      "font_color": "white",
+      "align": "center",
+      "justify": "left",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": 225,
+      "position_y": -780,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "71",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "75": {
+    "inputs": {
+      "text1": [
+        "46",
+        0
+      ],
+      "text2": [
+        "76",
+        0
+      ],
+      "separator": ""
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "76": {
+    "inputs": {
+      "strings": "'s eyes flutter open. He’s back in his bed.\nMorning sun filters through the window. The dream dissolves like moon dust.",
       "multiline": true,
       "select": 1
     },

@@ -38,15 +38,15 @@
         "61",
         0
       ],
-      "font_name": "Roboto-Regular.ttf",
+      "font_name": "YoungSerif-Regular.ttf",
       "font_size": 60,
-      "font_color": "black",
+      "font_color": "brown",
       "align": "center",
-      "justify": "left",
+      "justify": "center",
       "margins": 140,
       "line_spacing": 10,
       "position_x": 0,
-      "position_y": -306,
+      "position_y": -400,
       "rotation_angle": 0,
       "rotation_options": "text center",
       "font_color_hex": "#000000",
@@ -62,7 +62,7 @@
   },
   "46": {
     "inputs": {
-      "value": "Kush"
+      "value": "Aayat"
     },
     "class_type": "CPackInputString",
     "_meta": {
@@ -72,9 +72,9 @@
   },
   "47": {
     "inputs": {
-      "strings": "grows up, \nhe wants to be a detective and \nuncover the truth one clue at a time!",
+      "strings": "will wear a long dark coat,\nTake careful notes and study a note.\nNo mystery too big or clue too small—\nHe’ll be the best detective of all!\n\n\n\n\n\n\n\n\n\n\n",
       "multiline": true,
-      "select": 2
+      "select": 1
     },
     "class_type": "ImpactStringSelector",
     "_meta": {
@@ -100,7 +100,7 @@
   },
   "50": {
     "inputs": {
-      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
+      "strings": "02d51d16-5431-4e8e-96f4-24c4e93f5fb1",
       "multiline": false,
       "select": 0
     },
@@ -121,7 +121,7 @@
   },
   "58": {
     "inputs": {
-      "image": "detective-text.png",
+      "image": "detective (2).png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -131,9 +131,9 @@
   },
   "60": {
     "inputs": {
-      "strings": "When",
+      "strings": "Perhaps",
       "multiline": true,
-      "select": 2
+      "select": 1
     },
     "class_type": "ImpactStringSelector",
     "_meta": {

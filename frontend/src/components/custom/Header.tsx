@@ -13,18 +13,15 @@ const Header = () => {
   const menuItems = [
     { label: "Home", href: "/" },
     { label: "Books for Kids", href: "/books" },
-    { label: "About Us", href: "/about" },
-    { label: "Contact Us", href: "/contact" },
+    { label: "FAQ", href: "/faq"}
   ];
 
   return (
     <>
       <header className="w-full bg-gray-100 shadow-md border-b border-gray-300 z-20">
         <div className="container mx-auto py-4 px-6 flex justify-between items-center">
-          <Link href="/">
-          <h1 className="text-3xl sm:text-4xl p-1 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-gradient rounded-lg">
-            DIFFRUN
-          </h1>
+          <Link href="/" className="flex justify-center items-center">
+          <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain" />
           </Link>
 
           <nav className="hidden md:flex gap-8 text-lg font-medium">
@@ -32,7 +29,7 @@ const Header = () => {
               <Link
                 key={index}
                 href={item.href}
-                className="relative group text-gray-700 hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200"
+                className="relative group text-gray-600 font-serif hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200"
               >
                 {item.label}
                 <span
@@ -46,7 +43,7 @@ const Header = () => {
 
           <button
             onClick={toggleSidebar}
-            className="md:hidden text-gray-700 focus:outline-none p-2 rounded-lg hover:bg-gray-200"
+            className="md:hidden text-gray-400 focus:outline-none p-2 rounded-lg hover:bg-gray-200"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

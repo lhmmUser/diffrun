@@ -38,15 +38,15 @@
         "61",
         0
       ],
-      "font_name": "Roboto-Regular.ttf",
+      "font_name": "YoungSerif-Regular.ttf",
       "font_size": 60,
-      "font_color": "black",
+      "font_color": "brown",
       "align": "center",
-      "justify": "left",
+      "justify": "center",
       "margins": 140,
       "line_spacing": 10,
       "position_x": 0,
-      "position_y": -500,
+      "position_y": -200,
       "rotation_angle": 0,
       "rotation_options": "text center",
       "font_color_hex": "#000000",
@@ -62,7 +62,7 @@
   },
   "46": {
     "inputs": {
-      "value": "Kush"
+      "value": "Aayat"
     },
     "class_type": "CPackInputString",
     "_meta": {
@@ -72,7 +72,7 @@
   },
   "47": {
     "inputs": {
-      "strings": "grows up, he wants to be a guitarist\nand bring people together through\nrhythm and sound!\n",
+      "strings": "will write tunes that fly,\nNotes that twinkle in the sky.\nA gentle lullaby, a dancing sound—\nHis music will lift hearts all around.\n\n\n\n",
       "multiline": true,
       "select": 1
     },
@@ -121,7 +121,7 @@
   },
   "58": {
     "inputs": {
-      "image": "musician (1).png",
+      "image": "musician.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -131,7 +131,7 @@
   },
   "60": {
     "inputs": {
-      "strings": "When",
+      "strings": "Maybe",
       "multiline": true,
       "select": 1
     },

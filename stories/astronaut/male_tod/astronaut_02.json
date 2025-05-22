@@ -6,7 +6,7 @@
         0
       ],
       "images": [
-        "58",
+        "40",
         0
       ]
     },
@@ -32,6 +32,34 @@
       "title": "🔤 CR Text Concatenate"
     }
   },
+  "40": {
+    "inputs": {
+      "text": [
+        "69",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 60,
+      "font_color": "white",
+      "align": "center",
+      "justify": "left",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": 300,
+      "position_y": -120,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "58",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
   "50": {
     "inputs": {
       "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
@@ -55,12 +83,95 @@
   },
   "58": {
     "inputs": {
-      "image": "e44054af-f0ce-4413-8b37-853e1cc680aa_02_00688_.png",
+      "image": "Firefly 20250418194223 (4).png",
       "upload": "image"
     },
     "class_type": "LoadImage",
     "_meta": {
       "title": "Load Image"
+    }
+  },
+  "60": {
+    "inputs": {
+      "strings": "goes on an exciting\ncosmic adventure\nthrough the wonders of space.\nFrom twinkling stars \nto mysterious planets,\nhe explores the vast solar system\nwith the help of a friendly robot.\nTogether, they journey from the\nSun to the Moon, learning about planets,\nasteroids, and galaxies along the way.\nWith laughter, fun, and a\nsprinkle of magic, \n",
+      "multiline": true,
+      "select": 8
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "65": {
+    "inputs": {
+      "value": "Manish"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "69": {
+    "inputs": {
+      "text1": [
+        "65",
+        0
+      ],
+      "text2": [
+        "74",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "74": {
+    "inputs": {
+      "text1": [
+        "60",
+        0
+      ],
+      "text2": [
+        "76",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "76": {
+    "inputs": {
+      "text1": [
+        "65",
+        0
+      ],
+      "text2": [
+        "77",
+        0
+      ],
+      "separator": ""
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "77": {
+    "inputs": {
+      "strings": "'s adventure \ninspires him to dream big one day,\nhe’ll be an astronaut,\nready to explore the universe!",
+      "multiline": true,
+      "select": 8
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
     }
   }
 }

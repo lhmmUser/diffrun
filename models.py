@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 
 class UserDetails(BaseModel):
     job_id: str
     name: str
     gender: str
+    job_type: Optional[str] = None       # ✅ Optional now
+    book_id: Optional[str] = None        # ✅ Optional now
+    saved_files: List[str] = []
     preview_url: str
     user_name: Optional[str] = None
     phone_number: Optional[str] = None
@@ -16,3 +19,13 @@ class UserDetails(BaseModel):
     workflow_status: str = "initiated"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+class PreviewEmailRequest(BaseModel):
+    name: str
+    username: str
+    email: EmailStr
+    preview_url: str
+
+class BookStylePayload(BaseModel):
+    job_id: str
+    book_style: str

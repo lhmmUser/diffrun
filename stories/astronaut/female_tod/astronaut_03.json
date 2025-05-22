@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 378280407817692,
+      "seed": 1000868688265299,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -157,7 +157,7 @@
         0
       ],
       "images": [
-        "40",
+        "62",
         0
       ]
     },
@@ -230,7 +230,7 @@
   },
   "17": {
     "inputs": {
-      "image": "clipspace-mask-734389.5999999978.png",
+      "image": "clipspace-mask-288112.20000000007.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -272,7 +272,7 @@
   },
   "20": {
     "inputs": {
-      "image": "Firefly 20250328192745 (2).png",
+      "image": "p1.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -303,14 +303,14 @@
         "61",
         0
       ],
-      "font_name": "comic.ttf",
-      "font_size": 80,
-      "font_color": "lightgray",
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
+      "font_color": "white",
       "align": "center",
-      "justify": "center",
+      "justify": "left",
       "margins": 0,
-      "line_spacing": 0,
-      "position_x": 0,
+      "line_spacing": 5,
+      "position_x": 200,
       "position_y": 800,
       "rotation_angle": 0,
       "rotation_options": "text center",
@@ -327,40 +327,12 @@
   },
   "46": {
     "inputs": {
-      "value": "kush"
+      "value": "kushi"
     },
     "class_type": "CPackInputString",
     "_meta": {
       "title": "String Input",
       "options": {}
-    }
-  },
-  "47": {
-    "inputs": {
-      "strings": "sending chills down his spine.",
-      "multiline": true,
-      "select": 3
-    },
-    "class_type": "ImpactStringSelector",
-    "_meta": {
-      "title": "String Selector"
-    }
-  },
-  "49": {
-    "inputs": {
-      "text1": [
-        "46",
-        0
-      ],
-      "text2": [
-        "47",
-        0
-      ],
-      "separator": " "
-    },
-    "class_type": "CR Text Concatenate",
-    "_meta": {
-      "title": "🔤 CR Text Concatenate"
     }
   },
   "50": {
@@ -386,8 +358,8 @@
   },
   "57": {
     "inputs": {
-      "x": 1221,
-      "y": 364,
+      "x": 801,
+      "y": 527,
       "resize_source": false,
       "destination": [
         "58",
@@ -396,6 +368,10 @@
       "source": [
         "10",
         0
+      ],
+      "mask": [
+        "17",
+        1
       ]
     },
     "class_type": "ImageCompositeMasked",
@@ -405,7 +381,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Firefly 20250328192745.png",
+      "image": "Firefly 20250424142829.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -415,9 +391,9 @@
   },
   "60": {
     "inputs": {
-      "strings": "Uranus spun sideways, its blue glow shining in the dark.\nIts faint rings shimmered like a hidden crown.\nA freezing wind whooshed past\n",
+      "strings": "sat by her bedroom window, staring at the vast night sky.\nAs long as she could remember, she always wanted to be an astronaut.\n",
       "multiline": true,
-      "select": 3
+      "select": 1
     },
     "class_type": "ImpactStringSelector",
     "_meta": {
@@ -427,11 +403,11 @@
   "61": {
     "inputs": {
       "text1": [
-        "60",
+        "46",
         0
       ],
       "text2": [
-        "49",
+        "60",
         0
       ],
       "separator": " "
@@ -439,6 +415,45 @@
     "class_type": "CR Text Concatenate",
     "_meta": {
       "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "62": {
+    "inputs": {
+      "text": [
+        "63",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
+      "font_color": "white",
+      "align": "center",
+      "justify": "left",
+      "margins": 0,
+      "line_spacing": 5,
+      "position_x": 200,
+      "position_y": 720,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "40",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "63": {
+    "inputs": {
+      "strings": "The moon watched gently from above.",
+      "multiline": true,
+      "select": 1
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
     }
   }
 }

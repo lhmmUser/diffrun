@@ -6,13 +6,12 @@ const Footer = () => {
   const exploreLinks = {
     Home: '/',
     'Books for Kids': '/books',
-    'About Us': '/about',
-    'Contact Us': '/contact',
   };
 
   const legalLinks = {
     'Privacy Policy': '/privacy-policy',
     'Terms of Service': '/terms-of-service',
+    'FAQ': '/faq'
   };
 
   return (

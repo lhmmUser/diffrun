@@ -38,15 +38,15 @@
         "61",
         0
       ],
-      "font_name": "Roboto-Regular.ttf",
+      "font_name": "YoungSerif-Regular.ttf",
       "font_size": 60,
-      "font_color": "black",
+      "font_color": "brown",
       "align": "center",
-      "justify": "left",
+      "justify": "center",
       "margins": 140,
       "line_spacing": 10,
       "position_x": 0,
-      "position_y": -500,
+      "position_y": -200,
       "rotation_angle": 0,
       "rotation_options": "text center",
       "font_color_hex": "#000000",
@@ -62,7 +62,7 @@
   },
   "46": {
     "inputs": {
-      "value": "Kush"
+      "value": "Aayat"
     },
     "class_type": "CPackInputString",
     "_meta": {
@@ -72,7 +72,7 @@
   },
   "47": {
     "inputs": {
-      "strings": "grows up, she wants to be a photographer and\ncapture the beauty of the world!\n",
+      "strings": "grows up, he might click away,\nCatching the sunshine, the smiles, the play.\nWith his camera ready and eyes so wide,\nShe'll find hidden stories the world tries to hide.\n\n\n\n\n\n",
       "multiline": true,
       "select": 1
     },
@@ -100,7 +100,7 @@
   },
   "50": {
     "inputs": {
-      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
+      "strings": "02d51d16-5431-4e8e-96f4-24c4e93f5fb1",
       "multiline": false,
       "select": 0
     },
@@ -121,7 +121,7 @@
   },
   "58": {
     "inputs": {
-      "image": "photographer (2).png",
+      "image": "photographer.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

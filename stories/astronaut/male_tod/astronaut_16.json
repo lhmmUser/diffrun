@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "p11 (5).png",
+      "image": "Firefly 20250424121021.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -501,20 +501,10 @@
       "title": "String Selector"
     }
   },
-  "78": {
-    "inputs": {
-      "value": "Kush"
-    },
-    "class_type": "CPackInputString",
-    "_meta": {
-      "title": "String Input",
-      "options": {}
-    }
-  },
   "79": {
     "inputs": {
       "text1": [
-        "78",
+        "73",
         0
       ],
       "text2": [
@@ -570,7 +560,7 @@
   "82": {
     "inputs": {
       "text1": [
-        "84",
+        "73",
         0
       ],
       "text2": [
@@ -586,23 +576,13 @@
   },
   "83": {
     "inputs": {
-      "strings": "saw the robot and went closer to take a goo look. \nHe had never seen an actual robot before.",
+      "strings": "saw the robot and went closer to take a good look. \nHe had never seen an actual robot before.",
       "multiline": true,
       "select": 2
     },
     "class_type": "ImpactStringSelector",
     "_meta": {
       "title": "String Selector"
-    }
-  },
-  "84": {
-    "inputs": {
-      "value": "Kush"
-    },
-    "class_type": "CPackInputString",
-    "_meta": {
-      "title": "String Input",
-      "options": {}
     }
   }
 }

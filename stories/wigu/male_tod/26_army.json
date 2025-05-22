@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Firefly a boy kid holding a book. watercolour illustration style, fair complexion, blue coloured clo (3).png",
+      "image": "Army officer-boy.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

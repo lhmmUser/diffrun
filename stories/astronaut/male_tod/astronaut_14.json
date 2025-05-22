@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 37301664026157,
+      "seed": 97771725997303,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -168,7 +168,7 @@
   },
   "12": {
     "inputs": {
-      "image": "White.jpg",
+      "image": "kush 3.jpeg",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -310,7 +310,7 @@
       "justify": "left",
       "margins": 0,
       "line_spacing": 5,
-      "position_x": 150,
+      "position_x": 140,
       "position_y": -730,
       "rotation_angle": 0,
       "rotation_options": "text center",
@@ -381,7 +381,7 @@
   },
   "58": {
     "inputs": {
-      "image": "p9 (4).png",
+      "image": "Firefly 20250424120259.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -391,7 +391,7 @@
   },
   "60": {
     "inputs": {
-      "strings": "takes his first steps\ninto the space station,\neyes full of wonder,\nready to begin the\nadventure of a lifetime.\n",
+      "strings": "takes his first\nsteps into the space\nstation, eyes full of\nwonder, ready to begin the\nadventure of a lifetime.\n",
       "multiline": true,
       "select": 1
     },

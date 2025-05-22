@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 183348863584475,
+      "seed": 184947320090221,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -157,7 +157,7 @@
         0
       ],
       "images": [
-        "57",
+        "71",
         0
       ]
     },
@@ -343,12 +343,145 @@
   },
   "58": {
     "inputs": {
-      "image": "24 copy.png",
+      "image": "Firefly 20250424164234.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
     "_meta": {
       "title": "Load Image"
+    }
+  },
+  "65": {
+    "inputs": {
+      "text": [
+        "68",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 40,
+      "font_color": "custom",
+      "align": "center",
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 0,
+      "position_x": 320,
+      "position_y": -650,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "66": {
+    "inputs": {
+      "strings": "Yes, we can! Buckle up,\nCommander",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "67": {
+    "inputs": {
+      "value": "kush"
+    },
+    "class_type": "CPackInputString",
+    "_meta": {
+      "title": "String Input",
+      "options": {}
+    }
+  },
+  "68": {
+    "inputs": {
+      "text1": [
+        "66",
+        0
+      ],
+      "text2": [
+        "72",
+        0
+      ],
+      "separator": " "
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "70": {
+    "inputs": {
+      "strings": "Next stop: the Moon! \nZero traffic, full throttle!\n",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
+    }
+  },
+  "71": {
+    "inputs": {
+      "text": [
+        "70",
+        0
+      ],
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 40,
+      "font_color": "custom",
+      "align": "center",
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 0,
+      "position_x": 320,
+      "position_y": -550,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "65",
+        0
+      ]
+    },
+    "class_type": "CR Overlay Text",
+    "_meta": {
+      "title": "🔤 CR Overlay Text"
+    }
+  },
+  "72": {
+    "inputs": {
+      "text1": [
+        "67",
+        0
+      ],
+      "text2": [
+        "73",
+        0
+      ],
+      "separator": ""
+    },
+    "class_type": "CR Text Concatenate",
+    "_meta": {
+      "title": "🔤 CR Text Concatenate"
+    }
+  },
+  "73": {
+    "inputs": {
+      "strings": "!",
+      "multiline": true,
+      "select": 2
+    },
+    "class_type": "ImpactStringSelector",
+    "_meta": {
+      "title": "String Selector"
     }
   }
 }

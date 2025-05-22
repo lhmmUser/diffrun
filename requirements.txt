@@ -9,3 +9,5 @@ pymongo
 dotenv
 email-validator
 PyMuPDF
+boto3
+httpx

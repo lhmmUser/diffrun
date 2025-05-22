@@ -1,16 +1,26 @@
+import boto3
+import re
+from helper.prepare_cover_inputs_from_selected_slides import prepare_cover_inputs_from_selected_indices
+from helper.pdf_generator import create_interior_pdf
+from helper.random_seed import generate_random_seed
+from email.message import EmailMessage
+import httpx
+import smtplib
+from pydantic import BaseModel, EmailStr
+import logging
 import base64
 import datetime
 import io
 import os
-from typing import List
+from typing import List, Optional
 import uuid
 import json
 import websocket
 import urllib.request
 import urllib.parse
 from PIL import Image
-from fastapi import FastAPI, File, Form, Request, UploadFile, Query, HTTPException, BackgroundTasks, APIRouter
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Form, Request, UploadFile, Query, HTTPException, BackgroundTasks, APIRouter, Body, status
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from reportlab.pdfgen import canvas
@@ -19,18 +29,25 @@ import shutil
 from threading import Thread
 from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
-from config import SERVER_ADDRESS, INPUT_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, FINAL_IMAGES, WATERMARK_PATH
+from models import PreviewEmailRequest, BookStylePayload
+from helper import create_front_cover_pdf
+from config import SERVER_ADDRESS, INPUT_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, WATERMARK_PATH
 from dotenv import load_dotenv
-import logging
-from pydantic import BaseModel, EmailStr
-import smtplib
-from email.message import EmailMessage
-from helper.random_seed import generate_random_seed
-from helper.pdf_generator import create_pdf
+from pathlib import Path
+import glob
+load_dotenv(dotenv_path="./.env")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION")
+)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class LoggedThread(Thread):
     def run(self):
@@ -39,7 +56,7 @@ class LoggedThread(Thread):
         except Exception as e:
             logger.exception(f"🧵 Uncaught thread error: {e}")
 
-load_dotenv()
+
 app = FastAPI()
 router = APIRouter()
 app.include_router(router)
@@ -54,9 +71,15 @@ app.add_middleware(
 
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
+S3_DIFFRUN_GENERATIONS = os.getenv("S3_DIFFRUN_GENERATIONS")
+S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
+APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
+APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
 
 if not EMAIL_USER or not EMAIL_PASS:
-    raise RuntimeError("Missing EMAIL_USER or EMAIL_PASS environment variables")
+    raise RuntimeError(
+        "Missing EMAIL_USER or EMAIL_PASS environment variables")
+
 
 @app.middleware("http")
 async def add_no_cache_headers(request: Request, call_next):
@@ -66,18 +89,22 @@ async def add_no_cache_headers(request: Request, call_next):
     response.headers["Expires"] = "0"
     return response
 
+
 class ApproveRequest(BaseModel):
     job_id: str
     selectedSlides: List[int]
+
 
 class SaveUserDetailsRequest(BaseModel):
     job_id: str
     name: str
     gender: str
     preview_url: str
+    
     user_name: str | None = None
     phone_number: str | None = None
     email: str | None = None
+
 
 class EmailRequest(BaseModel):
     username: str
@@ -85,39 +112,48 @@ class EmailRequest(BaseModel):
     email: EmailStr
     preview_url: str
 
+
 @app.post("/save-user-details")
 async def save_user_details_endpoint(request: SaveUserDetailsRequest):
     try:
         data = request.model_dump()
         data["paid"] = False
         data["approved"] = False
+
         save_user_details(data)
-        return {"status": "success", "message": "User details saved successfully!"}
+
+        return {
+            "status": "success",
+            "message": "User details saved successfully!",
+            "preview_url": data["preview_url"],
+            "email": data.get("email"),
+            "user_name": data.get("user_name"),
+            "name": data["name"]
+        }
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to save user details: {str(e)}")
 
 class CheckoutRequest(BaseModel):
     book_name: str
-    preview_url: str
     request_id: str
     variant_id: str
 
 @app.post("/create_checkout")
 def create_checkout(payload: CheckoutRequest):
-    
+
     shopify_store_domain = os.getenv("SHOPIFY_STORE_DOMAIN")
     if not shopify_store_domain:
         return {"error": "SHOPIFY_STORE_DOMAIN is not set"}
-    
+
     shopify_cart_url = f"https://{shopify_store_domain}/cart/{payload.variant_id}:1"
-    
+
     attributes = {
         "Book Name": payload.book_name,
-        "Preview Link": payload.preview_url,
         "Request ID": payload.request_id
     }
-    encoded_attributes = "&".join([f"attributes[{urllib.parse.quote(k)}]={urllib.parse.quote(v)}" for k, v in attributes.items()])
+    encoded_attributes = "&".join(
+        [f"attributes[{urllib.parse.quote(k)}]={urllib.parse.quote(v)}" for k, v in attributes.items()])
     full_url = f"{shopify_cart_url}?{encoded_attributes}"
 
     return {"checkout_url": full_url}
@@ -128,46 +164,112 @@ async def shopify_webhook(request: Request):
         payload = await request.json()
         print("🔹 Shopify Webhook Received:", json.dumps(payload, indent=2))
 
-        order_id = payload.get("name")  
-        customer_email = payload.get("email")
+        order_id = payload.get("name")
+        customer_email = payload.get("email") or payload.get("contact_email")
 
         note_attrs = payload.get("note_attributes", [])
-
-        book_name = None
-        preview_link = None
-        request_id = None
+        book_name = request_id = None
 
         for attr in note_attrs:
             if attr.get("name") == "Book Name":
                 book_name = attr.get("value")
-            elif attr.get("name") == "Preview Link":
-                preview_link = attr.get("value")
             elif attr.get("name") == "Request ID":
                 request_id = attr.get("value")
+
+        username = (
+            payload.get("billing_address", {}).get("first_name") or
+            payload.get("customer", {}).get("first_name")
+        )
 
         print(f"✅ Order Number: {order_id}")
         print(f"✅ Customer Email: {customer_email}")
         print(f"✅ Book Name: {book_name}")
-        print(f"✅ Preview Link: {preview_link}")
         print(f"✅ Request ID: {request_id}")
+        print(f"✅ Username: {username}")
 
         if request_id:
             result = user_details_collection.update_one(
                 {"job_id": request_id},
                 {"$set": {
                     "paid": True,
-                    "order_id": order_id, 
+                    "order_id": order_id,
+                    "shopify_email": customer_email,
                     "updated_at": datetime.now(timezone.utc)
                 }}
             )
-            print(f"💰 Updated paid status for {request_id}: matched={result.matched_count}, modified={result.modified_count}")
+            print(
+                f"💰 Updated paid status for {request_id}: matched={result.matched_count}, modified={result.modified_count}")
+            print(f"✅ Shopify Email stored: {customer_email}")
+
+            record = user_details_collection.find_one({"job_id": request_id})
+            preview_url = record.get("preview_url") if record else None
+            name = record.get("name") if record else None
+
+            if all([name, username, customer_email, preview_url]):
+                payment_done_email(child_name=name, username=username,
+                                   email=customer_email, preview_url=preview_url)
+            else:
+                print("⚠️ Missing data for email, skipping send")
         else:
             print("⚠️ No Request ID found, skipping DB update")
 
         return {"status": "success", "message": "Order processed"}
+
     except Exception as e:
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.post("/update-preview-url")
+async def update_preview_url(
+    job_id: str = Body(...),
+    preview_url: str = Body(...)
+):
+    if not preview_url or not preview_url.strip().lower().startswith("http"):
+        print(f"⛔️ Invalid preview_url for job_id={job_id}: {preview_url}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or empty preview URL"
+        )
+
+    print(f"🔧 Updating preview_url for job_id={job_id}: {preview_url}")
+
+    result = user_details_collection.update_one(
+        {"job_id": job_id},
+        {"$set": {"preview_url": preview_url.strip()}}
+    )
+
+    if result.matched_count == 0:
+        print("⚠️ No matching job_id found in DB")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job ID not found"
+        )
+
+    print(f"✅ Updated preview_url for job_id={job_id}")
+    return {"message": "Preview URL updated successfully"}
+
+@app.get("/get-job-status/{job_id}")
+async def get_job_status(job_id: str):
+    try:
+        user_details = user_details_collection.find_one(
+            {"job_id": job_id},
+            {
+                "_id": 0,
+                "paid": 1,
+                "approved": 1,
+                "preview_url": 1,
+                "email": 1,
+                "user_name": 1,
+                "name": 1,
+                "workflow_status": 1,
+            }
+        )
+        if not user_details:
+            raise HTTPException(status_code=404, detail="Job ID not found.")
+        return user_details
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve job status: {str(e)}")
 
 @app.get("/get-user-details/{job_id}")
 async def get_user_details(job_id: str):
@@ -182,6 +284,29 @@ async def get_user_details(job_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve user details: {str(e)}")
+
+@app.post("/update-book-style")
+async def update_book_style(payload: BookStylePayload):
+    try:
+        job_id = payload.job_id
+        book_style = payload.book_style
+
+        if book_style not in ["hardcover", "paperback"]:
+            raise HTTPException(status_code=400, detail="Invalid book style")
+
+        result = user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"book_style": book_style}}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Job ID not found")
+
+        return {"status": "success", "book_style": book_style}
+
+    except Exception as e:
+        print("❌ Failed to update book style:", str(e))
+        raise HTTPException(status_code=500, detail="Failed to update book style")
 
 # Helper function to validate workflow files
 def load_workflow(file_path):
@@ -203,6 +328,8 @@ def load_workflow(file_path):
             f"Invalid JSON in workflow file: {file_path}. Error: {str(e)}")
 
 # Function to queue a prompt
+
+
 def queue_prompt(prompt, client_id):
     payload = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(payload).encode('utf-8')
@@ -218,6 +345,8 @@ def queue_prompt(prompt, client_id):
             status_code=400, detail=f"ComfyUI API Error: {str(e)}")
 
 # Function to get an image from the server
+
+
 def get_image(filename, subfolder, folder_type):
     params = {"filename": filename,
               "subfolder": subfolder, "type": folder_type}
@@ -226,48 +355,94 @@ def get_image(filename, subfolder, folder_type):
         return response.read()
 
 # Function to get history of a prompt execution
+
+
 def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{SERVER_ADDRESS}/history/{prompt_id}") as response:
         return json.loads(response.read())
 
 # Function to convert PNG to JPG
+
+
 def convert_png_to_jpg(png_data, output_path, watermark_path):
     try:
         img = Image.open(io.BytesIO(png_data))
         if img.mode != "RGB":
             img = img.convert("RGB")
-       
+
         original_width, original_height = img.size
         new_height = 720
-        new_width = int((original_width / original_height) * new_height) 
+        new_width = int((original_width / original_height) * new_height)
         img = img.resize((new_width, new_height))
-        
+
         watermark = Image.open(watermark_path).convert("RGBA")
-     
+
         watermark_size = (int(new_width * 0.5), int(new_height * 0.5))
         watermark = watermark.resize(watermark_size)
-    
+
         r, g, b, a = watermark.split()
-        a = a.point(lambda x: x * 0.2)  
+        a = a.point(lambda x: x * 0.2)
         watermark = Image.merge('RGBA', (r, g, b, a))
-        
+
         position = (
-            (img.width - watermark.width) // 2,  
-            (img.height - watermark.height) // 2 
+            (img.width - watermark.width) // 2,
+            (img.height - watermark.height) // 2
         )
-       
+
         img = img.convert("RGBA")
         img.paste(watermark, position, watermark)
         img = img.convert("RGB")
         img.save(output_path, format="JPEG", quality=90)
-    
+
     except Exception as e:
         raise ValueError(f"Error converting PNG to JPG: {str(e)}")
 
 # Function to get images after execution
+
+def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
+    logger.info("🔧 Copying selected interior PNGs...")
+
+    source_dir = os.path.join("output", job_id, "interior")
+    approved_dir = os.path.join("output", job_id, "approved_output", "interior_approved")
+    os.makedirs(approved_dir, exist_ok=True)
+
+    interior_selected = selected[1:]
+
+    for i, variant_index in enumerate(interior_selected):
+        page_num = i + 1
+        variant_num = variant_index + 1
+
+        # 👇 pattern to match loosely: may or may not have underscores
+        pattern = os.path.join(
+            source_dir, f"*{job_id}*_{str(page_num).zfill(2)}_{str(variant_num).zfill(5)}*.png"
+        )
+        matches = glob.glob(pattern)
+
+        if matches:
+            src_path = matches[0]  # take first match
+            dst_path = os.path.join(approved_dir, os.path.basename(src_path))
+            shutil.copy(src_path, dst_path)
+            logger.info(f"✅ Copied page {page_num} variant {variant_num} to interior_approved")
+        else:
+            logger.warning(f"⚠️ Interior image not found using pattern: {pattern}")
+
+    return approved_dir
+# Helper function to copy interior images to approved_images folder
+
+
 def get_images(ws, prompt, job_id, workflow_number, client_id):
-    workflow_id_str = str(workflow_number)
-    logger.info(f"🧲 get_images() started for workflow {workflow_id_str}")
+    logger.info(f"🧲 get_images() started for workflow {workflow_number}")
+
+    try:
+        if workflow_number.startswith("pg") and workflow_number[2:].isdigit():
+            page_number = int(workflow_number[2:])
+        elif workflow_number.split("_")[0].isdigit():
+            page_number = int(workflow_number.split("_")[0])
+        else:
+            page_number = 0
+        workflow_id_str = f"pg{page_number}"
+    except Exception:
+        workflow_id_str = workflow_number
 
     prompt_id = queue_prompt(prompt, client_id)["prompt_id"]
     output_images = {}
@@ -276,30 +451,28 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"📡 Queued prompt {prompt_id} for workflow {workflow_id_str}")
 
     while True:
-        logger.debug(f"🛰️ Waiting for WebSocket message for workflow {workflow_id_str}")
+        logger.debug(
+            f"🛰️ Waiting for WebSocket message for workflow {workflow_id_str}")
         out = ws.recv()
 
         if isinstance(out, str):
             message = json.loads(out)
-            logger.debug(f"📩 Received WebSocket message: {message.get('type')}")
-
             if message['type'] == 'executing':
                 data = message['data']
-                logger.debug(
-                    f"🧪 Workflow {workflow_id_str} → executing node: {data.get('node')}, prompt_id: {data.get('prompt_id')}"
-                )
                 if data['node'] is None and data['prompt_id'] == prompt_id:
-                    logger.info(f"🔚 Execution complete for workflow {workflow_id_str}, prompt_id={prompt_id}")
+                    logger.info(
+                        f"🔚 Execution complete for workflow {workflow_id_str}, prompt_id={prompt_id}")
                     break
         else:
-            logger.warning(f"⚠️ Received non-string WebSocket message for workflow {workflow_id_str}")
+            logger.warning(
+                f"⚠️ Received non-string WebSocket message for workflow {workflow_id_str}")
 
     try:
         history = get_history(prompt_id)[prompt_id]
-        logger.debug(f"🧾 History keys: {list(history['outputs'].keys())}")
     except Exception as e:
         logger.error(f"❌ Failed to get execution history: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve workflow execution history")
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve workflow execution history")
 
     logger.info(f"📜 Retrieved execution history for prompt {prompt_id}")
 
@@ -307,19 +480,17 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
         images_output = []
 
         if 'images' not in node_output:
-            logger.warning(f"⚠️ No images in node {node_id} (workflow {workflow_id_str})")
             continue
 
         for image in node_output['images']:
             logger.info(
-                f"🖼️ Found image from ComfyUI → filename: {image['filename']}, type: {image['type']}, subfolder: {image['subfolder']}"
-            )
+                f"🖼️ Found image: {image['filename']} (type: {image['type']})")
 
             try:
-                image_data = get_image(image['filename'], image['subfolder'], image['type'])
-                logger.info(f"📥 Successfully fetched image: {image['filename']}")
+                image_data = get_image(
+                    image['filename'], image['subfolder'], image['type'])
             except Exception as e:
-                logger.error(f"❌ Failed to fetch image {image['filename']}: {str(e)}")
+                logger.error(f"❌ Failed to fetch image: {str(e)}")
                 continue
 
             timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -328,13 +499,21 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
 
             try:
                 convert_png_to_jpg(image_data, jpg_path, WATERMARK_PATH)
-                logger.info(f"✅ Converted & saved JPG to: {jpg_path}")
             except Exception as e:
-                logger.error(f"❌ Conversion error: {e}")
+                logger.error(f"❌ Conversion failed: {e}")
                 continue
 
             if not os.path.exists(jpg_path):
-                logger.error(f"❌ JPG was not created on disk: {jpg_path}")
+                logger.error(f"❌ JPG missing: {jpg_path}")
+                continue
+
+            try:
+                s3_key = f"{S3_JPG_PREFIX}/{jpg_filename}"
+                s3.upload_file(jpg_path, S3_DIFFRUN_GENERATIONS, s3_key)
+                logger.info(
+                    f"📤 Uploaded to S3: s3://{S3_DIFFRUN_GENERATIONS}/{s3_key}")
+            except Exception as e:
+                logger.error(f"❌ Failed to upload {jpg_filename} to S3: {e}")
                 continue
 
             try:
@@ -343,43 +522,23 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
                 img_str = base64.b64encode(jpg_data).decode("utf-8")
                 images_output.append(f"data:image/jpeg;base64,{img_str}")
             except Exception as e:
-                logger.error(f"❌ Failed to read JPG {jpg_path}: {e}")
+                logger.error(f"❌ Could not read JPG: {e}")
                 continue
 
             image_index += 1
 
         output_images[node_id] = images_output
-        logger.debug(f"🖼️ Saved {len(images_output)} images for node {node_id}")
 
-    logger.info(f"📸 Done saving JPGs for workflow {workflow_id_str}: {image_index - 1} images written")
+    logger.info(
+        f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
     return output_images
-
-@app.get("/get-job-status/{job_id}")
-async def get_job_status(job_id: str):
-    try:
-        user_details = user_details_collection.find_one(
-            {"job_id": job_id},
-            {"_id": 0, "paid": 1, "approved": 1, "workflow_status": 1}
-        )
-        if not user_details:
-            raise HTTPException(status_code=404, detail="Job ID not found.")
-
-        print(f"🔍 get-job-status → job_id={job_id}, paid={user_details.get('paid', False)}")
-
-        return {
-            "paid": user_details.get("paid", False),
-            "approved": user_details.get("approved", False),
-            "workflow_status": user_details.get("workflow_status", "")
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve job status: {str(e)}")
 
 @app.post("/store-user-details")
 async def store_user_details(
     name: str = Form(...),
     gender: str = Form(...),
     job_type: str = Form(...),
+    book_id: str = Form(...),
     images: List[UploadFile] = File(...)
 ):
     logger.info("📥 Received user details: name=%s, gender=%s", name, gender)
@@ -436,11 +595,12 @@ async def store_user_details(
         "gender": gender.lower(),
         "name": name.capitalize(),
         "preview_url": "",
+        "book_id": book_id,
         "paid": False,
         "approved": False,
         "status": "initiated"
     }
-
+    print(response,"response")
     try:
         save_user_details(response)
     except Exception as e:
@@ -451,115 +611,166 @@ async def store_user_details(
     logger.info("🚀 Returning response: %s", response)
     return response
 
-@app.get("/get-user-details/{job_id}")
-async def get_user_details(job_id: str):
-    try:
-        user_details = user_details_collection.find_one(
-            {"job_id": job_id}, {"_id": 0})
-        if not user_details:
-            raise HTTPException(
-                status_code=404, detail="User details not found.")
-        return user_details
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve user details: {str(e)}")
+def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]]:
+    base_dir = os.path.join(
+        "D:/ComfyUI_windows_portable/ComfyUI/input/stories",
+        book_id, gender
+    )
 
+    logger.info(f"📁 Checking base directory: {base_dir}")
+
+    if not os.path.exists(base_dir):
+        logger.error(f"❌ Base folder does not exist: {base_dir}")
+        raise FileNotFoundError(f"Base folder not found: {base_dir}")
+
+    page_dirs = []
+    entries = os.listdir(base_dir)
+    logger.debug(f"📂 Found {len(entries)} entries in {base_dir}: {entries}")
+
+    for entry in entries:
+        full_path = os.path.join(base_dir, entry)
+        match = re.match(r'pg(\d+)', entry)
+        if match and os.path.isdir(full_path):
+            page_num = int(match.group(1))
+            logger.debug(
+                f"✅ Valid page directory found: {entry} (page {page_num})")
+            page_dirs.append((page_num, entry))
+        else:
+            logger.debug(
+                f"⏭️ Ignoring non-pgX or non-directory entry: {entry}")
+
+    sorted_pages = sorted(page_dirs, key=lambda x: x[0])
+    logger.info(
+        f"🔢 Sorted page folders: {[f'pg{num}' for num, _ in sorted_pages]}")
+
+    workflow_files = []
+    for page_num, folder_name in sorted_pages:
+        padded_page = f"{page_num:02d}"
+        expected_file = f"{padded_page}_{book_id}_{gender}.json"
+        workflow_path = os.path.abspath(
+            os.path.join(base_dir, folder_name, expected_file))
+
+        if os.path.exists(workflow_path):
+            logger.info(f"📄 Workflow file found: {workflow_path}")
+            workflow_files.append((page_num, expected_file))
+        else:
+            logger.warning(f"⚠️ Workflow file missing: {workflow_path}")
+
+    logger.info(f"✅ Total valid workflows detected: {len(workflow_files)}")
+    return workflow_files
+
+    
 @app.post("/approve")
-async def approve_job(request: ApproveRequest):
-    job_id = request.job_id
-    selectedSlides = request.selectedSlides
-
+def approve_for_printing(
+    job_id: str = Form(...),
+    selectedSlides: str = Form(...)
+):
     try:
-        user_details = user_details_collection.find_one({"job_id": job_id})
-        if not user_details:
-            raise HTTPException(status_code=404, detail="User details not found.")
+        logger.info(f"🧪 Approve for printing triggered for job_id={job_id}")
+        selected = json.loads(selectedSlides)
+        logger.info(f"🧪 Selected slides: {selected}")
 
-        final_dir = os.path.join(FINAL_IMAGES, job_id)
-        os.makedirs(final_dir, exist_ok=True)
+        interior_selected = selected[1:]  # Skip cover page
 
-        workflows = user_details.get("workflows", {})
-        workflow_keys = sorted(workflows.keys())
+        source_dir = Path(OUTPUT_FOLDER) / job_id / "interior"
+        approved_dir = Path(OUTPUT_FOLDER) / job_id / "approved_output" / "interior_approved"
+        approved_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"📁 Created approved_output folder: {approved_dir}")
 
-        logger.info(f"🧩 Approving job_id={job_id}")
-        logger.info(f"Selected {len(selectedSlides)} slides: {selectedSlides}")
-        logger.info(f"Found {len(workflow_keys)} workflows: {workflow_keys}")
+        for i, variant_index in enumerate(interior_selected):
+            page = str(i + 1).zfill(2)
+            variant = str(variant_index + 1).zfill(5)
+            pattern = f"*_{page}_{variant}*.png"
+            logger.info(f"🔍 Looking for pattern: {pattern} in {source_dir}")
 
-        if len(workflow_keys) != len(selectedSlides):
-            raise HTTPException(status_code=400, detail="Mismatch between workflows and selected slides.")
+            matches = list(source_dir.glob(pattern))
+            if matches:
+                shutil.copy(matches[0], approved_dir / matches[0].name)
+                logger.info(f"✅ Copied: {matches[0]}")
+            else:
+                logger.warning(f"❌ No match for {pattern} in {source_dir}")
 
-        for index, slide_index in enumerate(selectedSlides):
-            workflow_key = workflow_keys[index]
-            workflow_name = workflow_key.replace("workflow_", "")
+        # ✅ Step 3: Generate interior PDF and upload to S3
+        user = user_details_collection.find_one({"job_id": job_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User record not found for PDF step")
 
-            image_files = [
-                f for f in os.listdir(JPG_OUTPUT)
-                if f.startswith(f"{job_id}_{workflow_name}_") and f.lower().endswith(".jpg")
-            ]
-            image_files.sort()
-
-            if not image_files:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No images found for workflow '{workflow_name}'."
-                )
-
-            if slide_index >= len(image_files):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid slide index {slide_index} for workflow '{workflow_name}'."
-                )
-
-            selected_image = image_files[slide_index]
-            src_path = os.path.join(JPG_OUTPUT, selected_image)
-            dest_filename = f"page{index + 1:02d}image{slide_index + 1}.jpg"
-            dest_path = os.path.join(final_dir, dest_filename)
-
-            shutil.copy(src_path, dest_path)
-            print(f"✅ Copied {selected_image} to {dest_path}")
-
-        try:
-            output_pdf_path = os.path.join(final_dir, "Finalized Book.pdf")
-            create_pdf(final_dir, output_pdf_path)
-            logger.info(f"📄 PDF created at {output_pdf_path}")
-        except Exception as pdf_err:
-            logger.error(f"❌ Failed to create PDF for {job_id}: {pdf_err}")
-
-        user_details_collection.update_one(
-            {"job_id": job_id},
-            {"$set": {"approved": True, "updated_at": datetime.now(timezone.utc)}}
+        interior_pdf_path = f"{job_id}_interior.pdf"
+        create_interior_pdf(
+            source_folder=str(approved_dir),
+            output_pdf=interior_pdf_path,
+            selectedSlides=interior_selected,
+            job_id=job_id
         )
 
+        pdf_filename = f"{job_id}_interior.pdf"
+        s3_key = f"{job_id}/{pdf_filename}"
+        s3.upload_file(interior_pdf_path, "storyprints", s3_key)
+        logger.info(f"📤 Uploaded interior PDF to s3://storyprints/{s3_key}")
+
+        # ✅ Step 4: Copy selected exterior image to input/cover_inputs/{job_id}
+        exterior_index = selected[0]
+        variant_str = str(exterior_index + 1).zfill(5)
+
+        book_id = user.get("book_id")
+        book_style = user.get("book_style")
+
+        cover_src_pattern = f"*{job_id}_{book_id}_{variant_str}*"
+        cover_exterior_dir = Path(OUTPUT_FOLDER) / job_id / "exterior"
+        cover_input_dir = Path(INPUT_FOLDER) / "cover_inputs" / job_id
+        cover_input_dir.mkdir(parents=True, exist_ok=True)
+
+        cover_matches = list(cover_exterior_dir.glob(cover_src_pattern))
+        if not cover_matches:
+            logger.warning(f"❌ Cover image not found using pattern: {cover_src_pattern}")
+            raise HTTPException(status_code=404, detail="Cover image not found")
+
+        cover_dest = cover_input_dir / cover_matches[0].name
+        shutil.copy(cover_matches[0], cover_dest)
+        cover_input_filename = cover_matches[0].name
+        logger.info(f"✅ Copied cover image: {cover_matches[0]} → {cover_dest}")
+
+        # ✅ Step 5: Run coverpage workflow
+        run_coverpage_workflow_in_background(
+            job_id=job_id,
+            book_id=book_id,
+            book_style=book_style,
+            cover_input_filename=cover_input_filename
+        )
+
+        # ✅ Step 6: Mark as approved in DB
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {
+                "approved": True,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        logger.info(f"✅ Marked job_id={job_id} as approved in database")
+
+        # ✅ Step 7: Send confirmation email
         try:
-            send_approval_confirmation_email(
-                username=user_details.get("user_name", "there"),
-                child_name=user_details.get("name", "Your Child"),
-                email=user_details.get("email")
-            )
+            username = user.get("user_name") or user.get("name", "").capitalize()
+            child_name = user.get("name", "").capitalize()
+            email = user.get("email") or user.get("shopify_email")
+
+            if username and child_name and email:
+                send_approval_confirmation_email(username=username, child_name=child_name, email=email)
+                logger.info(f"📧 Approval email sent to {email}")
+            else:
+                logger.warning("⚠️ Missing data for approval email — skipping send")
+
         except Exception as e:
-            logger.error(f"❌ Failed to send approval email for {job_id}: {e}")
+            logger.error(f"❌ Error while sending approval email: {e}")
 
         return {
             "status": "success",
-            "message": f"Images saved to {final_dir} and PDF generated."
+            "message": "Step 1–6 complete: approved, interior PDF uploaded & cover workflow started"
         }
 
     except Exception as e:
-        print(f"❌ Error approving job: {str(e)}")
+        logger.exception("❌ PDF approval step failed")
         raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
-
-@app.get("/get-job-status/{job_id}")
-async def get_job_status(job_id: str):
-    try:
-        user_details = user_details_collection.find_one(
-            {"job_id": job_id},
-            {"_id": 0, "paid": 1, "approved": 1}
-        )
-        if not user_details:
-            raise HTTPException(status_code=404, detail="Job ID not found.")
-        return user_details
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve job status: {str(e)}")
 
 @app.get("/get-workflow-status/{job_id}")
 async def get_workflow_status(job_id: str):
@@ -575,6 +786,16 @@ async def get_workflow_status(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve workflow status: {str(e)}")
 
+def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
+    for node_id, node_data in workflow_data.items():
+        if isinstance(node_data, dict):
+            inputs = node_data.get("inputs", {})
+            if "strings" in inputs and inputs["strings"] == known_job_id:
+                logger.info(f"🔍 Found job_id node: {node_id}")
+                return node_id
+    logger.warning("⚠️ No job_id node found matching known_job_id")
+    return None
+
 def run_workflow_in_background(
     job_id: str,
     name: str,
@@ -586,58 +807,66 @@ def run_workflow_in_background(
 ):
     name = name.capitalize()
     try:
-        logger.info("🚀 Running workflow %s for job_id=%s", workflow_filename, job_id)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        logger.info(f"🚀 Running workflow {workflow_filename} for job_id={job_id}")
 
-        if job_type == "comic":
-            gender_folder = "male_tod" if gender == "boy" else "female_tod"
-            workflow_path = os.path.join(script_dir, "comics", "comic1", gender_folder, workflow_filename)
-        else:
-            gender_folder = "male_tod" if gender == "boy" else "female_tod"
-            workflow_path = os.path.join(
-                script_dir, "stories", book_id, gender_folder, workflow_filename
-            )
+        gender_folder = gender.lower()
+
+        # 🔢 Extract pg number from filename like 'pg1.json' or '1.json'
+        match = re.match(r'^(?:pg)?(\d+)', workflow_filename)
+        if not match:
+            raise HTTPException(status_code=400, detail="Invalid workflow filename format")
+
+        page_num = int(match.group(1))
+        expected_filename = f"{page_num:02d}_{book_id}_{gender}.json"
+
+        workflow_path = os.path.join(
+            INPUT_FOLDER, "stories", book_id, gender_folder, f"pg{page_num}", expected_filename
+        )
 
         if not os.path.exists(workflow_path):
-            logger.error("❌ Workflow file not found: %s", workflow_path)
+            logger.error(f"❌ Workflow file not found: {workflow_path}")
             raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_filename}")
 
+        # 🧠 Load and parse workflow
         workflow_data = load_workflow(workflow_path)
         if isinstance(workflow_data, list):
             workflow_data = workflow_data[0] if workflow_data else {}
 
-        # 🎨 Image Injection
-        image_nodes = ["12", "13", "14"]
-        for index, node_id in enumerate(image_nodes[:len(saved_filenames)]):
+        # 🖼️ Inject images into nodes 12, 13, 14
+        for i, node_id in enumerate(["12", "13", "14"][:len(saved_filenames)]):
             if node_id in workflow_data and "inputs" in workflow_data[node_id]:
-                workflow_data[node_id]["inputs"]["image"] = os.path.join(INPUT_FOLDER, saved_filenames[index])
+                workflow_data[node_id]["inputs"]["image"] = os.path.join(INPUT_FOLDER, saved_filenames[i])
                 logger.info(f"🖼️ Injected image into node {node_id}")
 
-        # 🧠 Dynamic Field Injection
+        # ✍️ Inject name into node 46
         if "46" in workflow_data and "inputs" in workflow_data["46"]:
             workflow_data["46"]["inputs"]["value"] = name
             logger.info("📝 Injected name into node 46")
 
-        if "50" in workflow_data and "inputs" in workflow_data["50"]:
-            workflow_data["50"]["inputs"]["strings"] = job_id
-            logger.info("🆔 Injected job_id into node 50")
+        # 🆔 Inject job_id into string node
+        known_job_id = "e44054af-f0ce-4413-8b37-853e1cc680aa"
+        job_id_node = find_job_id_node(workflow_data, known_job_id)
+        if job_id_node and "inputs" in workflow_data[job_id_node]:
+            workflow_data[job_id_node]["inputs"]["strings"] = job_id
+            logger.info(f"🆔 Replaced job_id in node {job_id_node}")
+        else:
+            logger.warning("⚠️ Could not update job_id — node not found")
 
-        # 🎲 Inject random seed
-        random_seed = generate_random_seed()
+        # 🎲 Inject random seed into node 1
         if "1" in workflow_data and "inputs" in workflow_data["1"]:
-            workflow_data["1"]["inputs"]["seed"] = random_seed
-            logger.info("🎲 Injected random seed into node 1: %d", random_seed)
+            workflow_data["1"]["inputs"]["seed"] = generate_random_seed()
+            logger.info("🎲 Injected random seed into node 1")
 
-        # 🚀 Execute via WebSocket
-        ws = websocket.WebSocket()
+        # 📡 Run via WebSocket
         client_id = f"{job_id}_workflow_{workflow_filename.replace('.json', '')}"
+        ws = websocket.WebSocket()
         try:
             ws.connect(f"ws://{SERVER_ADDRESS}/ws?clientId={client_id}")
             get_images(ws, workflow_data, job_id, workflow_filename.replace(".json", ""), client_id)
         finally:
             ws.close()
 
-        # ✅ Mark as completed
+        # ✅ Mark as completed in DB
         workflow_key = f"workflow_{workflow_filename.replace('.json', '')}"
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -645,13 +874,14 @@ def run_workflow_in_background(
         )
 
     except Exception as e:
-        logger.exception("🔥 Workflow %s failed for job_id=%s: %s", workflow_filename, job_id, str(e))
+        logger.exception(f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
         workflow_key = f"workflow_{workflow_filename.replace('.json', '')}"
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {f"workflows.{workflow_key}.status": "failed"}}
         )
         raise HTTPException(status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
+
 
 @app.post("/execute-workflow")
 async def execute_workflow(
@@ -674,7 +904,8 @@ async def execute_workflow(
     try:
         user_details = user_details_collection.find_one({"job_id": job_id})
         if not user_details:
-            logger.info("👤 No user record found for job_id=%s. Creating new entry.", job_id)
+            logger.info(
+                "👤 No user record found for job_id=%s. Creating new entry.", job_id)
             user_details_collection.insert_one({
                 "job_id": job_id,
                 "name": name,
@@ -697,23 +928,31 @@ async def execute_workflow(
         ]
 
         if not (1 <= len(saved_filenames) <= 3):
-            raise HTTPException(status_code=400, detail="Uploaded images not found.")
+            raise HTTPException(
+                status_code=400, detail="Uploaded images not found.")
+
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"workflows": {}}}
+        )
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
 
         if job_type == "comic":
             gender_folder = "male_tod" if gender == "boy" else "female_tod"
-            workflow_dir = os.path.join(script_dir, "comics", "comic1", gender_folder)
+            workflow_dir = os.path.join(
+                script_dir, "comics", "comic1", gender_folder)
             workflow_files = sorted([
                 f for f in os.listdir(workflow_dir)
                 if f.startswith("Astronaut_") and f.endswith(".json")
             ])
 
             if not workflow_files:
-                raise HTTPException(status_code=404, detail="No comic workflows found.")
+                raise HTTPException(
+                    status_code=404, detail="No comic workflows found.")
 
             for file_name in workflow_files:
-                workflow_key = f"workflow_{file_name.replace('.json', '')}"
+                workflow_key = f"workflow_pg{page_num}"
 
                 user_details_collection.update_one(
                     {"job_id": job_id},
@@ -731,27 +970,15 @@ async def execute_workflow(
                 "workflows_started": [f.rstrip(".json") for f in workflow_files]
             }
 
-        # ✨ STORY MODE
-        workflow_dir = os.path.join(
-            script_dir, "stories", book_id,
-            "male_tod" if gender == "boy" else "female_tod"
-        )
-
-        if not os.path.exists(workflow_dir):
-            raise HTTPException(status_code=404, detail=f"Workflow folder not found: {workflow_dir}")
-
-        workflow_files = sorted([
-            f for f in os.listdir(workflow_dir)
-            if f.endswith(".json")
-        ])
+       # ✨ STORY MODE (New structure with pgX detection)
+        workflow_files = get_sorted_workflow_files(book_id, gender)
 
         if not workflow_files:
-            raise HTTPException(status_code=404, detail="No story workflow files found.")
+            raise HTTPException(
+                status_code=404, detail="No valid story workflow files found.")
 
-        for file_name in workflow_files:
-            workflow_key = f"workflow_{file_name.replace('.json', '')}"
-            workflow_path = os.path.join(workflow_dir, file_name)
-
+        for page_num, file_name in workflow_files:
+            workflow_key = f"workflow_pg{page_num}"
             user_details_collection.update_one(
                 {"job_id": job_id},
                 {"$set": {f"workflows.{workflow_key}.status": "processing"}}
@@ -766,19 +993,19 @@ async def execute_workflow(
         return {
             "status": "processing",
             "job_id": job_id,
-            "workflows_started": [f.replace(".json", "") for f in workflow_files]
+            "workflows_started": [f"pg{page}" for page, _ in workflow_files]
         }
 
     except Exception as e:
         logger.exception("❌ Error during workflow execution")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-    
+
 @app.post("/regenerate-workflow")
 def regenerate_workflow(
     job_id: str = Form(...),
     name: str = Form(...),
     gender: str = Form(...),
-    workflow_number: str = Form(...), 
+    workflow_number: str = Form(...),
     job_type: str = Form("story"),
     book_id: str = Form("story1"),
     background_tasks: BackgroundTasks = BackgroundTasks()
@@ -793,7 +1020,8 @@ def regenerate_workflow(
         ]
 
         if not saved_filenames:
-            raise HTTPException(status_code=404, detail="No input images found.")
+            raise HTTPException(
+                status_code=404, detail="No input images found.")
 
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -831,18 +1059,29 @@ async def poll_images(job_id: str = Query(...)):
     try:
         user_details = user_details_collection.find_one({"job_id": job_id})
         if not user_details:
-            raise HTTPException(status_code=404, detail="User not found for job ID.")
+            raise HTTPException(
+                status_code=404, detail="User not found for job ID.")
 
         workflows = user_details.get("workflows", {})
         expected_keys = list(workflows.keys())
-        expected_suffixes = [key.replace("workflow_", "") for key in expected_keys]
+        expected_suffixes = [
+            key.replace("workflow_", "")
+            for key in expected_keys
+            if re.match(r"^workflow_pg\d+$", key)
+        ]
 
         logger.debug(f"🧠 Expecting workflows: {expected_suffixes}")
 
-        files = sorted(os.listdir(JPG_OUTPUT))
-        logger.debug("📂 Found %d files in JPG_OUTPUT", len(files))
+        response = s3.list_objects_v2(
+            Bucket=S3_DIFFRUN_GENERATIONS, Prefix=f"{S3_JPG_PREFIX}/{job_id}_")
+        s3_files = response.get("Contents", [])
+        logger.info("📂 Found %d files in S3 path %s/",
+                    len(s3_files), S3_JPG_PREFIX)
 
-        for file in files:
+        for obj in s3_files:
+            key = obj["Key"]
+            file = os.path.basename(key)
+
             if (
                 not file.startswith(job_id)
                 or not file.lower().endswith(".jpg")
@@ -850,35 +1089,32 @@ async def poll_images(job_id: str = Query(...)):
             ):
                 continue
 
-            parts = file.split("_")
-            if len(parts) < 4:
-                logger.debug("⚠️ Skipping malformed filename: %s", file)
+            match = re.match(
+                rf"{re.escape(job_id)}_(pg\d+|\d+)_\d+_\d+\.jpg", file)
+            if not match:
+                logger.debug("⚠️ Skipping unmatched filename: %s", file)
                 continue
 
-            workflow_id = "_".join(parts[1:-2])
-
+            workflow_id = match.group(1)
             if workflow_id not in expected_suffixes:
-                logger.debug("🛑 Skipping non-expected workflow ID: %s", workflow_id)
+                logger.debug(
+                    "🛑 Skipping non-expected workflow ID: %s", workflow_id)
                 continue
 
             try:
-                image_path = os.path.join(JPG_OUTPUT, file)
-                with open(image_path, "rb") as f:
-                    image_data = f.read()
-                img_str = base64.b64encode(image_data).decode("utf-8")
-                img_url = f"data:image/jpeg;base64,{img_str}"
-
+                image_url = f"https://{S3_DIFFRUN_GENERATIONS}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{key}"
                 workflow_groups.setdefault(workflow_id, []).append({
                     "filename": file,
-                    "url": img_url
+                    "url": image_url
                 })
-
             except Exception as e:
-                logger.warning("❌ Could not read file %s: %s", file, str(e))
+                logger.warning(
+                    "❌ Could not construct image URL for file %s: %s", file, str(e))
 
         carousels = []
-        for workflow_id in sorted(expected_suffixes):
-            images = sorted(workflow_groups.get(workflow_id, []), key=lambda x: x["filename"])
+        for workflow_id in sorted(expected_suffixes, key=lambda x: int(re.sub(r"\D", "", x))):
+            images = sorted(workflow_groups.get(
+                workflow_id, []), key=lambda x: x["filename"])
             carousels.append({
                 "workflow": workflow_id,
                 "images": images
@@ -890,11 +1126,14 @@ async def poll_images(job_id: str = Query(...)):
             if current_status != "completed":
                 user_details_collection.update_one(
                     {"job_id": job_id},
-                    {"$set": {"workflow_status": "completed", "updated_at": datetime.now(timezone.utc)}}
+                    {"$set": {"workflow_status": "completed",
+                              "updated_at": datetime.now(timezone.utc)}}
                 )
-                logger.info("🎉 Workflow marked as COMPLETED for job_id=%s", job_id)
+                logger.info(
+                    "🎉 Workflow marked as COMPLETED for job_id=%s", job_id)
 
-        logger.info("✅ Polling complete: %d workflows found, completed=%s", len(carousels), completed)
+        logger.info("✅ Polling complete: %d workflows found, completed=%s", len(
+            carousels), completed)
 
         return {
             "carousels": carousels,
@@ -903,8 +1142,9 @@ async def poll_images(job_id: str = Query(...)):
 
     except Exception as e:
         logger.exception("❌ Error while polling images for job_id=%s", job_id)
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-    
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
+
 @app.post("/run-combined-workflow")
 async def run_combined_workflow(job_id: str = Form(...)):
     try:
@@ -921,12 +1161,14 @@ async def run_combined_workflow(job_id: str = Form(...)):
             ])
 
             if not matching_files:
-                raise HTTPException(status_code=404, detail=f"Image not found for workflow {i}")
+                raise HTTPException(
+                    status_code=404, detail=f"Image not found for workflow {i}")
             input_images.append(os.path.join(JPG_OUTPUT, matching_files[-1]))
 
         # Step 2: Load combined workflow JSON
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        workflow_path = os.path.join(script_dir, "comics", "combined_comic", "combined_workflow.json")
+        workflow_path = os.path.join(
+            script_dir, "comics", "combined_comic", "combined_workflow.json")
 
         with open(workflow_path, "r", encoding="utf-8") as f:
             workflow_data = json.load(f)
@@ -937,7 +1179,8 @@ async def run_combined_workflow(job_id: str = Form(...)):
             node_key = str(node_id)
             if node_key in workflow_data and "inputs" in workflow_data[node_key]:
                 workflow_data[node_key]["inputs"]["image"] = input_images[idx]
-                logger.info(f"🖼️ Injected image {input_images[idx]} into node {node_key}")
+                logger.info(
+                    f"🖼️ Injected image {input_images[idx]} into node {node_key}")
             else:
                 logger.warning(f"⚠️ Node {node_key} missing or invalid")
 
@@ -968,9 +1211,10 @@ async def run_combined_workflow(job_id: str = Form(...)):
             all_images.extend(node_imgs)
 
         if not all_images:
-            raise HTTPException(status_code=500, detail="No images returned from workflow.")
+            raise HTTPException(
+                status_code=500, detail="No images returned from workflow.")
 
-        img_base64 = all_images[-1].split(",")[1] 
+        img_base64 = all_images[-1].split(",")[1]
         img_data = base64.b64decode(img_base64)
         collage_filename = f"{job_id}_collage.jpg"
         collage_path = os.path.join(JPG_OUTPUT, collage_filename)
@@ -982,11 +1226,87 @@ async def run_combined_workflow(job_id: str = Form(...)):
         except Exception as e:
             logger.error(f"❌ Failed to save collage image: {e}")
 
-
     except Exception as e:
         logger.exception("🔥 Error running combined workflow")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
+# 👇 Add this at the bottom of main.py
+def run_coverpage_workflow_in_background(
+    job_id: str,
+    book_id: str,
+    book_style: str,
+    cover_input_filename: str
+):
+    try:
+        logger.info("🚀 Running coverpage workflow for job_id=%s", job_id)
+
+        workflow_filename = f"{book_style}_{book_id}.json"
+        workflow_path = os.path.join(INPUT_FOLDER, "stories", "coverpage_wide", workflow_filename)
+
+        if not os.path.exists(workflow_path):
+            raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_path}")
+
+        workflow_data = load_workflow(workflow_path)
+        if isinstance(workflow_data, list):
+            workflow_data = workflow_data[0] if workflow_data else {}
+
+        # ✅ Fetch user's name from DB
+        user = user_details_collection.find_one({"job_id": job_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User record not found")
+        name = user.get("name", "").capitalize()
+
+        # ✅ Step 1: Inject user-uploaded images into nodes 91, 92, 93
+        user_images = sorted([
+            f for f in os.listdir(INPUT_FOLDER)
+            if f.startswith(job_id) and f.lower().endswith(".jpg")
+        ])
+        if not user_images:
+            raise HTTPException(status_code=400, detail="User images not found")
+
+        for idx, node_id in enumerate(["91", "92", "93"][:len(user_images)]):
+            full_path = os.path.join(INPUT_FOLDER, user_images[idx])
+            if node_id in workflow_data and "inputs" in workflow_data[node_id]:
+                workflow_data[node_id]["inputs"]["image"] = full_path
+                logger.info(f"🖼️ Injected {user_images[idx]} into node {node_id}")
+
+        # ✅ Step 2: Inject cover image into node 6
+        cover_path = Path(INPUT_FOLDER) / "cover_inputs" / job_id / cover_input_filename
+        if not cover_path.exists():
+            raise FileNotFoundError(f"No matching cover image found at: {cover_path}")
+
+        if "6" in workflow_data and "inputs" in workflow_data["6"]:
+            workflow_data["6"]["inputs"]["image"] = str(cover_path)
+            logger.info("🧾 Injected cover image into node 6")
+
+        # ✅ Step 3: Inject child name into node 95
+        if "95" in workflow_data and "inputs" in workflow_data["95"]:
+            workflow_data["95"]["inputs"]["value"] = name
+            logger.info(f"📝 Injected name '{name}' into node 95")
+
+        # ✅ Step 4: Inject job_id
+        known_job_id = "e44054af-f0ce-4413-8b37-853e1cc680aa"
+        job_id_node = find_job_id_node(workflow_data, known_job_id)
+        if job_id_node and "inputs" in workflow_data[job_id_node]:
+            workflow_data[job_id_node]["inputs"]["strings"] = job_id
+            logger.info(f"🆔 Replaced job_id in node {job_id_node}")
+
+        # ✅ Step 5: Execute via WebSocket
+        client_id = f"{job_id}_coverpage_{workflow_filename.replace('.json', '')}"
+        ws = websocket.WebSocket()
+        try:
+            ws.connect(f"ws://{SERVER_ADDRESS}/ws?clientId={client_id}")
+            get_images(ws, workflow_data, job_id, "coverpage", client_id)
+        finally:
+            ws.close()
+
+        logger.info(f"✅ Coverpage workflow completed for job_id={job_id}")
+
+    except Exception as e:
+        logger.exception("🔥 Coverpage workflow failed for job_id=%s: %s", job_id, str(e))
+        raise HTTPException(status_code=500, detail=f"Coverpage workflow failed: {str(e)}")
+
 @app.get("/get-combined-image")
 async def get_combined_image(job_id: str = Query(...)):
     collage_path = os.path.join(JPG_OUTPUT, f"{job_id}_collage.jpg")
@@ -1001,7 +1321,8 @@ async def get_combined_image(job_id: str = Query(...)):
         encoded = base64.b64encode(img_data).decode("utf-8")
         return {"image": f"data:image/jpeg;base64,{encoded}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading collage image: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error reading collage image: {e}")
 
 @app.get("/generate-comic-pdf")
 async def generate_pdf(job_id: str = Query(...)):
@@ -1040,10 +1361,9 @@ async def generate_pdf(job_id: str = Query(...)):
         return FileResponse(pdf_path, filename=f"Your-Story-{job_id}.pdf")
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating PDF: {str(e)}")
 
-@app.post("/send-mail")
-async def send_email(payload: EmailRequest):
     username = payload.username.capitalize()
     name = payload.name.capitalize()
     try:
@@ -1094,7 +1414,72 @@ async def send_email(payload: EmailRequest):
         print("Email send error:", e)
         raise HTTPException(status_code=500, detail="Failed to send email.")
 
-def send_preview_refinement_email(username: str, child_name: str, email: str, preview_url: str):
+@app.post("/preview-email")
+async def preview_email(payload: PreviewEmailRequest):
+    try:
+        name = payload.name.capitalize()
+        username = payload.username.capitalize()
+        preview_url = payload.preview_url
+        email = payload.email
+
+        
+        # ✅ Log all the critical values
+        print("📩 Sending Preview Email:")
+        print(f" - To: {email}")
+        print(f" - Username: {username}")
+        print(f" - Name: {name}")
+        print(f" - Preview URL: {preview_url}")
+
+        print("🔗 Email Link Block:\n", f'<a href="{preview_url}">Refine {name}’s Book</a>')
+
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <p>Dear <strong>{username}</strong>,</p>
+
+            <p>Thank you for taking the first step toward creating a magical, personalized book for <strong>{name}</strong> with <strong>Diffrun</strong>!</p>
+
+            <p>We make the storybooks truly special — <strong>{name}</strong> is the star of the story, brought to life through beautiful, personalised illustrations.</p>
+
+            <p>🌈 You can now preview and refine the book to make it even more special.</p>
+
+            <a href="{preview_url}" 
+              style="display: inline-block; 
+                    padding: 12px 24px; 
+                    background-color: #6366F1; 
+                    color: white; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    border-radius: 6px;
+                    margin: 16px 0;">
+              Refine {name}’s Book
+            </a>
+
+            <p>Keep the magic going — click above to continue building the book.</p>
+
+            <p>With excitement,<br><strong>The Diffrun Team</strong></p>
+          </body>
+        </html>
+        """
+
+        msg = EmailMessage()
+        msg["Subject"] = f"{name}'s Magical Book Is Being Crafted!"
+        msg["From"] = EMAIL_USER
+        msg["To"] = email
+        msg.set_content("This email contains HTML content.")
+        msg.add_alternative(html_content, subtype="html")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+
+        return {"status": "success", "message": f"Email sent to {email}"}
+
+    except Exception as e:
+        print("❌ Email sending error:", str(e))
+        raise HTTPException(status_code=500, detail="Failed to send preview email.")
+
+def payment_done_email(username: str, child_name: str, email: str, preview_url: str):
     try:
         html_content = f"""
         <html>
@@ -1103,15 +1488,17 @@ def send_preview_refinement_email(username: str, child_name: str, email: str, pr
 
             <p>Thank you for your order! <strong>{child_name}</strong>'s magical storybook is now ready for your review. ✨</p>
 
-            <p>You can now preview the entire book and make refinements. If there are any pages you'd like to adjust, you can regenerate specific images directly within the preview.</p>
+            <p>You still have 12 hours to make refinements before the book is sent for printing. If there are any pages you'd like to adjust, you can regenerate specific images directly within the preview.</p>
 
-            <p>Once you're happy with the final result, please click the "Approve" button on the preview page. This step is essential to finalize your book and prepare it for printing.</p>
+            <p>Once you're happy with the final result, please click the "Approve for printing" button on the preview page. This step is essential to finalize your book and prepare it for printing.</p>
 
             <h3>📖 Preview & Refine Your Book:</h3>
 
             <a href="{preview_url}" style="display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; font-weight: bold; border-radius: 6px;">
               View & Refine Storybook
             </a>
+
+            <p>Our system automatically finalizes the book <strong>12 hours after payment</strong> to avoid any delays in printing.</p>
 
             <p>If you need any assistance, feel free to reply to this email. We're here to help!</p>
 
@@ -1142,13 +1529,11 @@ def send_approval_confirmation_email(username: str, child_name: str, email: str)
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <p>Hi <strong>{username}</strong>,</p>
 
-            <p>Great news! <strong>{child_name}</strong>'s magical storybook has been finalized and will soon be on its way to you. 🚀📚</p>
+            <p>Great news! <strong>{child_name}</strong>'s magical storybook has been finalized and sent for printing. It will soon be on its way to you. 🚀📚</p>
 
-            <p>Your order is now being processed and will be delivered in <strong>7–8 working days</strong>.</p>
+            <p>Please allow us <strong>7–8 working days</strong> as all books are custom made to order.</p>
 
             <p>In case the approval wasn't submitted manually, our system automatically finalizes the book <strong>12 hours after payment</strong> to avoid any delays in printing.</p>
-
-            <p>If you need to make any urgent changes or notice an issue, please contact us at <a href="mailto:support@diffrun.com">support@diffrun.com</a> as soon as possible.</p>
 
             <p>We can't wait for you and {child_name} to enjoy this keepsake together. 💖</p>
 
@@ -1185,10 +1570,6 @@ async def serve_about():
 async def serve_child_details():
     return FileResponse("frontend/out/child-details.html")
 
-@app.get("/comic1")
-async def serve_comic1():
-    return FileResponse("frontend/out/comic1.html")
-
 @app.get("/contact")
 async def serve_contact():
     return FileResponse("frontend/out/contact.html")
@@ -1205,12 +1586,20 @@ async def serve_purchase():
 async def serve_user_details():
     return FileResponse("frontend/out/user-details.html")
 
+@app.get("/faq")
+async def serve_user_details():
+    return FileResponse("frontend/out/faq.html")
+
 @app.get("/email-preview-request")
 async def serve_email_preview_request():
     return FileResponse("frontend/out/email-preview-request.html")
+
+@app.get("/healthcheck")
+def healthcheck():
+    return {"status": "ok"}
 
 app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

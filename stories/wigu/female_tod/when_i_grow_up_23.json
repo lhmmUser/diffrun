@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Doctor.png",
+      "image": "Doctor-expanded.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

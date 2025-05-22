@@ -7,7 +7,8 @@
     "dev:clean": "rimraf .next && npm run dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "next export"
   },
   "dependencies": {
     "framer-motion": "^12.6.3",

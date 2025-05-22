@@ -6,7 +6,7 @@
         0
       ],
       "images": [
-        "40",
+        "63",
         0
       ]
     },
@@ -35,18 +35,18 @@
   "40": {
     "inputs": {
       "text": [
-        "61",
+        "60",
         0
       ],
-      "font_name": "Roboto-Regular.ttf",
+      "font_name": "YoungSerif-Regular.ttf",
       "font_size": 60,
-      "font_color": "black",
+      "font_color": "brown",
       "align": "center",
-      "justify": "left",
-      "margins": 140,
-      "line_spacing": 10,
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 0,
       "position_x": 0,
-      "position_y": -500,
+      "position_y": -440,
       "rotation_angle": 0,
       "rotation_options": "text center",
       "font_color_hex": "#000000",
@@ -72,9 +72,9 @@
   },
   "47": {
     "inputs": {
-      "strings": "grows up, he wants to be an archaeologist \nand piece together lost civilizations,\none artifact at a time.\n",
+      "strings": "smiles wide, “A step from the past!”\nA dinosaur king? A jungle knight?\nThe ground still holds their silent might.\n",
       "multiline": true,
-      "select": 1
+      "select": 2
     },
     "class_type": "ImpactStringSelector",
     "_meta": {
@@ -100,7 +100,7 @@
   },
   "50": {
     "inputs": {
-      "strings": "02d51d16-5431-4e8e-96f4-24c4e93f5fb1",
+      "strings": "e44054af-f0ce-4413-8b37-853e1cc680aa",
       "multiline": false,
       "select": 0
     },
@@ -111,7 +111,7 @@
   },
   "51": {
     "inputs": {
-      "value": "02"
+      "value": "01"
     },
     "class_type": "CPackInputString",
     "_meta": {
@@ -121,7 +121,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Archaeologist.png",
+      "image": "archaeologist.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -131,30 +131,41 @@
   },
   "60": {
     "inputs": {
-      "strings": "When",
+      "strings": "In ancient mud, a print was cast,\n\n\n\n\n\n\n \n\n\n\n\n\n",
       "multiline": true,
-      "select": 1
+      "select": 2
     },
     "class_type": "ImpactStringSelector",
     "_meta": {
       "title": "String Selector"
     }
   },
-  "61": {
+  "63": {
     "inputs": {
-      "text1": [
-        "60",
-        0
-      ],
-      "text2": [
+      "text": [
         "49",
         0
       ],
-      "separator": " "
+      "font_name": "YoungSerif-Regular.ttf",
+      "font_size": 60,
+      "font_color": "brown",
+      "align": "center",
+      "justify": "center",
+      "margins": 0,
+      "line_spacing": 10,
+      "position_x": 0,
+      "position_y": -290,
+      "rotation_angle": 0,
+      "rotation_options": "text center",
+      "font_color_hex": "#000000",
+      "image": [
+        "40",
+        0
+      ]
     },
-    "class_type": "CR Text Concatenate",
+    "class_type": "CR Overlay Text",
     "_meta": {
-      "title": "🔤 CR Text Concatenate"
+      "title": "🔤 CR Overlay Text"
     }
   }
 }

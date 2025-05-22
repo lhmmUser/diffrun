@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "artist.png",
+      "image": "Artist-girl.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

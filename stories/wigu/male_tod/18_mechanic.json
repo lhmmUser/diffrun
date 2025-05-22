@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Mechanic.png",
+      "image": "Mechanic-boy.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

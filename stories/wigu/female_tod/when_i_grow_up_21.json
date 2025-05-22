@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 707931259131722,
+      "seed": 1065049659499895,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -272,7 +272,7 @@
   },
   "20": {
     "inputs": {
-      "image": "base (1).png",
+      "image": "clipspace/clipspace-mask-3926517.900000006.png [input]",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -299,7 +299,7 @@
   },
   "50": {
     "inputs": {
-      "strings": "a7b9d45e-12a2-41d7-a0c8-1eca66606939",
+      "strings": "1b0a1423-7547-4e1a-b074-5f10f3f5f91b",
       "multiline": false,
       "select": 0
     },
@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Army.png",
+      "image": "Army officer.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 82937985194018,
+      "seed": 279600308496243,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -303,8 +303,8 @@
         "60",
         0
       ],
-      "font_name": "comic.ttf",
-      "font_size": 40,
+      "font_name": "comic-sans-bold-italic.ttf",
+      "font_size": 45,
       "font_color": "white",
       "align": "center",
       "justify": "right",
@@ -371,7 +371,7 @@
   },
   "58": {
     "inputs": {
-      "image": "p7 (2).png",
+      "image": "Firefly 20250424115531.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

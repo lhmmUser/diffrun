@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "seed": 131459069631964,
+      "seed": 205882923472537,
       "steps": 9,
       "cfg": 3.7,
       "sampler_name": "euler",
@@ -168,7 +168,7 @@
   },
   "12": {
     "inputs": {
-      "image": "White.jpg",
+      "image": "kush 3.jpeg",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "p13 (3).png",
+      "image": "Firefly 20250424121401.png",
       "upload": "image"
     },
     "class_type": "LoadImage",

@@ -272,7 +272,7 @@
   },
   "20": {
     "inputs": {
-      "image": "base (2).png",
+      "image": "base-detective.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -343,7 +343,7 @@
   },
   "58": {
     "inputs": {
-      "image": "Detective (3).png",
+      "image": "Detective.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
