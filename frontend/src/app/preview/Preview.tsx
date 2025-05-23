@@ -244,9 +244,9 @@ const Preview: React.FC = () => {
           workflow,
           images,
         }));
-        if (selectedSlides.length !== newCarousels.length) {
-          setSelectedSlides(Array(newCarousels.length).fill(0));
-        }
+      //   if (selectedSlides.length !== newCarousels.length) {
+      //     setSelectedSlides(Array(newCarousels.length).fill(0));
+      // }
 
 
         const readyCount = newCarousels.filter(
