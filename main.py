@@ -31,10 +31,13 @@ from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
 from models import PreviewEmailRequest, BookStylePayload
 from helper import create_front_cover_pdf
-from config import SERVER_ADDRESS, INPUT_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, WATERMARK_PATH
+from config import SERVER_ADDRESS, INPUT_FOLDER, STORIES_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, WATERMARK_PATH
 from dotenv import load_dotenv
 from pathlib import Path
 import glob
+from pymongo.collection import Collection
+from bson import ObjectId 
+
 load_dotenv(dotenv_path="./.env")
 
 s3 = boto3.client(
@@ -208,6 +211,8 @@ async def shopify_webhook(request: Request):
             if all([name, username, customer_email, preview_url]):
                 payment_done_email(child_name=name, username=username,
                                    email=customer_email, preview_url=preview_url)
+                get_after_payment_details(job_id = request_id,book_name = book_name,record = record,
+                            preview_url = preview_url, child_name = name, username = username, email = customer_email)
             else:
                 print("⚠️ Missing data for email, skipping send")
         else:
@@ -218,6 +223,39 @@ async def shopify_webhook(request: Request):
     except Exception as e:
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+# In-memory cache of job_id to details
+after_payment_cache = {}
+
+
+def handle_after_payment(record: dict):
+    name = record.get("child_name")
+    username = record.get("username")
+    customer_email = record.get("email")
+    preview_url = record.get("preview_url")
+    book_name = record.get("book_name", "")
+    job_id = record.get("job_id")
+
+    if all([name, username, customer_email, preview_url]):
+        payment_done_email(
+            username=username,
+            child_name=name,
+            email=customer_email,
+            preview_url=preview_url
+        )
+
+        # Store in cache for frontend access
+        after_payment_cache[job_id] = {
+            "job_id": job_id,
+            "user_name": username,
+            "child_name": name,
+            "preview_url": preview_url,
+            "book_name": book_name,
+            "email": customer_email,
+        }
+    else:
+        print("⚠️ Missing data for email, skipping send")
+
 
 @app.post("/update-preview-url")
 async def update_preview_url(
@@ -613,7 +651,7 @@ async def store_user_details(
 
 def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]]:
     base_dir = os.path.join(
-        "D:/ComfyUI_windows_portable/ComfyUI/input/stories",
+        STORIES_FOLDER,
         book_id, gender
     )
 
@@ -1558,6 +1596,17 @@ def send_approval_confirmation_email(username: str, child_name: str, email: str)
     except Exception as e:
         logger.error(f"❌ Failed to send delivery email: {e}")
 
+@app.get("/after-payment/{job_id}")
+def get_after_payment_details(job_id: str ):
+    print("after payment triggered")
+    record = user_details_collection.find_one({"job_id":job_id})  
+    if record is None:
+        raise HTTPException(status_code=404, detail="Job ID not found in cache")
+    record["_id"] = str(record["_id"])
+    return record
+
+
+
 @app.get("/about")
 async def serve_about():
     return FileResponse("frontend/out/about.html")
@@ -1594,9 +1643,23 @@ async def serve_user_details():
 async def serve_email_preview_request():
     return FileResponse("frontend/out/email-preview-request.html")
 
+@app.get("/thankyou")
+def thankyou():
+    return FileResponse("frontend/out/thankyou.html")
+
+@app.get("/approved")
+async def serve_about():
+    return FileResponse("frontend/out/approved.html")
+
+
+@app.get("/after-payment")
+async def after_payment():
+    return FileResponse("frontend/out/after-payment.html")
+
 @app.get("/healthcheck")
 def healthcheck():
     return {"status": "ok"}
+
 
 app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 

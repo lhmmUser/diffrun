@@ -244,6 +244,10 @@ const Preview: React.FC = () => {
           workflow,
           images,
         }));
+        if (selectedSlides.length !== newCarousels.length) {
+          setSelectedSlides(Array(newCarousels.length).fill(0));
+        }
+
 
         const readyCount = newCarousels.filter(
           (c) =>
@@ -457,7 +461,11 @@ const Preview: React.FC = () => {
         gender,
       });
   
-      window.location.href = `/preview?${newSearchParams.toString()}`;
+      //window.location.href = `/preview?${newSearchParams.toString()}`;
+
+      //window.location.href = `/after-payment?${newSearchParams.toString()}`
+
+      window.location.href = `/approved`
       
     } catch (err: any) {
       console.error("Error approving:", err.message);
