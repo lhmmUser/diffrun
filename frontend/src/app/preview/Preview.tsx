@@ -11,6 +11,7 @@ import { Navigation, Pagination, EffectFade } from "swiper/modules";
 import LZString from "lz-string";
 import { motion } from "framer-motion";
 import { BsImages, BsArrowLeftRight } from "react-icons/bs";
+import { div } from "framer-motion/client";
 
 const Preview: React.FC = () => {
 
@@ -47,6 +48,12 @@ const Preview: React.FC = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const searchParams = useSearchParams();
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const latestSlidesRef = useRef<number[]>(selectedSlides);
+  const paginationRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    latestSlidesRef.current = selectedSlides;
+  }, [selectedSlides]);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -244,9 +251,9 @@ const Preview: React.FC = () => {
           workflow,
           images,
         }));
-      //   if (selectedSlides.length !== newCarousels.length) {
-      //     setSelectedSlides(Array(newCarousels.length).fill(0));
-      // }
+        //   if (selectedSlides.length !== newCarousels.length) {
+        //     setSelectedSlides(Array(newCarousels.length).fill(0));
+        // }
 
 
         const readyCount = newCarousels.filter(
@@ -288,8 +295,9 @@ const Preview: React.FC = () => {
 
       if (slidesInitialized && data.carousels?.length > 0) {
         const updatedSlides = data.carousels.map((carousel: { images: string | any[] }, i: number) => {
+          const images = Array.isArray(carousel.images) ? carousel.images : [];
           const slideIndex = selectedSlides[i] || 0;
-          return Math.min(slideIndex, carousel.images.length - 1);
+          return Math.min(slideIndex, images.length - 1);
         });
         setSelectedSlides(updatedSlides);
       }
@@ -361,45 +369,56 @@ const Preview: React.FC = () => {
   }, [selectedSlides]);
 
   const handleSubmit = async () => {
-    try {
-      if (!jobId || !name || !gender || !jobType || !setSelectedSlides) {
-        console.error("Missing required parameters for redirection.");
-        return;
-      }
-  
-      const selectedParam = LZString.compressToEncodedURIComponent(
-        JSON.stringify(selectedSlides)
-      );
-
-      console.log("🌍 Origin detected:", window.location.origin);
-      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
-  
-      if (previewUrl && previewUrl.startsWith("http")) {
-        console.log("📤 Updating preview URL:", previewUrl);
-        await fetch("/update-preview-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ job_id: jobId, preview_url: previewUrl }),
-        });
-      } else {
-        console.warn("⚠️ Skipping update-preview-url — invalid previewUrl:", previewUrl);
-      }      
-  
-      const query = new URLSearchParams({
-        job_id: jobId,
-        name,
-        gender,
-        job_type: jobType,
-        book_id: bookId,
-        selected: selectedParam,
-      });
-  
-      const basePath = jobType === "comic" ? "/comic1" : "/user-details";
-      router.push(`${basePath}?${query.toString()}`);
-    } catch (err: any) {
-      console.error("🚨 Error during submission:", err.message);
+  try {
+    if (!jobId || !name || !gender || !bookId) {
+      console.error("❌ Missing required parameters for redirection.");
+      return;
     }
-  };  
+
+    const selectedParam = LZString.compressToEncodedURIComponent(
+      JSON.stringify(latestSlidesRef.current)
+    );
+
+    const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
+
+    if (previewUrl && previewUrl.startsWith("http")) {
+      console.log("📤 Sending preview URL to backend:", previewUrl);
+      await fetch(`${apiBaseUrl}/update-preview-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId, preview_url: previewUrl }),
+      });
+    }
+
+    const queryParams = new URLSearchParams({
+      job_id: jobId,
+      name,
+      gender,
+      job_type: "story",
+      book_id: bookId,
+      selected: selectedParam,
+    });
+
+    const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+    if (!res.ok) throw new Error("❌ Failed to fetch job status");
+
+    const data = await res.json();
+    console.log("🧾 get-job-status response:", data);
+
+    const hasEmail = data.email && data.email.trim() !== "";
+    const hasUserName = data.user_name && data.user_name.trim() !== "";
+
+    console.log("📌 Email present?", hasEmail);
+    console.log("📌 User name present?", hasUserName);
+
+    const redirectPath = hasEmail && hasUserName ? "/purchase" : "/user-details";
+    console.log("➡️ Redirecting to:", redirectPath);
+
+    router.push(`${redirectPath}?${queryParams.toString()}`);
+  } catch (err: any) {
+    console.error("🚨 Error during handleSubmit:", err.message);
+  }
+};
 
   useEffect(() => {
     if (selectedSlides.some((i) => typeof i !== "number" || isNaN(i))) {
@@ -409,47 +428,49 @@ const Preview: React.FC = () => {
       console.warn("⚠️ Fixing invalid selectedSlides:", selectedSlides, "→", fixed);
       setSelectedSlides(fixed);
     }
-  }, [selectedSlides]);  
-  
+  }, [selectedSlides]);
+
   const handleApprove = async () => {
     try {
 
       if (!jobId) throw new Error("Job ID is missing.");
 
-      console.log("selectedslides, carousal", selectedSlides.length, carousels.length) 
+      console.log("selectedslides, carousal", selectedSlides.length, carousels.length)
 
-  
+
       if (selectedSlides.length !== carousels.length) {
-        
+
         console.warn("Mismatch between selected slides and carousels.");
         setSelectedSlides(Array(carousels.length).fill(0));
         return;
       }
       setApproving(true);
       console.log("📸 Final selectedSlides before submit:", selectedSlides);
-  
+
       const sanitizedSlides = selectedSlides.map(i =>
         typeof i === "number" && !isNaN(i) ? i : 0
       );
-  
+
+      console.log("🧪 Submitting sanitizedSlides:", sanitizedSlides);
+
       const formData = new FormData();
       formData.append("job_id", jobId);
       formData.append("name", name);
       formData.append("gender", gender);
       formData.append("selectedSlides", JSON.stringify(sanitizedSlides));
-  
+
       const response = await fetch(`${apiBaseUrl}/approve`, {
         method: "POST",
         body: formData,
       });
-  
+
       if (!response.ok) {
         const errText = await response.text();
         throw new Error(`Failed to approve: ${errText}`);
       }
-  
+
       const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(sanitizedSlides));
-  
+
       const newSearchParams = new URLSearchParams({
         job_id: jobId,
         paid: String(paid),
@@ -460,19 +481,19 @@ const Preview: React.FC = () => {
         name,
         gender,
       });
-  
+
       //window.location.href = `/preview?${newSearchParams.toString()}`;
 
       //window.location.href = `/after-payment?${newSearchParams.toString()}`
 
       window.location.href = `/approved`
-      
+
     } catch (err: any) {
       console.error("Error approving:", err.message);
-    }  finally {
-    setApproving(false); // Re-enable if needed
-  }
-  };  
+    } finally {
+      setApproving(false); // Re-enable if needed
+    }
+  };
 
   const startPolling = () => {
     if (pollingRef.current) clearTimeout(pollingRef.current);
@@ -614,113 +635,128 @@ const Preview: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <Swiper
-                      key={`${workflowIndex}-${selectedSlides[workflowIndex] || 0}`}
-                      modules={[Navigation, Pagination, EffectFade]}
-                      slidesPerView={1}
-                      effect="fade"
-                      fadeEffect={{ crossFade: true }}
-                      navigation={{
-                        nextEl: `.next-${workflowIndex}`,
-                        prevEl: `.prev-${workflowIndex}`,
-                      }}
-                      pagination={{ clickable: true }}
-                      initialSlide={selectedSlides[workflowIndex] || 0}
-                      onSlideChange={(swiper) => updateSelectedSlide(workflowIndex, swiper.activeIndex)}
-                      className="w-full h-full pb-8"
-                    >
-                      {carousel.images.map((image, imgIndex) => (
-                        <SwiperSlide key={imgIndex}>
-                          {image === "loading-placeholder" ? (
-                            <div className="flex justify-center items-center w-full h-full bg-white">
-                              <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-500"></div>
-                            </div>
-                          ) : (
-                            <img
-                              src={typeof image === "string" ? image : image.url}
-                              alt={`Story Page ${imgIndex + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                        </SwiperSlide>
-                      ))}
-                      {!approved && (
-                        <SwiperSlide key="generate-more">
-                          <div className="flex flex-col items-center justify-center w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
-                            <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
-                              Not Happy with the Previously Generated Image?
-                            </h3>
+                    <div className="flex flex-col items-center">
+                      <div className="relative w-full ">
+                        {paginationRefs.current[workflowIndex] && (
+                      <Swiper
+                        key={`${workflowIndex}-${selectedSlides[workflowIndex] || 0}`}
+                        modules={[Navigation, Pagination, EffectFade]}
+                        slidesPerView={1}
+                        effect="fade"
+                        fadeEffect={{ crossFade: true }}
+                        navigation={{
+                          nextEl: `.next-${workflowIndex}`,
+                          prevEl: `.prev-${workflowIndex}`,
+                        }}
+                        pagination={{
+  el: paginationRefs.current[workflowIndex] || undefined,
+  clickable: true,
+}}
+                        initialSlide={selectedSlides[workflowIndex] || 0}
+                        onSlideChange={(swiper) => updateSelectedSlide(workflowIndex, swiper.activeIndex)}
+                        className="h-full w-full"
+                      >
+                        {carousel.images.map((image, imgIndex) => (
+                          <SwiperSlide key={imgIndex}>
+                            {image === "loading-placeholder" ? (
+                              <div className="flex justify-center items-center w-full h-full bg-white">
+                                <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-500"></div>
+                              </div>
+                            ) : (
+                              <img
+                                src={typeof image === "string" ? image : image.url}
+                                alt={`Story Page ${imgIndex + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </SwiperSlide>
+                        ))}
+                        {!approved && (
+                          <SwiperSlide key="generate-more">
+                            <div className="flex flex-col items-center justify-center bg-white h-96 w-auto p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+                              <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                Not Happy with the Previously Generated Image?
+                              </h3>
 
-                            <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
-                              Generate More Options
-                            </p>
+                              <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                Generate More Options
+                              </p>
 
-                            <button
-                              onClick={() => handleRegenerate(workflowIndex)}
-                              disabled={regeneratingWorkflow === workflowIndex}
-                              className={`
+                              <button
+                                onClick={() => handleRegenerate(workflowIndex)}
+                                disabled={regeneratingWorkflow === workflowIndex}
+                                className={`
                                   px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 
                                   ${regeneratingWorkflow === workflowIndex
-                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
-                                }
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
+                                  }
                                 `}
-                              aria-label="Regenerate more options"
-                            >
-                              {regeneratingWorkflow === workflowIndex ? (
-                                <>
-                                  <svg
-                                    className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-black inline-block mr-2"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                    />
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                    />
-                                  </svg>
-                                  <span className="text-xs sm:text-sm">Regenerating...</span>
-                                </>
-                              ) : (
-                                <span className="text-xs sm:text-sm">Regenerate</span>
-                              )}
-                            </button>
-                          </div>
-                        </SwiperSlide>
-                      )}
-                      <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
-                        <button
-                          className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
-                          aria-label="Previous slide"
-                        >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24">
-                            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className={`next-${workflowIndex} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
-                        <button
-                          className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
-                          aria-label="Next slide"
-                        >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24">
-                            <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      </div>
+                                aria-label="Regenerate more options"
+                              >
+                                {regeneratingWorkflow === workflowIndex ? (
+                                  <>
+                                    <svg
+                                      className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-black inline-block mr-2"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      />
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                      />
+                                    </svg>
+                                    <span className="text-xs sm:text-sm">Regenerating...</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs sm:text-sm">Regenerate</span>
+                                )}
+                              </button>
+                            </div>
+                          </SwiperSlide>
+                        )}
+                        <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
+                          <button
+                            className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                            aria-label="Previous slide"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24">
+                              <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className={`next-${workflowIndex} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
+                          <button
+                            className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                            aria-label="Next slide"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24">
+                              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </div>
 
-                      <div className="swiper-pagination absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"></div>
-                    </Swiper>
+                        <div className="swiper-pagination absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"></div>
+                      </Swiper>
+                      )}
+                      </div>
+                      <div
+  className="swiper-pagination mt-4"
+  ref={(el) => {
+    paginationRefs.current[workflowIndex] = el;
+  }}
+/>
+                    </div>
                   )}
                   {carousel.images.length === 0 ||
                     (carousel.images.length === 1 && carousel.images[0] === "loading-placeholder") ? (
@@ -755,7 +791,7 @@ const Preview: React.FC = () => {
           </div>
         </div>
 
-        {!loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 &&  (
+        {!loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
           <div
             className="fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-6 rounded-lg shadow-brutalist text-center"
             style={{
@@ -803,29 +839,20 @@ const Preview: React.FC = () => {
             )}
 
             {jobType !== "comic" && paid && !approved && (
-             <button
-              onClick={handleApprove}
-              disabled={approving || !jobId || loading || carousels.length < 2}
-              className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white transition-all duration-200
+              <button
+                onClick={handleApprove}
+                disabled={approving || !jobId || loading || carousels.length < 2}
+                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white transition-all duration-200
               ${carousels.length >= 2 && !approving
-              ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
-              : 'bg-gray-300 opacity-50 cursor-not-allowed'
-                }`}
+                    ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
+                    : 'bg-gray-300 opacity-50 cursor-not-allowed'
+                  }`}
               >
                 {approving ? "Approving..." : "Approve for printing"}
               </button>
 
             )}
 
-            {jobType === "comic" && (
-              <button
-                onClick={handleSubmit}
-                className="px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white
-              bg-[#454545] hover:bg-[#333] active:bg-[#1a1a1a] shadow-[3px_3px_0px_#FF6B6B]"
-              >
-                Create Comic
-              </button>
-            )}
           </div>
         </footer>
 
