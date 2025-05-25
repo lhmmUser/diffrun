@@ -161,6 +161,27 @@ def create_checkout(payload: CheckoutRequest):
 
     return {"checkout_url": full_url}
 
+@app.post("/create_checkout")
+def create_checkout(payload: CheckoutRequest):
+    shopify_store_domain = os.getenv("SHOPIFY_STORE_DOMAIN")
+    if not shopify_store_domain:
+        return {"error": "SHOPIFY_STORE_DOMAIN is not set"}
+
+    shopify_cart_url = f"https://{shopify_store_domain}/cart/{payload.variant_id}:1"
+
+    attributes = {
+        "Book Name": payload.book_name,
+        "Request ID": payload.request_id
+    }
+
+    encoded_attributes = "&".join(
+        [f"attributes[{urllib.parse.quote(k)}]={urllib.parse.quote(v)}" for k, v in attributes.items()]
+    )
+    full_url = f"{shopify_cart_url}?{encoded_attributes}"
+
+    return {"checkout_url": full_url}
+
+
 @app.post("/webhooks/shopify")
 async def shopify_webhook(request: Request):
     try:
@@ -190,6 +211,25 @@ async def shopify_webhook(request: Request):
         print(f"✅ Request ID: {request_id}")
         print(f"✅ Username: {username}")
 
+        processed_at = payload.get("processed_at")
+        total_price = payload.get("total_price")
+
+        discount_code = None
+        if payload.get("discount_codes"):
+            discount_code = payload["discount_codes"][0].get("code")
+
+        shipping = payload.get("shipping_address") or {}
+        shipping_info = {
+            "name": f"{shipping.get('first_name', '')} {shipping.get('last_name', '')}".strip(),
+            "address1": shipping.get("address1"),
+            "address2": shipping.get("address2"),
+            "city": shipping.get("city"),
+            "province": shipping.get("province"),
+            "zip": shipping.get("zip"),
+            "country": shipping.get("country"),
+            "phone": shipping.get("phone")
+        }
+
         if request_id:
             result = user_details_collection.update_one(
                 {"job_id": request_id},
@@ -197,11 +237,14 @@ async def shopify_webhook(request: Request):
                     "paid": True,
                     "order_id": order_id,
                     "shopify_email": customer_email,
+                    "processed_at": processed_at,
+                    "total_price": total_price,
+                    "discount_code": discount_code,
+                    "shipping_address": shipping_info,
                     "updated_at": datetime.now(timezone.utc)
                 }}
             )
-            print(
-                f"💰 Updated paid status for {request_id}: matched={result.matched_count}, modified={result.modified_count}")
+            print(f"💰 Updated paid status for {request_id}: matched={result.matched_count}, modified={result.modified_count}")
             print(f"✅ Shopify Email stored: {customer_email}")
 
             record = user_details_collection.find_one({"job_id": request_id})
@@ -209,10 +252,12 @@ async def shopify_webhook(request: Request):
             name = record.get("name") if record else None
 
             if all([name, username, customer_email, preview_url]):
-                payment_done_email(child_name=name, username=username,
-                                   email=customer_email, preview_url=preview_url)
-                get_after_payment_details(job_id = request_id,book_name = book_name,record = record,
-                            preview_url = preview_url, child_name = name, username = username, email = customer_email)
+                payment_done_email(
+                    child_name=name,
+                    username=username,
+                    email=customer_email,
+                    preview_url=preview_url
+                )
             else:
                 print("⚠️ Missing data for email, skipping send")
         else:
@@ -224,8 +269,6 @@ async def shopify_webhook(request: Request):
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-# In-memory cache of job_id to details
-after_payment_cache = {}
 
 
 def handle_after_payment(record: dict):
@@ -1595,17 +1638,6 @@ def send_approval_confirmation_email(username: str, child_name: str, email: str)
 
     except Exception as e:
         logger.error(f"❌ Failed to send delivery email: {e}")
-
-@app.get("/after-payment/{job_id}")
-def get_after_payment_details(job_id: str ):
-    print("after payment triggered")
-    record = user_details_collection.find_one({"job_id":job_id})  
-    if record is None:
-        raise HTTPException(status_code=404, detail="Job ID not found in cache")
-    record["_id"] = str(record["_id"])
-    return record
-
-
 
 @app.get("/about")
 async def serve_about():
