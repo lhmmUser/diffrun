@@ -21,7 +21,6 @@ const Header = () => {
       <header className="w-full bg-gray-100 shadow-md border-b border-gray-300 z-20">
         <div className="container mx-auto py-4 px-6 flex justify-between items-center">
           <Link href="/" className="flex justify-center items-center">
-          <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain" loading="lazy" />
           <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain" />
           </Link>
 

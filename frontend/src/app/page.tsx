@@ -25,12 +25,7 @@ export default function Home() {
     </p>
   </div>
 </div>
-      <img
-        src="/banner_mobile.jpg"
-        alt="Small Banner Image"
-        className="w-full object-cover block md:hidden"
-        loading="lazy"
-      />
+
 <div className="relative w-full block md:hidden">
   <img
     src="/banner_mobile.jpg"
