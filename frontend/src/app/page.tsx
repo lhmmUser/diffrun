@@ -31,6 +31,22 @@ export default function Home() {
         className="w-full object-cover block md:hidden"
         loading="lazy"
       />
+<div className="relative w-full block md:hidden">
+  <img
+    src="/banner_mobile.jpg"
+    alt="Small Banner Image"
+    className="w-full object-cover"
+    loading="lazy"
+  />
+  <div className="absolute top-0 w-full flex flex-col items-center text-center mt-10 px-4">
+    <h1 className="text-2xl font-serif font-bold text-white drop-shadow-md">
+      Turn photos into storybooks
+    </h1>
+    <p className="mt-2 text-lg text-white drop-shadow-md">
+      Personalized books where they are the hero
+    </p>
+  </div>
+</div>
 
       <div className="flex flex-col items-center px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <div className="text-center mb-0 sm:mb-16">
@@ -86,6 +102,9 @@ export default function Home() {
           ))}
         </div>
       </div>
+      <div className="my-10">
+  <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
+</div>
       <div>
         <FAQClient items={faqData} />
       </div>

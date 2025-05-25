@@ -1,0 +1,13 @@
+fastapi
+pillow
+websocket-client
+uvicorn
+jinja2
+reportlab
+python-multipart
+pymongo
+dotenv
+email-validator
+PyMuPDF
+boto3
+httpx
