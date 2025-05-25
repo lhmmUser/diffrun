@@ -50,6 +50,39 @@ body {
   }
 }
 
+/* Neutral bullet */
+.swiper-pagination-bullet {
+  width: 12px;
+  height: 12px;
+  background: #ccc;
+  border-radius: 9999px;
+  margin: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  opacity: 1;
+}
+
+/* Active bullet → lock icon */
+.swiper-pagination-bullet-active {
+  background: #fff !important;
+  border: 2px solid #000;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+
+/* Lock icon emoji or text centered */
+.swiper-pagination-bullet-active::before {
+  content: "🔒";
+  font-size: 12px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .animate-shake {
   animation: shake 0.5s ease-in-out;
 }
@@ -103,7 +136,6 @@ body {
 .swiper-pagination-bullet-active-custom {
   background-color: #FF6B6B; /* Active bullet color */
 }
-
 /* Add to your global CSS */
 .swiper-slide {
   transition: opacity 0.6s ease-in-out;
@@ -142,6 +174,11 @@ body {
   }
 }
 
+.swiper-pagination {
+  margin-top: 1rem;
+  z-index: 0;
+}
+
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out;
 }
@@ -152,4 +189,13 @@ body {
 
 .shadow-brutalist {
   box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.3);
+}
+
+.swiper-pagination-bullet {
+  background: #555;
+  opacity: 0.6;
+}
+.swiper-pagination-bullet-active {
+  background: #000;
+  opacity: 1;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const UserDetails: React.FC = () => {
@@ -14,59 +14,110 @@ const UserDetails: React.FC = () => {
   const jobId = searchParams.get("job_id") || "";
   const name = searchParams.get("name") || "";
   const gender = searchParams.get("gender") || "";
-  const previewUrl = searchParams.get("preview_url") || "";
   const bookId = searchParams.get("book_id") || "";
 
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  useEffect(() => {
+    const fetchPreviewUrl = async () => {
+      if (!jobId) return;
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+        if (!response.ok) throw new Error("Failed to fetch preview URL from server");
+
+        const data = await response.json();
+        console.log("🔗 Preview URL fetched:", data.preview_url);
+        setPreviewUrl(data.preview_url || "");
+      } catch (err: any) {
+        console.error("⚠️ Error fetching preview URL:", err.message);
+        setError("Unable to fetch preview URL.");
+      }
+    };
+
+    fetchPreviewUrl();
+  }, [jobId]);
 
   const handleSubmit = async () => {
     try {
       setError(null);
       setSuccessMessage(null);
-
+  
       if (!email.trim() || !username.trim()) {
         setError("Please fill in all fields.");
         return;
       }
-
+  
       setLoading(true);
-
+  
+      // ✅ Fallback preview URL if not yet in DB
+      const safePreviewUrl = previewUrl?.startsWith("http")
+        ? previewUrl
+        : `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}`;
+  
+      // Step 1: Save user details
       const payload = {
         job_id: jobId,
         name,
         gender,
-        preview_url: previewUrl,
+        preview_url: safePreviewUrl,
         email,
         user_name: username,
       };
-
-      const response = await fetch("https://backend.diffrun.com/save-user-details", {
+  
+      const response = await fetch(`${apiBaseUrl}/save-user-details`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
+  
       if (!response.ok) {
         throw new Error("Failed to save user details.");
       }
-
+  
+      const data = await response.json();
+      const freshPreviewUrl = data.preview_url;
+      const savedName = data.name;
+      const savedUsername = data.user_name;
+      const savedEmail = data.email;
+  
       setSuccessMessage("Your details have been saved successfully!");
-
+  
+      // Step 2: Send preview email
+      if (freshPreviewUrl && savedEmail && savedUsername && savedName) {
+        await fetch(`${apiBaseUrl}/preview-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: savedEmail,
+            username: savedUsername,
+            name: savedName,
+            preview_url: freshPreviewUrl,
+          }),
+        });
+      } else {
+        console.warn("⚠️ Missing data for preview email. Skipping email send.");
+      }
+  
+      // Step 3: Navigate to purchase page
       router.push(
-        `/purchase?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}&preview_url=${encodeURIComponent(previewUrl)}`
+        `/purchase?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}`
       );
+  
     } catch (err: any) {
-      console.error("Error saving user details:", err.message);
+      console.error("Error saving user details or sending email:", err.message);
       setError(err.message || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
   const handleBackToPreview = () => {
     router.push(
-      `/preview?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}&preview_url=${encodeURIComponent(previewUrl)}`
+      `/preview?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}`
     );
   };
 
@@ -115,8 +166,9 @@ const UserDetails: React.FC = () => {
 
         <button
           onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold py-3 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.9)]"
+          disabled={loading || !email.trim() || !username.trim()}
+          className={`w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold py-3 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.9)] transition-opacity ${!email.trim() || !username.trim() ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
+            }`}
         >
           {loading ? "Saving..." : "Save Preview & Show Price"}
         </button>

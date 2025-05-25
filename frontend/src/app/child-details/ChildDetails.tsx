@@ -45,7 +45,7 @@ const Form: React.FC = () => {
     gender: string;
     bookId: string;
   } | null>(null);
-
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   useEffect(() => {
     return () => {
       if (process.env.NODE_ENV === "development") {
@@ -128,9 +128,10 @@ const Form: React.FC = () => {
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
       formData.append("gender", gender.toLowerCase());
       formData.append("job_type", jobType);
+      formData.append("book_id", bookId); 
       images.forEach(({ file }) => formData.append("images", file));
       console.log("📤 Sending form data to /store-user-details");
-      const storeResponse = await fetch("https://backend.diffrun.com/store-user-details", {
+      const storeResponse = await fetch(`${apiBaseUrl}/store-user-details`, {
         method: "POST",
         body: formData,
       });
@@ -150,7 +151,7 @@ const Form: React.FC = () => {
 
       console.log("✅ User details stored:", data);
       console.log("📤 Triggering workflow execution");
-      const workflowResponse = await fetch("https://backend.diffrun.com/execute-workflow", {
+      const workflowResponse = await fetch(`${apiBaseUrl}/execute-workflow`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -343,17 +344,17 @@ const Form: React.FC = () => {
           <div className="mt-8 italic">
             <p>Good things take a few seconds... Great images take a little longer!</p>
           </div>
-          <div
+          {/* <div
             className="fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-6 rounded-lg shadow-brutalist text-center"
             style={{
               boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.1)",
             }}
-          >
-            <p className="text-gray-800 font-medium mb-4 text-lg sm:text-xl animate-fade-in">
+          > */}
+            {/* <p className="text-gray-800 font-medium mb-4 text-lg sm:text-xl animate-fade-in">
               Don&apos;t want to wait?
-            </p>
+            </p> */}
 
-            <button
+            {/* <button
               onClick={() => {
                 const query = new URLSearchParams({
                   name,
@@ -366,8 +367,8 @@ const Form: React.FC = () => {
               className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               Email me the Preview Link
-            </button>
-          </div>
+            </button> */}
+          {/* </div> */}
         </div>
       )}
 
