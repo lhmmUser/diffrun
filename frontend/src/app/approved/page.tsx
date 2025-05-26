@@ -1,35 +1,34 @@
 "use client";
 
-import React from "react";
-
+import { motion } from 'framer-motion';
 
 export default function Approved() {
-  
-    return (
-   <div className="w-full flex justify-center mt-24 mb-28">
-  <div className="p-6 text-center text-gray-800 font-sans leading-relaxed">
-    <h1 className="text-2xl font-bold mb-6">Storybook is now being printed! ✨</h1>
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="w-full flex justify-center items-center bg-gray-100 h-[80vh] px-4"
+    >
+      <div className="max-w-lg w-full p-8 text-center">
 
-    <p className="mb-4">
-     Great news! The storybook has been finalized and sent for printing
-    </p>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-4">
+          Storybook is now being printed! ✨
+        </h1>
 
-    <h3 className="text-lg font-semibold mb-2">Please allow us 7–8 working days as all books are custom made to order.</h3>
+        <p className="text-gray-700 mb-4 leading-relaxed">
+          Great news! The storybook has been finalized and sent for printing.
+        </p>
 
-    <p className="mb-6">
-      
-    </p>
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
+          Please allow us 7–8 working days as all books are custom made to order.
+        </h3>
 
-    {/* <p className="mb-4">
-      n case the approval wasn't submitted manually, our system automatically finalizes the book 12 hours after payment to avoid any delays in printing.
-    </p>
-
-    <p className=" text-gray-600">
-      Our system will automatically finalize the book 12 hours after payment to avoid delays in printing.
-    </p> */}
-  </div>
-</div>
-
+        {/* Optional info block */}
+        {/* <p className="mt-4 text-sm text-gray-500">
+          Our system automatically finalizes the book 12 hours after payment to avoid delays in printing.
+        </p> */}
+      </div>
+    </motion.div>
   );
-  
 }

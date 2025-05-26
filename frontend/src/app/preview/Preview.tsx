@@ -369,56 +369,56 @@ const Preview: React.FC = () => {
   }, [selectedSlides]);
 
   const handleSubmit = async () => {
-  try {
-    if (!jobId || !name || !gender || !bookId) {
-      console.error("❌ Missing required parameters for redirection.");
-      return;
-    }
+    try {
+      if (!jobId || !name || !gender || !bookId) {
+        console.error("❌ Missing required parameters for redirection.");
+        return;
+      }
 
-    const selectedParam = LZString.compressToEncodedURIComponent(
-      JSON.stringify(latestSlidesRef.current)
-    );
+      const selectedParam = LZString.compressToEncodedURIComponent(
+        JSON.stringify(latestSlidesRef.current)
+      );
 
-    const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
+      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
 
-    if (previewUrl && previewUrl.startsWith("http")) {
-      console.log("📤 Sending preview URL to backend:", previewUrl);
-      await fetch(`${apiBaseUrl}/update-preview-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: jobId, preview_url: previewUrl }),
+      if (previewUrl && previewUrl.startsWith("http")) {
+        console.log("📤 Sending preview URL to backend:", previewUrl);
+        await fetch(`${apiBaseUrl}/update-preview-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: jobId, preview_url: previewUrl }),
+        });
+      }
+
+      const queryParams = new URLSearchParams({
+        job_id: jobId,
+        name,
+        gender,
+        job_type: "story",
+        book_id: bookId,
+        selected: selectedParam,
       });
+
+      const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+      if (!res.ok) throw new Error("❌ Failed to fetch job status");
+
+      const data = await res.json();
+      console.log("🧾 get-job-status response:", data);
+
+      const hasEmail = data.email && data.email.trim() !== "";
+      const hasUserName = data.user_name && data.user_name.trim() !== "";
+
+      console.log("📌 Email present?", hasEmail);
+      console.log("📌 User name present?", hasUserName);
+
+      const redirectPath = hasEmail && hasUserName ? "/purchase" : "/user-details";
+      console.log("➡️ Redirecting to:", redirectPath);
+
+      router.push(`${redirectPath}?${queryParams.toString()}`);
+    } catch (err: any) {
+      console.error("🚨 Error during handleSubmit:", err.message);
     }
-
-    const queryParams = new URLSearchParams({
-      job_id: jobId,
-      name,
-      gender,
-      job_type: "story",
-      book_id: bookId,
-      selected: selectedParam,
-    });
-
-    const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-    if (!res.ok) throw new Error("❌ Failed to fetch job status");
-
-    const data = await res.json();
-    console.log("🧾 get-job-status response:", data);
-
-    const hasEmail = data.email && data.email.trim() !== "";
-    const hasUserName = data.user_name && data.user_name.trim() !== "";
-
-    console.log("📌 Email present?", hasEmail);
-    console.log("📌 User name present?", hasUserName);
-
-    const redirectPath = hasEmail && hasUserName ? "/purchase" : "/user-details";
-    console.log("➡️ Redirecting to:", redirectPath);
-
-    router.push(`${redirectPath}?${queryParams.toString()}`);
-  } catch (err: any) {
-    console.error("🚨 Error during handleSubmit:", err.message);
-  }
-};
+  };
 
   useEffect(() => {
     if (selectedSlides.some((i) => typeof i !== "number" || isNaN(i))) {
@@ -447,9 +447,16 @@ const Preview: React.FC = () => {
       setApproving(true);
       console.log("📸 Final selectedSlides before submit:", selectedSlides);
 
-      const sanitizedSlides = selectedSlides.map(i =>
-        typeof i === "number" && !isNaN(i) ? i : 0
-      );
+      const sanitizedSlides = selectedSlides.map((i, idx) => {
+        const imageCount = carousels[idx].images.length;
+
+        const hasRegenerate = !approved;
+        const rawMax = hasRegenerate ? imageCount - 1 : imageCount - 1;
+
+        const maxValidIndex = Math.max(0, rawMax);
+        if (typeof i !== "number" || isNaN(i)) return 0;
+        return Math.min(i, maxValidIndex);
+      });
 
       console.log("🧪 Submitting sanitizedSlides:", sanitizedSlides);
 
@@ -483,10 +490,8 @@ const Preview: React.FC = () => {
       });
 
       //window.location.href = `/preview?${newSearchParams.toString()}`;
-
       //window.location.href = `/after-payment?${newSearchParams.toString()}`
-
-      window.location.href = `/approved`
+      window.location.href = `/approved?${newSearchParams.toString()}`
 
     } catch (err: any) {
       console.error("Error approving:", err.message);
@@ -635,135 +640,156 @@ const Preview: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center">
-                      <div className="relative w-full ">
-                        {paginationRefs.current[workflowIndex] && (
-                      <Swiper
-                        key={`${workflowIndex}-${selectedSlides[workflowIndex] || 0}`}
-                        modules={[Navigation, Pagination, EffectFade]}
-                        slidesPerView={1}
-                        effect="fade"
-                        fadeEffect={{ crossFade: true }}
-                        navigation={{
-                          nextEl: `.next-${workflowIndex}`,
-                          prevEl: `.prev-${workflowIndex}`,
-                        }}
-                        pagination={{
-  el: paginationRefs.current[workflowIndex] || undefined,
-  clickable: true,
-}}
-                        initialSlide={selectedSlides[workflowIndex] || 0}
-                        onSlideChange={(swiper) => updateSelectedSlide(workflowIndex, swiper.activeIndex)}
-                        className="h-full w-full"
-                      >
-                        {carousel.images.map((image, imgIndex) => (
-                          <SwiperSlide key={imgIndex}>
-                            {image === "loading-placeholder" ? (
-                              <div className="flex justify-center items-center w-full h-full bg-white">
-                                <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-500"></div>
-                              </div>
-                            ) : (
-                              <img
-                                src={typeof image === "string" ? image : image.url}
-                                alt={`Story Page ${imgIndex + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            )}
-                          </SwiperSlide>
-                        ))}
-                        {!approved && (
-                          <SwiperSlide key="generate-more">
-                            <div className="flex flex-col items-center justify-center bg-white h-96 w-auto p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
-                              <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
-                                Not Happy with the Previously Generated Image?
-                              </h3>
+                    <div>
+                      {paginationRefs.current[workflowIndex] && (() => {
+                        const imageCount = carousel.images.length;
+                        const maxValidIndex = Math.max(0, (!approved ? imageCount : imageCount - 1) - 1);
+                        const safeIndex = Math.min(selectedSlides[workflowIndex] || 0, maxValidIndex);
 
-                              <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
-                                Generate More Options
-                              </p>
+                        return (
+                          <Swiper
+                            modules={[Navigation, Pagination, EffectFade]}
+                            slidesPerView={1}
+                            effect="fade"
+                            fadeEffect={{ crossFade: true }}
+                            navigation={{
+                              nextEl: `.next-${workflowIndex}`,
+                              prevEl: `.prev-${workflowIndex}`,
+                            }}
+                            pagination={{
+                              el: paginationRefs.current[workflowIndex] || undefined,
+                              clickable: true,
+                              renderBullet: (index, className) => {
+  const isRegenerate = index === carousel.images.length;
+  return isRegenerate
+    ? ''
+    : `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
+}
+                            }}
+                            initialSlide={selectedSlides[workflowIndex] || 0}
+                            onSlideChange={(swiper) => {
+                              const lastIndex = carousel.images.length;
+                              const isRegenerateSlide = swiper.activeIndex === lastIndex;
 
-                              <button
-                                onClick={() => handleRegenerate(workflowIndex)}
-                                disabled={regeneratingWorkflow === workflowIndex}
-                                className={`
+                              if (isRegenerateSlide && swiper.swipeDirection && !approved) {
+                                swiper.slideTo(lastIndex - 1);
+                                return;
+                              }
+
+                              updateSelectedSlide(workflowIndex, swiper.activeIndex);
+                            }}
+                            className="w-full h-full pb-8"
+                          >
+                            {carousel.images.map((image, imgIndex) => (
+                              <SwiperSlide key={imgIndex}>
+                                {image === "loading-placeholder" ? (
+                                  <div className="flex justify-center items-center w-full h-full bg-white">
+                                    <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-500"></div>
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={typeof image === "string" ? image : image.url}
+                                    alt={`Story Page ${imgIndex + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                              </SwiperSlide>
+                            ))}
+                            {!approved && (
+                              <SwiperSlide key="generate-more">
+                                <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+                                  <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                    Not Happy with the Previously Generated Image?
+                                  </h3>
+
+                                  <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                    Generate More Options
+                                  </p>
+
+                                  <button
+                                    onClick={() => handleRegenerate(workflowIndex)}
+                                    disabled={regeneratingWorkflow === workflowIndex}
+                                    className={`
                                   px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 
                                   ${regeneratingWorkflow === workflowIndex
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
-                                  }
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
+                                      }
                                 `}
-                                aria-label="Regenerate more options"
+                                    aria-label="Regenerate more options"
+                                  >
+                                    {regeneratingWorkflow === workflowIndex ? (
+                                      <>
+                                        <svg
+                                          className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-black inline-block mr-2"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                          />
+                                          <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                          />
+                                        </svg>
+                                        <span className="text-xs sm:text-sm">Regenerating...</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs sm:text-sm">Regenerate</span>
+                                    )}
+                                  </button>
+                                </div>
+                              </SwiperSlide>
+                            )}
+                            <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
+                              <button
+                                className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                                aria-label="Previous slide"
                               >
-                                {regeneratingWorkflow === workflowIndex ? (
-                                  <>
-                                    <svg
-                                      className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-black inline-block mr-2"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                      />
-                                      <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                      />
-                                    </svg>
-                                    <span className="text-xs sm:text-sm">Regenerating...</span>
-                                  </>
-                                ) : (
-                                  <span className="text-xs sm:text-sm">Regenerate</span>
-                                )}
+                                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                  <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                </svg>
                               </button>
                             </div>
-                          </SwiperSlide>
-                        )}
-                        <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
-                          <button
-                            className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
-                            aria-label="Previous slide"
-                          >
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                              <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className={`next-${workflowIndex} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
-                          <button
-                            className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
-                            aria-label="Next slide"
-                          >
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                            </svg>
-                          </button>
-                        </div>
+                            <div className={`next-${workflowIndex} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
+                              <button
+                                className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                                aria-label="Next slide"
+                              >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                  <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                </svg>
+                              </button>
+                            </div>
 
-                        <div className="swiper-pagination absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"></div>
-                      </Swiper>
-                      )}
-                      </div>
+                            <div className="swiper-pagination absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"></div>
+                          </Swiper>
+                        );
+                      })()}
                       <div
-  className="swiper-pagination mt-4"
-  ref={(el) => {
-    paginationRefs.current[workflowIndex] = el;
-  }}
-/>
+                        className="swiper-pagination mt-4"
+                        ref={(el) => {
+                          paginationRefs.current[workflowIndex] = el;
+                        }}
+                      />
                     </div>
                   )}
+
                   {carousel.images.length === 0 ||
                     (carousel.images.length === 1 && carousel.images[0] === "loading-placeholder") ? (
                     <p className="text-center text-sm text-gray-500 mt-8 italic">
                       Waiting for page {workflowIndex + 1} to be generated...
                     </p>
                   ) : null}
+
                 </div>
               </div>
             ))}
@@ -825,7 +851,7 @@ const Preview: React.FC = () => {
 
         <footer className="w-full p-4 sm:p-6">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center">
-            {jobType !== "comic" && !paid && !approved && (
+            {!paid && !approved && (
               <button
                 onClick={handleSubmit}
                 disabled={!jobId || loading || carousels.length < 2}
@@ -838,7 +864,7 @@ const Preview: React.FC = () => {
               </button>
             )}
 
-            {jobType !== "comic" && paid && !approved && (
+            {paid && !approved && (
               <button
                 onClick={handleApprove}
                 disabled={approving || !jobId || loading || carousels.length < 2}

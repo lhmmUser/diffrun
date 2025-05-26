@@ -15,6 +15,7 @@ const UserDetails: React.FC = () => {
   const name = searchParams.get("name") || "";
   const gender = searchParams.get("gender") || "";
   const bookId = searchParams.get("book_id") || "";
+  const selected = searchParams.get("selected") || "";
 
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
@@ -55,8 +56,8 @@ const UserDetails: React.FC = () => {
   
       // ✅ Fallback preview URL if not yet in DB
       const safePreviewUrl = previewUrl?.startsWith("http")
-        ? previewUrl
-        : `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}`;
+  ? previewUrl
+  : `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selected}`;
   
       // Step 1: Save user details
       const payload = {
