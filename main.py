@@ -251,15 +251,15 @@ async def shopify_webhook(request: Request):
             preview_url = record.get("preview_url") if record else None
             name = record.get("name") if record else None
 
-            if all([name, username, customer_email, preview_url]):
-                payment_done_email(
-                    child_name=name,
-                    username=username,
-                    email=customer_email,
-                    preview_url=preview_url
-                )
-            else:
-                print("⚠️ Missing data for email, skipping send")
+            # if all([name, username, customer_email, preview_url]):
+            #     payment_done_email(
+            #         child_name=name,
+            #         username=username,
+            #         email=customer_email,
+            #         preview_url=preview_url
+            #     )
+            # else:
+            #     print("⚠️ Missing data for email, skipping send")
         else:
             print("⚠️ No Request ID found, skipping DB update")
 
@@ -742,15 +742,24 @@ def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]
 
     
 @app.post("/approve")
-def approve_for_printing(
+async def approve_for_printing(
+    background_tasks: BackgroundTasks,
     job_id: str = Form(...),
     selectedSlides: str = Form(...)
 ):
+    logger.info(f"🧪 Approve for printing triggered for job_id={job_id}")
+    background_tasks.add_task(process_approval_workflow, job_id, selectedSlides)
+
+    return {
+        "status": "processing_started",
+        "message": "Approval started. Backend is finalizing the book in background."
+    }
+
+
+def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
-        logger.info(f"🧪 Approve for printing triggered for job_id={job_id}")
         selected = json.loads(selectedSlides)
         logger.info(f"🧪 Selected slides: {selected}")
-
         interior_selected = selected[1:]  # Skip cover page
 
         source_dir = Path(OUTPUT_FOLDER) / job_id / "interior"
@@ -763,7 +772,6 @@ def approve_for_printing(
             variant = str(variant_index + 1).zfill(5)
             pattern = f"*_{page}_{variant}*.png"
             logger.info(f"🔍 Looking for pattern: {pattern} in {source_dir}")
-
             matches = list(source_dir.glob(pattern))
             if matches:
                 shutil.copy(matches[0], approved_dir / matches[0].name)
@@ -771,10 +779,10 @@ def approve_for_printing(
             else:
                 logger.warning(f"❌ No match for {pattern} in {source_dir}")
 
-        # ✅ Step 3: Generate interior PDF and upload to S3
+        # ✅ Generate PDF & upload
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
-            raise HTTPException(status_code=404, detail="User record not found for PDF step")
+            raise Exception("User record not found for PDF step")
 
         interior_pdf_path = f"{job_id}_interior.pdf"
         create_interior_pdf(
@@ -789,7 +797,7 @@ def approve_for_printing(
         s3.upload_file(interior_pdf_path, "storyprints", s3_key)
         logger.info(f"📤 Uploaded interior PDF to s3://storyprints/{s3_key}")
 
-        # ✅ Step 4: Copy selected exterior image to input/cover_inputs/{job_id}
+        # ✅ Copy cover image
         exterior_index = selected[0]
         variant_str = str(exterior_index + 1).zfill(5)
 
@@ -803,15 +811,14 @@ def approve_for_printing(
 
         cover_matches = list(cover_exterior_dir.glob(cover_src_pattern))
         if not cover_matches:
-            logger.warning(f"❌ Cover image not found using pattern: {cover_src_pattern}")
-            raise HTTPException(status_code=404, detail="Cover image not found")
+            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
 
         cover_dest = cover_input_dir / cover_matches[0].name
         shutil.copy(cover_matches[0], cover_dest)
         cover_input_filename = cover_matches[0].name
         logger.info(f"✅ Copied cover image: {cover_matches[0]} → {cover_dest}")
 
-        # ✅ Step 5: Run coverpage workflow
+        # ✅ Run cover workflow
         run_coverpage_workflow_in_background(
             job_id=job_id,
             book_id=book_id,
@@ -819,7 +826,7 @@ def approve_for_printing(
             cover_input_filename=cover_input_filename
         )
 
-        # ✅ Step 6: Mark as approved in DB
+        # ✅ Mark as approved in DB
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {
@@ -829,7 +836,7 @@ def approve_for_printing(
         )
         logger.info(f"✅ Marked job_id={job_id} as approved in database")
 
-        # ✅ Step 7: Send confirmation email
+        # ✅ Send email
         try:
             username = user.get("user_name") or user.get("name", "").capitalize()
             child_name = user.get("name", "").capitalize()
@@ -840,18 +847,11 @@ def approve_for_printing(
                 logger.info(f"📧 Approval email sent to {email}")
             else:
                 logger.warning("⚠️ Missing data for approval email — skipping send")
-
         except Exception as e:
             logger.error(f"❌ Error while sending approval email: {e}")
 
-        return {
-            "status": "success",
-            "message": "Step 1–6 complete: approved, interior PDF uploaded & cover workflow started"
-        }
-
     except Exception as e:
-        logger.exception("❌ PDF approval step failed")
-        raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
+        logger.exception("❌ Approval background task failed")
 
 @app.get("/get-workflow-status/{job_id}")
 async def get_workflow_status(job_id: str):
