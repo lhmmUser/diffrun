@@ -359,7 +359,7 @@ const Form: React.FC = () => {
           </form>
         </>
       ) : (
-        <div className="w-full min-h-screen flex flex-col justify-center items-center bg-white">
+        <div className="w-full min-h-screen flex flex-col pt-32 items-center bg-gray-100 px-4 text-center">
           <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900">
             {name.charAt(0).toUpperCase() + name.slice(1)}'s Book Preview
           </h1>
@@ -372,9 +372,9 @@ const Form: React.FC = () => {
           </div>
           {isTypingActive && (
             <div className="mt-8 italic">
-              <TypingAnimation duration={100}>
-                {messages[currentMessageIndex]}
-              </TypingAnimation>
+              <TypingAnimation key={currentMessageIndex} duration={100}>
+  {messages[currentMessageIndex]}
+</TypingAnimation>
             </div>
           )}
           {/* <div
