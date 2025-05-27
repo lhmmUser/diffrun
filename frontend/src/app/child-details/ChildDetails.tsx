@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { FcPrivacy } from "react-icons/fc";
 import Link from "next/link";
-import { TypingAnimation } from "@/components/animated/typing-animation";
 
 interface ImageFile {
   file: File;
@@ -26,19 +25,6 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => (
 );
 
 const Form: React.FC = () => {
-
-  const messages = [
-    "Good things take a few seconds... Great images take a little longer!",
-    "Almost there!",
-    "Making something amazing just for you",
-    "Your scene is being stitched together — pixel by pixel.",
-    "Waking up the fairies... they’re working on your artwork!",
-    "Like a Polaroid in progress — your scene is developing..."
-  ];
-
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-  const [isTypingActive, setIsTypingActive] = useState(true);
-
   const router = useRouter();
   const searchParams = useSearchParams();
   const jobType = searchParams.get("job_type") || "story";
@@ -59,9 +45,7 @@ const Form: React.FC = () => {
     gender: string;
     bookId: string;
   } | null>(null);
-
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
   useEffect(() => {
     return () => {
       if (process.env.NODE_ENV === "development") {
@@ -70,19 +54,6 @@ const Form: React.FC = () => {
       images.forEach((image) => URL.revokeObjectURL(image.preview));
     };
   }, [images]);
-
-  useEffect(() => {
-    if (!showContent) {
-      setIsTypingActive(false);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setCurrentMessageIndex((prev) => (prev + 1) % messages.length);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [messages.length, showContent]);
 
   const handleFileProcessing = async (file: File): Promise<ImageFile | null> => {
     if (process.env.NODE_ENV === "development") {
@@ -157,7 +128,7 @@ const Form: React.FC = () => {
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
       formData.append("gender", gender.toLowerCase());
       formData.append("job_type", jobType);
-      formData.append("book_id", bookId);
+      formData.append("book_id", bookId); 
       images.forEach(({ file }) => formData.append("images", file));
       console.log("📤 Sending form data to /store-user-details");
       const storeResponse = await fetch(`${apiBaseUrl}/store-user-details`, {
@@ -339,8 +310,8 @@ const Form: React.FC = () => {
                   : ""
               }
               className={`w-full py-3 text-lg font-bold border-2 border-black rounded-sm shadow-[4px_4px_0px_rgba(0,0,0,0.8)] transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-indigo-500 text-white hover:bg-indigo-600"
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-indigo-500 text-white hover:bg-indigo-600"
                 }`}
             >
               {loading ? "Processing..." : "Preview your book"}
@@ -359,8 +330,8 @@ const Form: React.FC = () => {
           </form>
         </>
       ) : (
-        <div className="w-full min-h-screen flex flex-col pt-32 items-center bg-gray-100 px-4 text-center">
-          <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900">
+        <div className="w-full min-h-screen flex flex-col items-center bg-white">
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 mt-20">
             {name.charAt(0).toUpperCase() + name.slice(1)}'s Book Preview
           </h1>
           <p className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2">
@@ -370,24 +341,20 @@ const Form: React.FC = () => {
             <LoadingBar progress={loadingProgress} />
             <p className="text-sm text-black font-bold tracking-wide">Progress: {loadingProgress}%</p>
           </div>
-          {isTypingActive && (
-            <div className="mt-8 italic">
-              <TypingAnimation key={currentMessageIndex} duration={100}>
-  {messages[currentMessageIndex]}
-</TypingAnimation>
-            </div>
-          )}
+          <div className="mt-8 italic">
+            <p>Good things take a few seconds... Great images take a little longer!</p>
+          </div>
           {/* <div
             className="fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-6 rounded-lg shadow-brutalist text-center"
             style={{
               boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.1)",
             }}
           > */}
-          {/* <p className="text-gray-800 font-medium mb-4 text-lg sm:text-xl animate-fade-in">
+            {/* <p className="text-gray-800 font-medium mb-4 text-lg sm:text-xl animate-fade-in">
               Don&apos;t want to wait?
             </p> */}
 
-          {/* <button
+            {/* <button
               onClick={() => {
                 const query = new URLSearchParams({
                   name,
