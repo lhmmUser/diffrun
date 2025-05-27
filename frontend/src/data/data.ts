@@ -69,7 +69,7 @@ export const faqData = [
   {
     "id": "price-books",
     "question": "💰 Price of the Books",
-    "answer": "🇮🇳 India • Paperback – ₹1,500 📄 • Hardcover – ₹2,000 📘 Shipping included 🎯 | 🇺🇸 United States • Paperback – $39.99 📖 • Hardcover – $54.99 📘 Shipping: $7.99 🚚 | 🇬🇧 United Kingdom • Paperback – £29.77 📖 • Hardcover – £39.99 📘 Shipping: £4.99 🚚"
+    "answer": "🇮🇳 India • Paperback – ₹1,650 📄 • Hardcover – ₹2,250 📘 Shipping included 🎯 | 🇺🇸 United States • Paperback – $19.32 📖 • Hardcover – $26.33 📘 Shipping: $7.99 🚚 | 🇬🇧 United Kingdom • Paperback – £14.27 📖 • Hardcover – £19.46 📘 Shipping: £4.99 🚚"
   },
   {
     "id": "ordering-multiple",

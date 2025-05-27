@@ -660,11 +660,11 @@ const Preview: React.FC = () => {
                               el: paginationRefs.current[workflowIndex] || undefined,
                               clickable: true,
                               renderBullet: (index, className) => {
-  const isRegenerate = index === carousel.images.length;
-  return isRegenerate
-    ? ''
-    : `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
-}
+                                const isRegenerate = index === carousel.images.length;
+                                return isRegenerate
+                                  ? ''
+                                  : `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
+                              }
                             }}
                             initialSlide={selectedSlides[workflowIndex] || 0}
                             onSlideChange={(swiper) => {
@@ -683,8 +683,8 @@ const Preview: React.FC = () => {
                             {carousel.images.map((image, imgIndex) => (
                               <SwiperSlide key={imgIndex}>
                                 {image === "loading-placeholder" ? (
-                                  <div className="flex justify-center items-center w-full h-full bg-white">
-                                    <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-500"></div>
+                                  <div className="flex items-center justify-center aspect-square w-full h-full bg-white">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500"></div>
                                   </div>
                                 ) : (
                                   <img
@@ -698,54 +698,49 @@ const Preview: React.FC = () => {
                             {!approved && (
                               <SwiperSlide key="generate-more">
                                 <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
-                                  <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
-                                    Not Happy with the Previously Generated Image?
-                                  </h3>
-
-                                  <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
-                                    Generate More Options
-                                  </p>
-
-                                  <button
-                                    onClick={() => handleRegenerate(workflowIndex)}
-                                    disabled={regeneratingWorkflow === workflowIndex}
-                                    className={`
-                                  px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 
-                                  ${regeneratingWorkflow === workflowIndex
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                        : 'bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]'
-                                      }
-                                `}
-                                    aria-label="Regenerate more options"
-                                  >
-                                    {regeneratingWorkflow === workflowIndex ? (
-                                      <>
-                                        <svg
-                                          className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-black inline-block mr-2"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                          />
-                                          <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                          />
-                                        </svg>
-                                        <span className="text-xs sm:text-sm">Regenerating...</span>
-                                      </>
-                                    ) : (
-                                      <span className="text-xs sm:text-sm">Regenerate</span>
-                                    )}
-                                  </button>
+                                  {regeneratingWorkflow === workflowIndex ? (
+                                    // Centered loader
+                                    <div className="flex flex-col items-center justify-center h-full w-full">
+                                      <svg
+                                        className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-black mb-4"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <circle
+                                          className="opacity-25"
+                                          cx="12"
+                                          cy="12"
+                                          r="10"
+                                          stroke="currentColor"
+                                          strokeWidth="4"
+                                        />
+                                        <path
+                                          className="opacity-75"
+                                          fill="currentColor"
+                                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                        />
+                                      </svg>
+                                      <p className="text-sm sm:text-base font-semibold text-gray-800 text-center">Regenerating...</p>
+                                    </div>
+                                  ) : (
+                                    // Normal regenerate UI
+                                    <>
+                                      <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                        Not Happy with the Previously Generated Image?
+                                      </h3>
+                                      <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                        Generate More Options
+                                      </p>
+                                      <button
+                                        onClick={() => handleRegenerate(workflowIndex)}
+                                        className="px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]"
+                                        aria-label="Regenerate more options"
+                                      >
+                                        Regenerate
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </SwiperSlide>
                             )}
@@ -850,7 +845,12 @@ const Preview: React.FC = () => {
         )}
 
         <footer className="w-full p-4 sm:p-6">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center">
+          <div className="max-w-xl mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
+            {!paid && !approved && (
+              <p className="text-center text-sm sm:text-base text-gray-600 mb-2">
+                You can continue refining your book even after this step — regenerate images and finalize later at your convenience.
+              </p>
+            )}
             {!paid && !approved && (
               <button
                 onClick={handleSubmit}
