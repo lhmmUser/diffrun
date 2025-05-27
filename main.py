@@ -3,6 +3,7 @@ import re
 from helper.prepare_cover_inputs_from_selected_slides import prepare_cover_inputs_from_selected_indices
 from helper.pdf_generator import create_interior_pdf
 from helper.random_seed import generate_random_seed
+from helper.create_front_cover_pdf import create_front_cover_pdf
 from email.message import EmailMessage
 import httpx
 import smtplib
@@ -30,7 +31,6 @@ from threading import Thread
 from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
 from models import PreviewEmailRequest, BookStylePayload
-from helper import create_front_cover_pdf
 from config import SERVER_ADDRESS, INPUT_FOLDER, STORIES_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, WATERMARK_PATH
 from dotenv import load_dotenv
 from pathlib import Path
@@ -251,15 +251,15 @@ async def shopify_webhook(request: Request):
             preview_url = record.get("preview_url") if record else None
             name = record.get("name") if record else None
 
-            # if all([name, username, customer_email, preview_url]):
-            #     payment_done_email(
-            #         child_name=name,
-            #         username=username,
-            #         email=customer_email,
-            #         preview_url=preview_url
-            #     )
-            # else:
-            #     print("⚠️ Missing data for email, skipping send")
+            if all([name, username, customer_email, preview_url]):
+                payment_done_email(
+                    child_name=name,
+                    username=username,
+                    email=customer_email,
+                    preview_url=preview_url
+                )
+            else:
+                print("⚠️ Missing data for email, skipping send")
         else:
             print("⚠️ No Request ID found, skipping DB update")
 
@@ -796,6 +796,7 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         s3_key = f"{job_id}/{pdf_filename}"
         s3.upload_file(interior_pdf_path, "storyprints", s3_key)
         logger.info(f"📤 Uploaded interior PDF to s3://storyprints/{s3_key}")
+        interior_url = f"https://storyprints.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
 
         # ✅ Copy cover image
         exterior_index = selected[0]
@@ -827,10 +828,13 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         )
 
         # ✅ Mark as approved in DB
+        approved_at = datetime.now(timezone.utc)
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {
                 "approved": True,
+                "approved_at": approved_at,
+                "book_url": interior_url,
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
@@ -1383,6 +1387,25 @@ def run_coverpage_workflow_in_background(
             ws.close()
 
         logger.info(f"✅ Coverpage workflow completed for job_id={job_id}")
+
+        # ✅ Generate cover PDF
+        pdf_path = create_front_cover_pdf(job_id, book_style)
+        logger.info(f"📄 Cover PDF generated: {pdf_path}")
+
+        try:
+            s3_key = f"{APPROVED_OUTPUT_PREFIX}/{job_id}_coverpage.pdf"
+            s3.upload_file(pdf_path, APPROVED_OUTPUT_BUCKET, s3_key)
+            logger.info(f"📤 Uploaded cover PDF to S3: s3://{APPROVED_OUTPUT_BUCKET}/{s3_key}")
+            cover_url = f"https://{APPROVED_OUTPUT_BUCKET}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
+
+            user_details_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {"cover_url": cover_url, "updated_at": datetime.now(timezone.utc)}}
+            )
+        except Exception as e:
+            logger.error(f"❌ Failed to upload cover PDF to S3: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload cover PDF: {str(e)}")
+
 
     except Exception as e:
         logger.exception("🔥 Coverpage workflow failed for job_id=%s: %s", job_id, str(e))
