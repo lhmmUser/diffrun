@@ -3,6 +3,7 @@ import re
 from helper.prepare_cover_inputs_from_selected_slides import prepare_cover_inputs_from_selected_indices
 from helper.pdf_generator import create_interior_pdf
 from helper.random_seed import generate_random_seed
+from helper.create_front_cover_pdf import create_front_cover_pdf
 from email.message import EmailMessage
 import httpx
 import smtplib
@@ -30,7 +31,6 @@ from threading import Thread
 from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
 from models import PreviewEmailRequest, BookStylePayload
-from helper import create_front_cover_pdf
 from config import SERVER_ADDRESS, INPUT_FOLDER, STORIES_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, WATERMARK_PATH
 from dotenv import load_dotenv
 from pathlib import Path
@@ -742,15 +742,24 @@ def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]
 
     
 @app.post("/approve")
-def approve_for_printing(
+async def approve_for_printing(
+    background_tasks: BackgroundTasks,
     job_id: str = Form(...),
     selectedSlides: str = Form(...)
 ):
+    logger.info(f"🧪 Approve for printing triggered for job_id={job_id}")
+    background_tasks.add_task(process_approval_workflow, job_id, selectedSlides)
+
+    return {
+        "status": "processing_started",
+        "message": "Approval started. Backend is finalizing the book in background."
+    }
+
+
+def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
-        logger.info(f"🧪 Approve for printing triggered for job_id={job_id}")
         selected = json.loads(selectedSlides)
         logger.info(f"🧪 Selected slides: {selected}")
-
         interior_selected = selected[1:]  # Skip cover page
 
         source_dir = Path(OUTPUT_FOLDER) / job_id / "interior"
@@ -763,7 +772,6 @@ def approve_for_printing(
             variant = str(variant_index + 1).zfill(5)
             pattern = f"*_{page}_{variant}*.png"
             logger.info(f"🔍 Looking for pattern: {pattern} in {source_dir}")
-
             matches = list(source_dir.glob(pattern))
             if matches:
                 shutil.copy(matches[0], approved_dir / matches[0].name)
@@ -771,10 +779,10 @@ def approve_for_printing(
             else:
                 logger.warning(f"❌ No match for {pattern} in {source_dir}")
 
-        # ✅ Step 3: Generate interior PDF and upload to S3
+        # ✅ Generate PDF & upload
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
-            raise HTTPException(status_code=404, detail="User record not found for PDF step")
+            raise Exception("User record not found for PDF step")
 
         interior_pdf_path = f"{job_id}_interior.pdf"
         create_interior_pdf(
@@ -788,8 +796,9 @@ def approve_for_printing(
         s3_key = f"{job_id}/{pdf_filename}"
         s3.upload_file(interior_pdf_path, "storyprints", s3_key)
         logger.info(f"📤 Uploaded interior PDF to s3://storyprints/{s3_key}")
+        interior_url = f"https://storyprints.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
 
-        # ✅ Step 4: Copy selected exterior image to input/cover_inputs/{job_id}
+        # ✅ Copy cover image
         exterior_index = selected[0]
         variant_str = str(exterior_index + 1).zfill(5)
 
@@ -803,15 +812,14 @@ def approve_for_printing(
 
         cover_matches = list(cover_exterior_dir.glob(cover_src_pattern))
         if not cover_matches:
-            logger.warning(f"❌ Cover image not found using pattern: {cover_src_pattern}")
-            raise HTTPException(status_code=404, detail="Cover image not found")
+            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
 
         cover_dest = cover_input_dir / cover_matches[0].name
         shutil.copy(cover_matches[0], cover_dest)
         cover_input_filename = cover_matches[0].name
         logger.info(f"✅ Copied cover image: {cover_matches[0]} → {cover_dest}")
 
-        # ✅ Step 5: Run coverpage workflow
+        # ✅ Run cover workflow
         run_coverpage_workflow_in_background(
             job_id=job_id,
             book_id=book_id,
@@ -819,17 +827,20 @@ def approve_for_printing(
             cover_input_filename=cover_input_filename
         )
 
-        # ✅ Step 6: Mark as approved in DB
+        # ✅ Mark as approved in DB
+        approved_at = datetime.now(timezone.utc)
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {
                 "approved": True,
+                "approved_at": approved_at,
+                "book_url": interior_url,
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
         logger.info(f"✅ Marked job_id={job_id} as approved in database")
 
-        # ✅ Step 7: Send confirmation email
+        # ✅ Send email
         try:
             username = user.get("user_name") or user.get("name", "").capitalize()
             child_name = user.get("name", "").capitalize()
@@ -840,18 +851,11 @@ def approve_for_printing(
                 logger.info(f"📧 Approval email sent to {email}")
             else:
                 logger.warning("⚠️ Missing data for approval email — skipping send")
-
         except Exception as e:
             logger.error(f"❌ Error while sending approval email: {e}")
 
-        return {
-            "status": "success",
-            "message": "Step 1–6 complete: approved, interior PDF uploaded & cover workflow started"
-        }
-
     except Exception as e:
-        logger.exception("❌ PDF approval step failed")
-        raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
+        logger.exception("❌ Approval background task failed")
 
 @app.get("/get-workflow-status/{job_id}")
 async def get_workflow_status(job_id: str):
@@ -1383,6 +1387,25 @@ def run_coverpage_workflow_in_background(
             ws.close()
 
         logger.info(f"✅ Coverpage workflow completed for job_id={job_id}")
+
+        # ✅ Generate cover PDF
+        pdf_path = create_front_cover_pdf(job_id, book_style)
+        logger.info(f"📄 Cover PDF generated: {pdf_path}")
+
+        try:
+            s3_key = f"{APPROVED_OUTPUT_PREFIX}/{job_id}_coverpage.pdf"
+            s3.upload_file(pdf_path, APPROVED_OUTPUT_BUCKET, s3_key)
+            logger.info(f"📤 Uploaded cover PDF to S3: s3://{APPROVED_OUTPUT_BUCKET}/{s3_key}")
+            cover_url = f"https://{APPROVED_OUTPUT_BUCKET}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
+
+            user_details_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {"cover_url": cover_url, "updated_at": datetime.now(timezone.utc)}}
+            )
+        except Exception as e:
+            logger.error(f"❌ Failed to upload cover PDF to S3: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload cover PDF: {str(e)}")
+
 
     except Exception as e:
         logger.exception("🔥 Coverpage workflow failed for job_id=%s: %s", job_id, str(e))
