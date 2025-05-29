@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Diffrun | Personalised books that say — you're the hero",
   description:
-    "Diffrun is a platform designed to inspire and empower creators to craft their unique stories. Whether you're writing, drawing, or building, we provide the tools and resources to bring your ideas to life.",
+    "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
   keywords: [
     "create your story",
     "storytelling platform",
@@ -33,9 +33,9 @@ export const metadata: Metadata = {
   creator: "Kush Sharma",
   publisher: "Lighthouse Generic",
   openGraph: {
-    title: "Diffrun | Create Your Story - Unlock Your Creativity",
+    title: "Diffrun | Personalised books that say — you're the hero",
     description:
-      "Diffrun is a platform designed to inspire and empower creators to craft their unique stories. Whether you're writing, drawing, or building, we provide the tools and resources to bring your ideas to life.",
+      "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
     url: "https://diffrun.com",
     siteName: "Diffrun",
     locale: "en_US",
@@ -43,14 +43,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Diffrun | Create Your Story - Unlock Your Creativity",
+    title: "Diffrun | Personalised books that say — you're the hero",
     description:
-      "Diffrun is a platform designed to inspire and empower creators to craft their unique stories. Whether you're writing, drawing, or building, we provide the tools and resources to bring your ideas to life.",
+      "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
     site: "@diffrun", 
     creator: "@diffrun",
-    images: [
-      "https://diffrun.com/images/og-image.jpg",
-    ],
   },
   robots: "index, follow",
 };

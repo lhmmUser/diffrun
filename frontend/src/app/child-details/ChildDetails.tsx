@@ -29,24 +29,25 @@ const TypingCycle: React.FC = () => {
     "Illustrating your imagination... this won't take long.",
     "Summoning storybook magic — your adventure is about to begin!",
     "Turning your memories into magical moments...",
-    "Fairy-tale engines are running — we’re nearly done!"
+    "Fairy-tale engines are running — we’re nearly done!",
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [cycleKey, setCycleKey] = useState(0);
 
   useEffect(() => {
-    const cycleInterval = setInterval(() => {
+    const timeout = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % texts.length);
-    }, 4000);
-
-    return () => clearInterval(cycleInterval);
-  }, []);
+      setCycleKey((k) => k + 1);
+    }, 10000); 
+    return () => clearTimeout(timeout);
+  }, [cycleKey]);
 
   return (
     <TypingAnimation
-      key={currentIndex}
-      className="text-center text-base sm:text-lg text-[#454545] italic"
-      duration={40}
+      key={cycleKey}
+      className="text-left text-base sm:text-lg text-[#454545] italic w-full"
+      duration={100}
       delay={0}
     >
       {texts[currentIndex]}
@@ -261,7 +262,7 @@ const Form: React.FC = () => {
 
   return (
     <main className="w-full min-h-screen flex flex-col items-center bg-white py-12 px-4 sm:px-8">
-      {showContent ? (
+     {false ? (
         <>
           <div className="text-center mb-10">
             <h2 className="text-4xl font-bold text-black leading-tight">
@@ -405,13 +406,13 @@ const Form: React.FC = () => {
         </>
       ) : (
         <motion.div
-          className="w-full min-h-screen flex flex-col items-center bg-white"
+          className="w-full min-h-screen flex flex-col items-center gap-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           <motion.h1
-            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 mt-20"
+            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900"
             variants={headingVariants}
           >
             {name.charAt(0).toUpperCase() + name.slice(1)}'s Book Preview
@@ -442,6 +443,9 @@ const Form: React.FC = () => {
           >
             <TypingCycle />
           </motion.div>
+          <div className="my-20">
+        <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
+      </div>
         </motion.div>
       )}
       {showModal && (

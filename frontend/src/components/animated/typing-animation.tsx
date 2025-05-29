@@ -11,6 +11,7 @@ interface TypingAnimationProps extends MotionProps {
   delay?: number;
   as?: React.ElementType;
   startOnView?: boolean;
+  onComplete?: () => void;
 }
 
 export function TypingAnimation({
@@ -20,9 +21,10 @@ export function TypingAnimation({
   delay = 0,
   as: Component = "div",
   startOnView = false,
+  onComplete,
   ...props
 }: TypingAnimationProps) {
-  const MotionComponent = motion(Component as any); // wrap dynamically
+  const MotionComponent = motion(Component as any);
   const [displayedText, setDisplayedText] = useState<string>("");
   const [started, setStarted] = useState(false);
   const elementRef = useRef<HTMLElement | null>(null);
@@ -57,17 +59,18 @@ export function TypingAnimation({
         i++;
       } else {
         clearInterval(typingEffect);
+        onComplete?.();
       }
     }, duration);
 
     return () => clearInterval(typingEffect);
-  }, [children, duration, started]);
+  }, [children, duration, started, onComplete]);
 
   return (
     <MotionComponent
       ref={elementRef}
       className={cn(
-        "text-4xl font-bold leading-[5rem] tracking-[-0.02em]",
+        "text-4xl font-bold leading-[5rem] tracking-[-0.02em] text-left w-full",
         className
       )}
       {...props}
