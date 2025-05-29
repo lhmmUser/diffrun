@@ -69,7 +69,7 @@ const Footer = () => {
         <hr />
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-gray-600">
-          <p>© 2025 Diffrun. All rights reserved.</p>
+          <p>© 2025 Lighthouse Multimedia Private Limited. All rights reserved.</p>
           <div className="flex gap-4">
             <Link href="/privacy-policy" className="hover:text-indigo-700 transition-colors duration-300">
               Privacy Policy
