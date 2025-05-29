@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { FcPrivacy } from "react-icons/fc";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { containerVariants, headingVariants, subHeadingVariants, loadingContainerVariants } from "@/types";
+import { TypingAnimation } from "@/components/animated/typing-animation";
+import { FaExpandAlt } from "react-icons/fa";
 
 interface ImageFile {
   file: File;
@@ -14,6 +18,41 @@ interface ImageFile {
 interface LoadingBarProps {
   progress: number;
 }
+
+const TypingCycle: React.FC = () => {
+  const texts = [
+    "Good things take a few seconds... Great images take a little longer!",
+    "Hold tight — we’re crafting your one-of-a-kind storybook!",
+    "Almost there... the magic is unfolding just for you.",
+    "Personalizing every page with love and a sprinkle of wonder",
+    "Your hero's journey is coming to life — one pixel at a time.",
+    "Illustrating your imagination... this won't take long.",
+    "Summoning storybook magic — your adventure is about to begin!",
+    "Turning your memories into magical moments...",
+    "Fairy-tale engines are running — we’re nearly done!"
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const cycleInterval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % texts.length);
+    }, 4000);
+
+    return () => clearInterval(cycleInterval);
+  }, []);
+
+  return (
+    <TypingAnimation
+      key={currentIndex}
+      className="text-center text-base sm:text-lg text-[#454545] italic"
+      duration={40}
+      delay={0}
+    >
+      {texts[currentIndex]}
+    </TypingAnimation>
+  );
+};
 
 const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => (
   <div className="w-full sm:w-2/3 h-3 bg-gray-300 rounded-full overflow-hidden">
@@ -38,6 +77,7 @@ const Form: React.FC = () => {
   const [showContent, setShowContent] = useState<boolean>(true);
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [redirectData, setRedirectData] = useState<{
     jobId: string;
     jobType: string;
@@ -128,9 +168,10 @@ const Form: React.FC = () => {
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
       formData.append("gender", gender.toLowerCase());
       formData.append("job_type", jobType);
-      formData.append("book_id", bookId); 
+      formData.append("book_id", bookId);
       images.forEach(({ file }) => formData.append("images", file));
       console.log("📤 Sending form data to /store-user-details");
+
       const storeResponse = await fetch(`${apiBaseUrl}/store-user-details`, {
         method: "POST",
         body: formData,
@@ -141,16 +182,18 @@ const Form: React.FC = () => {
       }
 
       const data = await storeResponse.json();
-      setRedirectData({
+      const redirectPayload = {
         jobId: data.job_id,
         jobType,
         name,
         gender,
         bookId,
-      });
+      };
+      setRedirectData(redirectPayload);
 
       console.log("✅ User details stored:", data);
       console.log("📤 Triggering workflow execution");
+
       const workflowResponse = await fetch(`${apiBaseUrl}/execute-workflow`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -170,19 +213,36 @@ const Form: React.FC = () => {
 
       setShowContent(false);
       setLoadingProgress(0);
-      let intervalId: NodeJS.Timeout;
 
-      intervalId = setInterval(() => {
-        setLoadingProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(intervalId);
-            return 100;
-          }
-          return prev + 1;
-        });
-      }, 900);
+      let progress = 0;
+      const duration = 65000;
+      const startTime = Date.now();
 
-      return () => clearInterval(intervalId);
+      const step = () => {
+        const elapsed = Date.now() - startTime;
+        const remainingTime = duration - elapsed;
+        const remainingProgress = 100 - progress;
+
+        if (remainingProgress <= 0 || remainingTime <= 0) {
+          setLoadingProgress(100);
+          router.push(
+            `/preview?job_id=${redirectPayload.jobId}&job_type=${redirectPayload.jobType}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approve=false&paid=false`
+          );
+          return;
+        }
+
+        const increment = Math.min(remainingProgress, Math.floor(Math.random() * 4) + 1);
+        progress += increment;
+        setLoadingProgress(progress);
+
+        const stepsLeft = Math.ceil(remainingProgress / 2);
+        const avgDelay = remainingTime / stepsLeft;
+        const jitteredDelay = avgDelay * (0.5 + Math.random());
+
+        setTimeout(step, jitteredDelay);
+      };
+
+      step();
     } catch (error: any) {
       console.error("❌ Submission error:", error);
       setError(error.message || "An error occurred. Please try again.");
@@ -203,11 +263,10 @@ const Form: React.FC = () => {
     <main className="w-full min-h-screen flex flex-col items-center bg-white py-12 px-4 sm:px-8">
       {showContent ? (
         <>
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-black leading-tight mb-4">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl font-bold text-black leading-tight">
               Let's start personalizing
             </h2>
-            <p className="text-xl text-gray-700">Provide child's detail for the magic to began</p>
           </div>
           <form
             onSubmit={handleSubmit}
@@ -279,13 +338,28 @@ const Form: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="bg-gray-50 border-2 border-black p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,0.8)]">
-              <ul className="list-none pl-5 text-black space-y-2">
+
+            {/* <ul className="list-none pl-5 text-black space-y-2">
                 <li>👤 Only one person in the photo</li>
                 <li>😊 Images where the face is clearly visible</li>
                 <li>🚫 Avoid wearing sunglasses or hats</li>
-              </ul>
+              </ul> */}
+            <div className="relative w-full">
+              <img
+                src="/instruction.jpg"
+                alt="Instruction"
+                className="border-2 p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,0.8)] w-full"
+              />
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="absolute top-2 right-2 text-white bg-black p-2 rounded-full hover:bg-gray-800"
+                aria-label="Expand instructions"
+              >
+                <FaExpandAlt />
+              </button>
             </div>
+
             <div className="flex items-start gap-2 text-gray-800 font-bold">
               <input
                 type="checkbox"
@@ -310,8 +384,8 @@ const Form: React.FC = () => {
                   : ""
               }
               className={`w-full py-3 text-lg font-bold border-2 border-black rounded-sm shadow-[4px_4px_0px_rgba(0,0,0,0.8)] transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-indigo-500 text-white hover:bg-indigo-600"
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-indigo-500 text-white hover:bg-indigo-600"
                 }`}
             >
               {loading ? "Processing..." : "Preview your book"}
@@ -330,48 +404,64 @@ const Form: React.FC = () => {
           </form>
         </>
       ) : (
-        <div className="w-full min-h-screen flex flex-col items-center bg-white">
-          <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 mt-20">
+        <motion.div
+          className="w-full min-h-screen flex flex-col items-center bg-white"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.h1
+            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 mt-20"
+            variants={headingVariants}
+          >
             {name.charAt(0).toUpperCase() + name.slice(1)}'s Book Preview
-          </h1>
-          <p className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2">
-            Creating storybook magic...
-          </p>
-          <div className="w-full flex flex-col items-center justify-center space-y-3 mt-10">
-            <LoadingBar progress={loadingProgress} />
-            <p className="text-sm text-black font-bold tracking-wide">Progress: {loadingProgress}%</p>
-          </div>
-          <div className="mt-8 italic">
-            <p>Good things take a few seconds... Great images take a little longer!</p>
-          </div>
-          {/* <div
-            className="fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-6 rounded-lg shadow-brutalist text-center"
-            style={{
-              boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.1)",
-            }}
-          > */}
-            {/* <p className="text-gray-800 font-medium mb-4 text-lg sm:text-xl animate-fade-in">
-              Don&apos;t want to wait?
-            </p> */}
+          </motion.h1>
 
-            {/* <button
-              onClick={() => {
-                const query = new URLSearchParams({
-                  name,
-                  gender,
-                  job_type: jobType,
-                  book_id: bookId,
-                });
-                router.push(`/email-preview-request?${query.toString()}`);
-              }}
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
+          <motion.p
+            className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2"
+            variants={subHeadingVariants}
+          >
+            Creating storybook magic...
+          </motion.p>
+
+          <motion.div
+            className="w-full flex flex-col items-center justify-center space-y-3 mt-10"
+            variants={loadingContainerVariants}
+          >
+            <LoadingBar progress={loadingProgress} />
+            <p className="text-sm text-black font-bold tracking-wide">
+              Progress: {loadingProgress}%
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="mt-10 italic"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.4 }}
+          >
+            <TypingCycle />
+          </motion.div>
+        </motion.div>
+      )}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-6">
+          <div className="bg-white p-4 rounded-lg max-w-3xl w-full relative shadow-lg">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-3 right-3 text-white bg-gray-700 hover:bg-gray-800 p-2 rounded-xl"
+              aria-label="Close expanded image"
             >
-              Email me the Preview Link
-            </button> */}
-          {/* </div> */}
+              ✕
+            </button>
+            <img
+              src="/instruction.jpg"
+              alt="Expanded Instruction"
+              className="w-full max-h-[80vh] object-contain rounded-lg"
+            />
+          </div>
         </div>
       )}
-
     </main>
   );
 };

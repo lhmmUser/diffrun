@@ -54,6 +54,10 @@ export default function Home() {
         </Link>
       </div>
 
+      <div className="my-10">
+        <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
+      </div>
+
       <div className="flex flex-col items-center px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <div className="text-center mb-0 sm:mb-16">
           <p className="text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium">
@@ -107,9 +111,6 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </div>
-      <div className="my-10">
-        <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
       </div>
       <div>
         <FAQClient items={faqData} />

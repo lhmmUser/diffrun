@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Diffrun | Create Your Story - Unlock Your Creativity",
+  title: "Diffrun | Personalised books that say — you're the hero",
   description:
     "Diffrun is a platform designed to inspire and empower creators to craft their unique stories. Whether you're writing, drawing, or building, we provide the tools and resources to bring your ideas to life.",
   keywords: [
@@ -64,8 +64,6 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://diffrun.com" />
-        {/* Elfsight Script */}
         <Script
           src="https://static.elfsight.com/platform/platform.js"
           strategy="lazyOnload"

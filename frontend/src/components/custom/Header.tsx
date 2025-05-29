@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { RxHamburgerMenu } from "react-icons/rx";
 
 const Header = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -43,22 +44,9 @@ const Header = () => {
 
           <button
             onClick={toggleSidebar}
-            className="md:hidden text-gray-400 focus:outline-none p-2 rounded-lg hover:bg-gray-200"
+            className="md:hidden text-gray-500 text-xl focus:outline-none rounded-lg hover:bg-gray-200"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16m-7 6h7"
-              />
-            </svg>
+            <RxHamburgerMenu />
           </button>
         </div>
       </header>

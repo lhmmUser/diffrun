@@ -82,15 +82,15 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
         <div className="bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 text-white p-6 rounded-lg text-center space-y-4 shadow-md border-2 border-black">
           <h3 className="text-xl font-bold">Still need help?</h3>
           <p className="text-sm sm:text-base">
-            Have a question or need assistance with your order? Just respond to any of our emails or{' '}
+            Have a question or need assistance with your order? Just respond to our emails{' '}
             <Link 
               href="mailto:support@diffrun.com" 
               className="underline hover:text-gray-200 transition-colors"
               rel="noopener noreferrer"
             >
-              contact us here
+              support@diffrun.com
             </Link>
-            . We typically respond within 24 hours.
+            .
           </p>
         </div>
       </div>
