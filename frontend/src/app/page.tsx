@@ -33,11 +33,13 @@ export default function Home() {
           className="w-full object-cover"
           loading="lazy"
         />
-        <div className="absolute top-0 w-full flex flex-col items-center text-center mt-10 px-4">
-          <h1 className="text-2xl font-serif font-bold text-white drop-shadow-md">
+        <div className="absolute top-0 w-full flex flex-col items-center text-center px-1 sm:px-4 md:px-6 mt-4 sm:mt-8 md:mt-28">
+          <h1 className="font-serif font-bold text-white drop-shadow-md
+    text-xl sm:text-2xl md:text-4xl lg:text-5xl leading-tight sm:leading-snug md:leading-snug lg:leading-snug max-w-4xl">
             Turn photos into storybooks
           </h1>
-          <p className="mt-2 text-lg text-white drop-shadow-md">
+          <p className="mt-2 sm:mt-4 md:mt-5 text-white drop-shadow-md font-thin md:font-medium
+    text-lg sm:text-xl md:text-2xl leading-relaxed max-w-2xl">
             Personalized books where they are the hero
           </p>
         </div>
