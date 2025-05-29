@@ -262,7 +262,7 @@ const Form: React.FC = () => {
 
   return (
     <main className="w-full min-h-screen flex flex-col items-center bg-white py-12 px-4 sm:px-8">
-     {false ? (
+     {showContent ? (
         <>
           <div className="text-center mb-10">
             <h2 className="text-4xl font-bold text-black leading-tight">
