@@ -11,7 +11,7 @@ export default function Home() {
       {/* <AnimatedBackground /> */}
       <div className="relative w-full hidden md:block">
         <img
-          src="/web-banner.jpg"
+          src="/web-banner_.jpg"
           alt="Large Banner Image"
           className="w-full object-cover"
           loading="lazy"
@@ -28,7 +28,7 @@ export default function Home() {
 
       <div className="relative w-full block md:hidden">
         <img
-          src="/banner_mobile.jpg"
+          src="/banner_mobile1.jpg"
           alt="Small Banner Image"
           className="w-full object-cover"
           loading="lazy"
