@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from "react";
+import React, { useEffect, useState, useRef, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
@@ -26,23 +26,23 @@ const Preview: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [carousels, setCarousels] = useState<{ workflow: string; images: ImageType[] }[]>([]);
-  const [selectedSlides, setSelectedSlides] = useState<number[]>([0, 0, 0]);
+  const [selectedSlides, setSelectedSlides] = useState<number[]>([]);
+  const [slidesLengthInitialized, setSlidesLengthInitialized] = useState(false);
   const [paid, setPaid] = useState<boolean>(false);
   const [approved, setApproved] = useState<boolean>(false);
   const [urlPaid, setUrlPaid] = useState<boolean>(false);
   const [urlApproved, setUrlApproved] = useState<boolean>(false);
-  const [regeneratingWorkflow, setRegeneratingWorkflow] = useState<number | null>(null);
+  const [regeneratingWorkflow, setRegeneratingWorkflow] = useState<number[]>([]);
   const [placeholders, setPlaceholders] = useState<Record<string, number>>({});
   const [bookId, setBookId] = useState<string>("story1");
   const [encodedSelections, setEncodedSelections] = useState<string | null>(null);
-  const [slidesInitialized, setSlidesInitialized] = useState(false);
   const [imageCounts, setImageCounts] = useState<number[]>([]);
   const [regeneratingIndexes, setRegeneratingIndexes] = useState<number[]>([]);
   const [workflowStatus, setWorkflowStatus] = useState<string | null>(null);
   const [visibleCarousels, setVisibleCarousels] = useState(0);
   const [jobType, setJobType] = useState<"story" | "comic">("story");
   const [approving, setApproving] = useState(false);
-
+  const [submitting, setSubmitting] = useState(false);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -50,6 +50,11 @@ const Preview: React.FC = () => {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const latestSlidesRef = useRef<number[]>(selectedSlides);
   const paginationRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const parsedSelectionsRef = useRef<number[] | null>(null);
+  const isInitializingFromUrl = useRef(false);
+  const isMountedRef = useRef(true);
+  const regeneratingIndexesRef = useRef<number[]>([]);
+  const regeneratingWorkflowRef = useRef<number[]>([]);
 
   useEffect(() => {
     latestSlidesRef.current = selectedSlides;
@@ -57,6 +62,13 @@ const Preview: React.FC = () => {
 
   useEffect(() => {
     setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -196,165 +208,280 @@ const Preview: React.FC = () => {
     if (lastCarousel) lastCarousel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [visibleCarousels]);
 
-  const pollImages = async () => {
-
+  useEffect(() => {
+    if (!encodedSelections) return;
     try {
-      console.log("📊 Polling images for job ID:", jobId);
+      console.log("🔍 Processing URL selections early:", encodedSelections);
+      const decompressed = LZString.decompressFromEncodedURIComponent(encodedSelections);
+      const parsed = JSON.parse(decompressed);
+      if (Array.isArray(parsed)) {
+        console.log("📦 Stored parsed selections:", {
+          parsed,
+          length: parsed.length,
+          sample: parsed.slice(0, 3)
+        });
+        parsedSelectionsRef.current = parsed;
+        if (carousels.length > 0 && parsed.length === carousels.length) {
+          console.log("📏 Setting selections immediately from URL");
+          isInitializingFromUrl.current = true;
+          setSelectedSlides(parsed);
+          setSlidesLengthInitialized(true);
+          setTimeout(() => {
+            isInitializingFromUrl.current = false;
+          }, 500);
+        } else {
+          console.log("📏 Setting default zeros");
+          setSelectedSlides(Array(parsed.length).fill(0));
+        }
+        setSlidesLengthInitialized(true);
+      }
+    } catch (err: any) {
+      console.error("🔥 Error processing selections:", err.message);
+    }
+  }, [encodedSelections, carousels.length]);
+
+  const pollImages = async () => {
+    try {
+      // Exit early if component is unmounted
+      if (!isMountedRef.current) return;
+
       const response = await fetch(`${apiBaseUrl}/poll-images?job_id=${jobId}&t=${Date.now()}`);
-      if (!response.ok) throw new Error("Failed to fetch images.");
       const data = await response.json();
-      console.log("🖼️ New images received:", data);
 
-      setCarousels((prev) => {
-        const workflowMap = new Map<string, ImageType[]>();
+      // Check again after async operation
+      if (!isMountedRef.current) return;
 
-        prev.forEach((c) => {
-          workflowMap.set(c.workflow, c.images.filter(img =>
-            typeof img === 'object' ? img.url : img
-          ));
+      // Initialize only once when we have carousels data
+      if (!slidesLengthInitialized && data.carousels?.length > 0) {
+        const length = data.carousels.length;
+        const urlSelections = parsedSelectionsRef.current;
+
+        console.log("🎯 Initialization check:", {
+          length,
+          urlSelections: urlSelections ? {
+            length: urlSelections.length,
+            sample: urlSelections.slice(0, 3)
+          } : null,
+          isInitialized: slidesLengthInitialized
         });
 
-        (data.carousels || []).forEach((newC: { workflow: string; images: { filename: string; url: string }[] }) => {
-          const workflowKey = newC.workflow;
-          const prevImages = workflowMap.get(workflowKey) || [];
-
-          const cleanedPrev = prevImages.filter(
-            (img) =>
-              (typeof img === "string" && !img.startsWith("loading-placeholder")) ||
-              (typeof img === "object" && img !== null && "filename" in img)
-          );
-
-          const existingFilenames = new Set(
-            cleanedPrev
-              .filter((img): img is { filename: string; url: string } => typeof img === "object" && "filename" in img)
-              .map((img) => img.filename)
-          );
-
-          const newImgs = newC.images.filter(
-            (img) => !existingFilenames.has(img.filename)
-          );
-
-          const combined = [...cleanedPrev, ...newImgs];
-          workflowMap.set(workflowKey, combined);
-
-          if (newImgs.length >= (placeholders[workflowKey] || 0)) {
-            setPlaceholders((prev) => {
-              const updated = { ...prev };
-              delete updated[workflowKey];
-              return updated;
-            });
+        if (urlSelections && urlSelections.length === length) {
+          console.log("📏 Setting selections from URL:", urlSelections);
+          isInitializingFromUrl.current = true;
+          if (isMountedRef.current) {
+            setSelectedSlides(urlSelections);
+            setSlidesLengthInitialized(true);
           }
-
-        });
-
-        const newCarousels = Array.from(workflowMap.entries()).map(([workflow, images]) => ({
-          workflow,
-          images,
-        }));
-        //   if (selectedSlides.length !== newCarousels.length) {
-        //     setSelectedSlides(Array(newCarousels.length).fill(0));
-        // }
-
-
-        const readyCount = newCarousels.filter(
-          (c) =>
-            c.images.length > 0 &&
-            !(c.images.length === 1 && c.images[0] === "loading-placeholder")
-        ).length;
-
-        setVisibleCarousels((prev) => Math.max(prev, readyCount));
-
-        if (regeneratingIndexes.length > 0 && imageCounts.length === carousels.length) {
-          const completed = regeneratingIndexes.filter(index => {
-            const workflow = carousels[index].workflow;
-            const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
-            const newImageCount = updatedCarousel?.images.length || 0;
-            return newImageCount > imageCounts[index];
-          });
-
-          if (completed.length > 0) {
-            setRegeneratingIndexes(prev => prev.filter(i => !completed.includes(i)));
-
-            setImageCounts(prev => {
-              const updated = [...prev];
-              completed.forEach(i => {
-                const workflow = carousels[i].workflow;
-                const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
-                updated[i] = updatedCarousel?.images.length || prev[i];
-              });
-              return updated;
-            });
+          setTimeout(() => {
+            isInitializingFromUrl.current = false;
+          }, 500);
+        } else {
+          console.log("📏 Setting default zeros");
+          if (isMountedRef.current) {
+            setSelectedSlides(Array(length).fill(0));
+            setSlidesLengthInitialized(true);
           }
         }
-
-        if (!deepEqual(prev, newCarousels)) {
-          return newCarousels;
-        }
-        return prev;
-      });
-
-      if (slidesInitialized && data.carousels?.length > 0) {
-        const updatedSlides = data.carousels.map((carousel: { images: string | any[] }, i: number) => {
-          const images = Array.isArray(carousel.images) ? carousel.images : [];
-          const slideIndex = selectedSlides[i] || 0;
-          return Math.min(slideIndex, images.length - 1);
-        });
-        setSelectedSlides(updatedSlides);
       }
 
-      const hasPlaceholders = Object.values(placeholders).some((count) => count > 0);
+      // Only update carousels if component is still mounted
+      if (isMountedRef.current) {
+        setCarousels((prev) => {
+          const workflowMap = new Map<string, ImageType[]>();
 
-      pollingRef.current = setTimeout(pollImages, 2000);
+          // Keep existing images
+          prev.forEach((c) => {
+            workflowMap.set(c.workflow, c.images.filter(img =>
+              typeof img === 'object' ? img.url : img
+            ));
+          });
 
-      if (data.completed && !hasPlaceholders && regeneratingIndexes.length === 0) {
-        setTimeout(() => {
-          setLoading(false);
-        }, 1000);
+          // Add new images from ComfyUI
+          (data.carousels || []).forEach((newC: { workflow: string; images: { filename: string; url: string }[] }) => {
+            const workflowKey = newC.workflow;
+            const prevImages = workflowMap.get(workflowKey) || [];
+
+            const cleanedPrev = prevImages.filter(
+              (img) =>
+                (typeof img === "string" && !img.startsWith("loading-placeholder")) ||
+                (typeof img === "object" && img !== null && "filename" in img)
+            );
+
+            const existingFilenames = new Set(
+              cleanedPrev
+                .filter((img): img is { filename: string; url: string } => typeof img === "object" && "filename" in img)
+                .map((img) => img.filename)
+            );
+
+            const newImgs = newC.images.filter(
+              (img) => !existingFilenames.has(img.filename)
+            );
+
+            const combined = [...cleanedPrev, ...newImgs];
+            workflowMap.set(workflowKey, combined);
+
+            if (newImgs.length >= (placeholders[workflowKey] || 0)) {
+              setPlaceholders((prev) => {
+                const updated = { ...prev };
+                delete updated[workflowKey];
+                return updated;
+              });
+            }
+          });
+
+          const newCarousels = Array.from(workflowMap.entries()).map(([workflow, images]) => ({
+            workflow,
+            images,
+          }));
+
+          const readyCount = newCarousels.filter(
+            (c) =>
+              c.images.length > 0 &&
+              !(c.images.length === 1 && c.images[0] === "loading-placeholder")
+          ).length;
+
+          setVisibleCarousels((prev) => Math.max(prev, readyCount));
+
+          if (regeneratingIndexesRef.current.length > 0) {
+            console.log("🔄 During poll - regeneratingIndexes:", regeneratingIndexesRef.current.length, "imageCounts:", imageCounts.length, "carousels:", carousels.length);
+          }
+
+          if (regeneratingIndexesRef.current.length > 0 && imageCounts.length === carousels.length) {
+            const completed = regeneratingIndexesRef.current.filter(index => {
+              // Safety check: ensure carousel exists at this index
+              if (!carousels[index]) {
+                console.warn(`⚠️ Carousel not found at index ${index}, skipping`);
+                return false;
+              }
+
+              const workflow = carousels[index].workflow;
+              const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
+              const newImageCount = updatedCarousel?.images.length || 0;
+              const oldImageCount = imageCounts[index];
+              const isCompleted = newImageCount > oldImageCount;
+
+              return isCompleted;
+            });
+
+            if (completed.length > 0) {
+              setRegeneratingIndexes(prev => prev.filter(i => !completed.includes(i)));
+              regeneratingIndexesRef.current = regeneratingIndexesRef.current.filter(i => !completed.includes(i));
+
+              // Clear regeneratingWorkflow if it's in the completed list
+              const completedWorkflows = completed.filter(index => regeneratingWorkflowRef.current.includes(index));
+              if (completedWorkflows.length > 0) {
+                setRegeneratingWorkflow(prev => prev.filter(i => !completedWorkflows.includes(i)));
+                regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => !completedWorkflows.includes(i));
+              }
+
+              setImageCounts(prev => {
+                const updated = [...prev];
+                completed.forEach(i => {
+                  const workflow = carousels[i].workflow;
+                  const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
+                  updated[i] = updatedCarousel?.images.length || prev[i];
+                });
+                return updated;
+              });
+            }
+          }
+
+          if (!deepEqual(prev, newCarousels)) {
+            return newCarousels;
+          }
+          return prev;
+        });
+
+        if (slidesLengthInitialized && data.carousels?.length > 0 &&
+          data.carousels.length !== selectedSlides.length &&
+          !parsedSelectionsRef.current) {
+          console.log("📏 Updating slides due to length mismatch:", {
+            currentLength: selectedSlides.length,
+            neededLength: data.carousels.length
+          });
+          const updatedSlides = data.carousels.map((carousel: { images: string | any[] }, i: number) => {
+            const images = Array.isArray(carousel.images) ? carousel.images : [];
+            // Preserve existing selection if possible
+            const slideIndex = i < selectedSlides.length ? selectedSlides[i] : 0;
+            // Fix: Don't allow negative indices when carousel has no images yet
+            if (images.length === 0) {
+              return 0; // Default to 0 when no images are loaded yet
+            }
+            return Math.min(slideIndex, images.length - 1);
+          });
+          if (isMountedRef.current) {
+            setSelectedSlides(updatedSlides);
+          }
+        }
+
+        const hasPlaceholders = Object.values(placeholders).some((count) => count > 0);
+
+        // Only schedule next poll if component is still mounted
+        if (isMountedRef.current) {
+          pollingRef.current = setTimeout(pollImages, 2000);
+        }
+
+        if (data.completed && !hasPlaceholders && regeneratingIndexes.length === 0) {
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setLoading(false);
+            }
+          }, 1000);
+        }
       }
 
     } catch (err: any) {
       console.error("⚠️ Error during image polling:", err.message);
-      setError("An error occurred while fetching images.");
-      setLoading(false);
+      if (isMountedRef.current) {
+        setError("An error occurred while fetching images.");
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     if (!jobId) return;
 
-    pollingRef.current = setTimeout(pollImages, 2000);
+    // Use an immediate flag to prevent multiple timeouts
+    let cancelled = false;
+
+    const startPollingTimeout = setTimeout(() => {
+      if (!cancelled && isMountedRef.current) {
+        pollImages();
+      }
+    }, 2000);
 
     return () => {
-      if (pollingRef.current) clearTimeout(pollingRef.current);
+      cancelled = true;
+      clearTimeout(startPollingTimeout);
+      if (pollingRef.current) {
+        clearTimeout(pollingRef.current);
+      }
     };
   }, [jobId]);
 
   useEffect(() => {
-    if (!encodedSelections || carousels.length === 0) return;
-
-    try {
-      const decompressed = LZString.decompressFromEncodedURIComponent(encodedSelections);
-      const parsed = JSON.parse(decompressed);
-
-      if (Array.isArray(parsed) && parsed.length === carousels.length) {
-        setSelectedSlides(parsed);
-        setSlidesInitialized(true);
-      }
-    } catch (err) {
-      console.warn("Failed to decompress selected slides:", err);
+    if (!encodedSelections || carousels.length === 0) {
+      console.log("🚫 Skipping URL processing:", {
+        hasEncodedSelections: !!encodedSelections,
+        carouselsLength: carousels.length,
+        currentSelectedLength: selectedSlides.length,
+        timestamp: new Date().toISOString()
+      });
+      return;
     }
   }, [encodedSelections, carousels.length]);
 
   const updateSelectedSlide = (workflowIndex: number, index: number) => {
     setSelectedSlides((prev) => {
       const updated = [...prev];
-      updated[workflowIndex] = index;
+      updated[workflowIndex] = Math.max(0, index);
       return updated;
     });
   };
 
   useEffect(() => {
-    if (!jobId || !carousels.length) return;
+    if (!jobId || !carousels.length || isInitializingFromUrl.current) return;
 
     const newSearchParams = new URLSearchParams(window.location.search);
 
@@ -368,10 +495,35 @@ const Preview: React.FC = () => {
     router.replace(newUrl, { scroll: false });
   }, [selectedSlides]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
+      setSubmitting(true);
+      console.log("🔘 Submit clicked:", {
+        latestSlides: latestSlidesRef.current,
+        selectedSlides,
+        carouselsLength: carousels.length,
+        jobId,
+        name,
+        gender,
+        bookId,
+        apiBaseUrl
+      });
+
       if (!jobId || !name || !gender || !bookId) {
         console.error("❌ Missing required parameters for redirection.");
+        alert("Missing required information. Please refresh the page and try again.");
+        return;
+      }
+
+      if (!apiBaseUrl) {
+        console.error("❌ API base URL is not defined");
+        alert("Configuration error. Please refresh the page and try again.");
+        return;
+      }
+
+      if (!router) {
+        console.error("❌ Router is not available");
+        alert("Navigation error. Please refresh the page and try again.");
         return;
       }
 
@@ -383,11 +535,15 @@ const Preview: React.FC = () => {
 
       if (previewUrl && previewUrl.startsWith("http")) {
         console.log("📤 Sending preview URL to backend:", previewUrl);
-        await fetch(`${apiBaseUrl}/update-preview-url`, {
+        const updateResponse = await fetch(`${apiBaseUrl}/update-preview-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ job_id: jobId, preview_url: previewUrl }),
         });
+
+        if (!updateResponse.ok) {
+          console.error("Failed to update preview URL:", updateResponse.status);
+        }
       }
 
       const queryParams = new URLSearchParams({
@@ -400,7 +556,9 @@ const Preview: React.FC = () => {
       });
 
       const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-      if (!res.ok) throw new Error("❌ Failed to fetch job status");
+      if (!res.ok) {
+        throw new Error(`Failed to fetch job status: ${res.status} ${res.statusText}`);
+      }
 
       const data = await res.json();
       console.log("🧾 get-job-status response:", data);
@@ -416,16 +574,19 @@ const Preview: React.FC = () => {
 
       router.push(`${redirectPath}?${queryParams.toString()}`);
     } catch (err: any) {
-      console.error("🚨 Error during handleSubmit:", err.message);
+      console.error("🚨 Error during handleSubmit:", err);
+      alert(`Error: ${err.message || 'Failed to save preview. Please try again.'}`);
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [jobId, name, gender, bookId, apiBaseUrl, router, carousels.length]);
 
   useEffect(() => {
-    if (selectedSlides.some((i) => typeof i !== "number" || isNaN(i))) {
+    if (selectedSlides.some((i) => typeof i !== "number" || isNaN(i) || i < 0)) {
       const fixed: number[] = selectedSlides.map((i): number =>
-        typeof i === "number" && !isNaN(i) ? i : 0
+        typeof i === "number" && !isNaN(i) && i >= 0 ? i : 0
       );
-      console.warn("⚠️ Fixing invalid selectedSlides:", selectedSlides, "→", fixed);
+      console.warn("⚠️ Fixing invalid selectedSlides (including negative values):", selectedSlides, "→", fixed);
       setSelectedSlides(fixed);
     }
   }, [selectedSlides]);
@@ -448,6 +609,8 @@ const Preview: React.FC = () => {
       console.log("📸 Final selectedSlides before submit:", selectedSlides);
 
       const sanitizedSlides = selectedSlides.map((i, idx) => {
+        if (!carousels[idx] || !carousels[idx].images) return 0;
+
         const imageCount = carousels[idx].images.length;
 
         const hasRegenerate = !approved;
@@ -501,13 +664,21 @@ const Preview: React.FC = () => {
   };
 
   const startPolling = () => {
+    if (!isMountedRef.current) return;
+
     if (pollingRef.current) clearTimeout(pollingRef.current);
-    pollingRef.current = setTimeout(pollImages, 2000);
+    pollingRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        pollImages();
+      }
+    }, 2000);
   };
 
   useEffect(() => {
     if (carousels.length && imageCounts.length === 0) {
-      setImageCounts(carousels.map(c => c.images.length));
+      const newImageCounts = carousels.map(c => c.images.length);
+      console.log("📊 Initializing imageCounts:", newImageCounts.length, "for", carousels.length, "carousels");
+      setImageCounts(newImageCounts);
     }
   }, [carousels]);
 
@@ -519,9 +690,10 @@ const Preview: React.FC = () => {
 
       forceContinueUntil.current = Date.now() + 60000;
 
-      const workflowKey = (workflowIndex + 1).toString().padStart(2, "0");
+      const workflowKey = carousels[workflowIndex].workflow;
 
       setRegeneratingIndexes(prev => [...prev, workflowIndex]);
+      regeneratingIndexesRef.current = [...regeneratingIndexesRef.current, workflowIndex];
 
       setImageCounts(prev => {
         const updated = [...prev];
@@ -545,7 +717,8 @@ const Preview: React.FC = () => {
         [workflowKey]: 1,
       }));
 
-      setRegeneratingWorkflow(workflowIndex);
+      setRegeneratingWorkflow(prev => [...prev, workflowIndex]);
+      regeneratingWorkflowRef.current = [...regeneratingWorkflowRef.current, workflowIndex];
 
       const response = await fetch(`${apiBaseUrl}/regenerate-workflow`, {
         method: 'POST',
@@ -646,6 +819,11 @@ const Preview: React.FC = () => {
                         const maxValidIndex = Math.max(0, (!approved ? imageCount : imageCount - 1) - 1);
                         const safeIndex = Math.min(selectedSlides[workflowIndex] || 0, maxValidIndex);
 
+                        // Add safety check for valid slide index
+                        const initialSlideIndex = selectedSlides[workflowIndex] !== undefined
+                          ? Math.max(0, Math.min(selectedSlides[workflowIndex], carousel.images.length - 1))
+                          : 0;
+
                         return (
                           <Swiper
                             modules={[Navigation, Pagination, EffectFade]}
@@ -659,14 +837,18 @@ const Preview: React.FC = () => {
                             pagination={{
                               el: paginationRefs.current[workflowIndex] || undefined,
                               clickable: true,
+                              bulletClass: 'swiper-pagination-bullet',
+                              bulletActiveClass: 'swiper-pagination-bullet-active',
                               renderBullet: (index, className) => {
                                 const isRegenerate = index === carousel.images.length;
-                                return isRegenerate
-                                  ? ''
-                                  : `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
+                                // Don't render pagination for regenerate slide
+                                if (isRegenerate && !approved) {
+                                  return '';
+                                }
+                                return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
                               }
                             }}
-                            initialSlide={selectedSlides[workflowIndex] || 0}
+                            initialSlide={initialSlideIndex}
                             onSlideChange={(swiper) => {
                               const lastIndex = carousel.images.length;
                               const isRegenerateSlide = swiper.activeIndex === lastIndex;
@@ -676,7 +858,10 @@ const Preview: React.FC = () => {
                                 return;
                               }
 
-                              updateSelectedSlide(workflowIndex, swiper.activeIndex);
+                              // Only update if it's not the regenerate slide
+                              if (!isRegenerateSlide) {
+                                updateSelectedSlide(workflowIndex, swiper.activeIndex);
+                              }
                             }}
                             className="w-full h-full pb-8"
                           >
@@ -698,7 +883,7 @@ const Preview: React.FC = () => {
                             {!approved && (
                               <SwiperSlide key="generate-more">
                                 <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
-                                  {regeneratingWorkflow === workflowIndex ? (
+                                  {regeneratingWorkflow.includes(workflowIndex) ? (
                                     // Centered loader
                                     <div className="flex flex-col items-center justify-center h-full w-full">
                                       <svg
@@ -854,29 +1039,27 @@ const Preview: React.FC = () => {
             {!paid && !approved && (
               <button
                 onClick={handleSubmit}
-                disabled={!jobId || loading || carousels.length < 2}
+                disabled={!jobId || loading || carousels.length < 2 || submitting || regeneratingIndexes.length > 0}
                 className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white
-                ${carousels.length >= 2
+                ${carousels.length >= 2 && !submitting && regeneratingIndexes.length === 0
                     ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 shadow-[3px_3px_0px_#232323]'
                     : 'bg-gray-300 cursor-not-allowed'}`}
               >
-                Save Preview & Show Price
+                {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Preview & Show Price"}
               </button>
             )}
 
             {paid && !approved && (
               <button
                 onClick={handleApprove}
-                disabled={approving || !jobId || loading || carousels.length < 2}
-                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white transition-all duration-200
-              ${carousels.length >= 2 && !approving
-                    ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
-                    : 'bg-gray-300 opacity-50 cursor-not-allowed'
+                disabled={approving || !jobId || loading || carousels.length < 2 || regeneratingIndexes.length > 0}
+                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white transition-all duration-200 ${carousels.length >= 2 && !approving && regeneratingIndexes.length === 0
+                  ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
+                  : 'bg-gray-300 opacity-50 cursor-not-allowed'
                   }`}
               >
-                {approving ? "Approving..." : "Approve for printing"}
+                {approving ? "Approving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Approve for printing"}
               </button>
-
             )}
 
           </div>
