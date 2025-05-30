@@ -39,7 +39,7 @@ const TypingCycle: React.FC = () => {
     const timeout = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % texts.length);
       setCycleKey((k) => k + 1);
-    }, 10000); 
+    }, 10000);
     return () => clearTimeout(timeout);
   }, [cycleKey]);
 
@@ -262,7 +262,7 @@ const Form: React.FC = () => {
 
   return (
     <main className="w-full min-h-screen flex flex-col items-center bg-white py-12 px-4 sm:px-8">
-     {showContent ? (
+      {showContent ? (
         <>
           <div className="text-center mb-10">
             <h2 className="text-4xl font-bold text-black leading-tight">
@@ -347,8 +347,8 @@ const Form: React.FC = () => {
               </ul> */}
             <div className="relative w-full">
               <img
-                src="/instruction.jpg"
-                alt="Instruction"
+                src="/instructions.jpg"
+                alt="Instructions"
                 className="border-2 p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,0.8)] w-full"
               />
               <button
@@ -444,8 +444,8 @@ const Form: React.FC = () => {
             <TypingCycle />
           </motion.div>
           <div className="my-20">
-        <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
-      </div>
+            <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
+          </div>
         </motion.div>
       )}
       {showModal && (
@@ -459,8 +459,8 @@ const Form: React.FC = () => {
               ✕
             </button>
             <img
-              src="/instruction.jpg"
-              alt="Expanded Instruction"
+              src="/instructions.jpg"
+              alt="Expanded Instructions"
               className="w-full max-h-[80vh] object-contain rounded-lg"
             />
           </div>
