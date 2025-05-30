@@ -72,35 +72,118 @@ const Preview: React.FC = () => {
   // Inside the component, add state for tracking changes
   const [pendingSelectionUpdates, setPendingSelectionUpdates] = useState<CarouselChange[]>([]);
 
-  useEffect(() => {
-    // Skip if sync is already in progress
-    if (syncInProgressRef.current) {
-      return;
-    }
+  // Add a new ref to track batched updates
+  const batchUpdateRef = useRef<{
+    updates: Map<number, number>;
+    timestamp: number;
+  } | null>(null);
 
-    // Set sync flag
+  // Remove the separate ref update effect and consolidate into a single update mechanism
+  const syncRef = useCallback((slides: number[]) => {
+    if (syncInProgressRef.current) return;
     syncInProgressRef.current = true;
 
-    // Use microtask to ensure atomic update
     queueMicrotask(() => {
-      latestSlidesRef.current = selectedSlides;
-      console.log("🔄 Latest slides ref updated:", {
-        selectedSlides: selectedSlides.join(','),
-        ref: latestSlidesRef.current.join(','),
+      latestSlidesRef.current = slides;
+      console.log("🔒 Synchronized ref:", {
+        slides: slides.join(','),
         env: process.env.NODE_ENV,
         timestamp: new Date().toISOString(),
         stack: new Error().stack?.split('\n').slice(1, 3).join('\n')
       });
-
-      // Reset sync flag after update
       syncInProgressRef.current = false;
     });
+  }, []);
 
-    // Cleanup function to reset sync flag if component unmounts during sync
-    return () => {
-      syncInProgressRef.current = false;
-    };
-  }, [selectedSlides]);
+  const applyBatchedUpdates = useCallback(() => {
+    if (!batchUpdateRef.current) return;
+
+    const { updates, timestamp } = batchUpdateRef.current;
+    if (Date.now() - timestamp > 100) {
+      batchUpdateRef.current = null;
+      return;
+    }
+
+    setSelectedSlides(prev => {
+      const updated = [...prev];
+      let hasChanges = false;
+
+      updates.forEach((newIndex, workflowIndex) => {
+        if (updated[workflowIndex] !== newIndex) {
+          updated[workflowIndex] = newIndex;
+          hasChanges = true;
+        }
+      });
+
+      if (!hasChanges) return prev;
+
+      // Synchronize ref immediately after state update
+      syncRef(updated);
+
+      return updated;
+    });
+
+    batchUpdateRef.current = null;
+  }, [syncRef]);
+
+  // Update the selection update logic to use the new syncRef
+  const queueSelectionUpdate = useCallback((workflowIndex: number, newIndex: number) => {
+    console.log("🎯 Queueing selection update:", {
+      workflowIndex,
+      newIndex,
+      currentSelections: selectedSlides.join(','),
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!batchUpdateRef.current) {
+      batchUpdateRef.current = {
+        updates: new Map([[workflowIndex, newIndex]]),
+        timestamp: Date.now()
+      };
+    } else {
+      batchUpdateRef.current.updates.set(workflowIndex, newIndex);
+    }
+
+    // Schedule the batch update
+    Promise.resolve().then(applyBatchedUpdates);
+  }, [selectedSlides, applyBatchedUpdates]);
+
+  // Update direct selection updates to use the new mechanism
+  useEffect(() => {
+    if (pendingSelectionUpdates.length === 0 || isInitializingFromUrl.current) return;
+
+    const updates = new Map<number, number>();
+
+    pendingSelectionUpdates.forEach(change => {
+      const { workflowIndex } = change;
+      const carousel = carousels[workflowIndex];
+
+      if (!carousel?.images.length) return;
+
+      const validImages = carousel.images.filter(img =>
+        img !== "loading-placeholder" &&
+        (typeof img === "string" ? true : img.url)
+      );
+
+      if (!validImages.length) return;
+
+      const newIndex = validImages.length - 1;
+      if (selectedSlides[workflowIndex] !== newIndex) {
+        updates.set(workflowIndex, newIndex);
+      }
+    });
+
+    if (updates.size > 0) {
+      batchUpdateRef.current = {
+        updates,
+        timestamp: Date.now()
+      };
+      applyBatchedUpdates();
+    }
+
+    setPendingSelectionUpdates([]);
+  }, [pendingSelectionUpdates, selectedSlides, carousels, isInitializingFromUrl, applyBatchedUpdates]);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -683,59 +766,6 @@ const Preview: React.FC = () => {
     }
   }, [encodedSelections, carousels.length]);
 
-  const updateSelectedSlide = (workflowIndex: number, index: number) => {
-    console.log("🎯 Manual slide update triggered:", {
-      workflowIndex,
-      index,
-      currentSlides: selectedSlides.join(','),
-      isInitializingFromUrl: isInitializingFromUrl.current,
-      env: process.env.NODE_ENV,
-      timestamp: new Date().toISOString()
-    });
-
-    if (isInitializingFromUrl.current) {
-      console.log("🔒 Skipping update - URL initialization in progress");
-      return;
-    }
-
-    const now = Date.now();
-    const lastUpdate = lastUpdateRef.current;
-    if (lastUpdate &&
-      lastUpdate.workflowIndex === workflowIndex &&
-      now - lastUpdate.timestamp < 300) {
-      console.log("⏭️ Skipping rapid update:", {
-        timeSinceLastUpdate: now - lastUpdate.timestamp,
-        env: process.env.NODE_ENV
-      });
-      return;
-    }
-
-    lastUpdateRef.current = {
-      workflowIndex,
-      index,
-      timestamp: now
-    };
-
-    setSelectedSlides(prev => {
-      if (prev[workflowIndex] === index) {
-        console.log("⏭️ Skipping duplicate update");
-        return prev;
-      }
-
-      const updated = [...prev];
-      updated[workflowIndex] = Math.max(0, index);
-      console.log("📈 Manual selection update:", {
-        from: prev.join(','),
-        to: updated.join(','),
-        workflowIndex,
-        index,
-        env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      });
-      return updated;
-    });
-  };
-
   // Track URL updates
   useEffect(() => {
     if (!jobId || !carousels.length || isInitializingFromUrl.current) return;
@@ -1060,60 +1090,42 @@ const Preview: React.FC = () => {
     });
   }, [selectedSlides]);
 
-  // Add a new effect to handle selection updates separately
-  useEffect(() => {
-    if (pendingSelectionUpdates.length === 0 || isInitializingFromUrl.current) return;
-
-    console.log("📊 Processing pending selection updates:", {
-      updates: pendingSelectionUpdates.map(c => `workflow ${c.workflowIndex}: ${c.previousLength} -> ${c.newLength}`).join(', '),
-      currentSelections: selectedSlides.join(','),
+  // Add back updateSelectedSlide using the new mechanism
+  const updateSelectedSlide = useCallback((workflowIndex: number, index: number) => {
+    console.log("🎯 Manual slide update triggered:", {
+      workflowIndex,
+      index,
+      currentSlides: selectedSlides.join(','),
+      isInitializingFromUrl: isInitializingFromUrl.current,
       env: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     });
 
-    const updatedSelections = [...selectedSlides];
-    let hasChanges = false;
-
-    pendingSelectionUpdates.forEach(change => {
-      const { workflowIndex, newLength } = change;
-      const carousel = carousels[workflowIndex];
-
-      if (!carousel || carousel.images.length === 0) return;
-
-      const validImages = carousel.images.filter(img =>
-        img !== "loading-placeholder" &&
-        (typeof img === "string" ? true : img.url)
-      );
-
-      if (validImages.length === 0) return;
-
-      const newIndex = validImages.length - 1;
-      if (updatedSelections[workflowIndex] !== newIndex) {
-        console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
-          from: updatedSelections[workflowIndex],
-          to: newIndex,
-          reason: 'New images detected',
-          env: process.env.NODE_ENV,
-          timestamp: new Date().toISOString()
-        });
-        updatedSelections[workflowIndex] = newIndex;
-        hasChanges = true;
-      }
-    });
-
-    if (hasChanges) {
-      console.log("🔄 Applying batched selection updates:", {
-        from: selectedSlides.join(','),
-        to: updatedSelections.join(','),
-        env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      });
-      setSelectedSlides(updatedSelections);
+    if (isInitializingFromUrl.current) {
+      console.log("🔒 Skipping update - URL initialization in progress");
+      return;
     }
 
-    // Clear pending updates
-    setPendingSelectionUpdates([]);
-  }, [pendingSelectionUpdates, selectedSlides, carousels, isInitializingFromUrl]);
+    const now = Date.now();
+    const lastUpdate = lastUpdateRef.current;
+    if (lastUpdate &&
+      lastUpdate.workflowIndex === workflowIndex &&
+      now - lastUpdate.timestamp < 300) {
+      console.log("⏭️ Skipping rapid update:", {
+        timeSinceLastUpdate: now - lastUpdate.timestamp,
+        env: process.env.NODE_ENV
+      });
+      return;
+    }
+
+    lastUpdateRef.current = {
+      workflowIndex,
+      index,
+      timestamp: now
+    };
+
+    queueSelectionUpdate(workflowIndex, Math.max(0, index));
+  }, [selectedSlides, queueSelectionUpdate, isInitializingFromUrl]);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
