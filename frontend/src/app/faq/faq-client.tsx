@@ -14,7 +14,7 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   return (
-    <main className="min-h-screen p-6 md:p-12">
+    <main className="p-6 md:p-12 my-4">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center border-b-2 pb-6">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">

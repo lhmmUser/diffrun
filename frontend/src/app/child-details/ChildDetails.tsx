@@ -21,37 +21,52 @@ interface LoadingBarProps {
 
 const TypingCycle: React.FC = () => {
   const texts = [
-    "Good things take a few seconds... Great images take a little longer!",
+    "Good things take a few seconds... Great things take a little longer!",
     "Hold tight — we’re crafting your one-of-a-kind storybook!",
-    "Almost there... the magic is unfolding just for you.",
     "Personalizing every page with love and a sprinkle of wonder",
     "Your hero's journey is coming to life — one pixel at a time.",
     "Illustrating your imagination... this won't take long.",
     "Summoning storybook magic — your adventure is about to begin!",
     "Turning your memories into magical moments...",
-    "Fairy-tale engines are running — we’re nearly done!",
+    "Fairy-tale engines are running — we’re nearly done!"
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [cycleKey, setCycleKey] = useState(0);
+  const [displayedText, setDisplayedText] = useState("");
+  const [typingDone, setTypingDone] = useState(false);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    let i = 0;
+    setDisplayedText("");
+    setTypingDone(false);
+
+    const interval = setInterval(() => {
+      setDisplayedText(texts[currentIndex].slice(0, i + 1));
+      i++;
+
+      if (i === texts[currentIndex].length) {
+        clearInterval(interval);
+        setTypingDone(true);
+      }
+    }, 30); 
+
+    return () => clearInterval(interval);
+  }, [currentIndex]);
+
+  useEffect(() => {
+    if (!typingDone) return;
+    const delay = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % texts.length);
-      setCycleKey((k) => k + 1);
-    }, 10000);
-    return () => clearTimeout(timeout);
-  }, [cycleKey]);
+    }, 3000);
+
+    return () => clearTimeout(delay);
+  }, [typingDone]);
 
   return (
-    <TypingAnimation
-      key={cycleKey}
-      className="text-left text-base sm:text-lg text-[#454545] italic w-full"
-      duration={100}
-      delay={0}
-    >
-      {texts[currentIndex]}
-    </TypingAnimation>
+    <p className="text-left text-base sm:text-lg text-[#454545] italic w-full">
+      {displayedText}
+      <span className="animate-pulse">|</span>
+    </p>
   );
 };
 
@@ -214,6 +229,7 @@ const Form: React.FC = () => {
 
       setShowContent(false);
       setLoadingProgress(0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
       let progress = 0;
       const duration = 65000;
@@ -265,7 +281,7 @@ const Form: React.FC = () => {
       {showContent ? (
         <>
           <div className="text-center mb-10">
-            <h2 className="text-4xl font-bold text-black leading-tight">
+            <h2 className="text-3xl md:text-4xl font-bold text-black leading-tight">
               Let's start personalizing
             </h2>
           </div>
@@ -304,7 +320,7 @@ const Form: React.FC = () => {
               </select>
             </div>
             <div className="space-y-4">
-              <label className="block text-lg font-semibold text-black">Upload Images</label>
+              <label className="block text-lg font-semibold text-black">Upload Images of Your Child</label>
               <div
                 {...getRootProps()}
                 className="border-2 border-dashed border-black p-6 rounded-lg text-center bg-gray-50 hover:bg-gray-100 cursor-pointer"
@@ -449,11 +465,11 @@ const Form: React.FC = () => {
         </motion.div>
       )}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-orange-300 bg-opacity-70 z-50 flex items-center justify-center p-6">
           <div className="bg-white p-4 rounded-lg max-w-3xl w-full relative shadow-lg">
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-3 right-3 text-white bg-gray-700 hover:bg-gray-800 p-2 rounded-xl"
+              className="absolute top-3 right-3 text-white bg-gray-700 hover:bg-gray-800 px-2 py-1 rounded-full"
               aria-label="Close expanded image"
             >
               ✕
