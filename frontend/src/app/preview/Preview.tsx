@@ -12,6 +12,7 @@ import LZString from "lz-string";
 import { motion } from "framer-motion";
 import { BsImages, BsArrowLeftRight } from "react-icons/bs";
 import { div } from "framer-motion/client";
+import { Swiper as SwiperType } from 'swiper/types';
 
 const Preview: React.FC = () => {
 
@@ -55,6 +56,9 @@ const Preview: React.FC = () => {
   const isMountedRef = useRef(true);
   const regeneratingIndexesRef = useRef<number[]>([]);
   const regeneratingWorkflowRef = useRef<number[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const hasInitializedFromUrl = useRef(false);
+  const lastUpdateRef = useRef<{ workflowIndex: number, index: number, timestamp: number } | null>(null);
 
   useEffect(() => {
     latestSlidesRef.current = selectedSlides;
@@ -210,8 +214,13 @@ const Preview: React.FC = () => {
 
   useEffect(() => {
     if (!encodedSelections) return;
+    if (hasInitializedFromUrl.current) {
+      console.log("🔒 Already initialized from URL, skipping");
+      return;
+    }
+
     try {
-      console.log("🔍 Processing URL selections early:", encodedSelections);
+      console.log("🔍 Processing URL selections:", encodedSelections);
       const decompressed = LZString.decompressFromEncodedURIComponent(encodedSelections);
       const parsed = JSON.parse(decompressed);
       if (Array.isArray(parsed)) {
@@ -220,23 +229,42 @@ const Preview: React.FC = () => {
           length: parsed.length,
           sample: parsed.slice(0, 3)
         });
+        // Always store parsed selections
         parsedSelectionsRef.current = parsed;
-        if (carousels.length > 0 && parsed.length === carousels.length) {
-          console.log("📏 Setting selections immediately from URL");
-          isInitializingFromUrl.current = true;
-          setSelectedSlides(parsed);
-          setSlidesLengthInitialized(true);
-          setTimeout(() => {
-            isInitializingFromUrl.current = false;
-          }, 500);
-        } else {
-          console.log("📏 Setting default zeros");
-          setSelectedSlides(Array(parsed.length).fill(0));
+
+        // Only update state if we have matching carousels
+        if (carousels.length > 0) {
+          if (parsed.length === carousels.length) {
+            console.log("📏 Setting selections from URL");
+            isInitializingFromUrl.current = true;
+
+            // Validate selections against carousel lengths
+            const validatedSlides = parsed.map((selection, idx) => {
+              if (!carousels[idx] || !carousels[idx].images) return 0;
+              const maxIndex = carousels[idx].images.length - 1;
+              return Math.min(Math.max(0, selection), maxIndex);
+            });
+
+            setSelectedSlides(validatedSlides);
+            latestSlidesRef.current = validatedSlides;
+            setSlidesLengthInitialized(true);
+            hasInitializedFromUrl.current = true;  // Mark as initialized
+
+            setTimeout(() => {
+              isInitializingFromUrl.current = false;
+            }, 500);
+          } else {
+            console.log("📏 Setting default zeros due to length mismatch");
+            setSelectedSlides(Array(carousels.length).fill(0));
+            setSlidesLengthInitialized(true);
+            hasInitializedFromUrl.current = true;  // Mark as initialized even in mismatch case
+          }
         }
-        setSlidesLengthInitialized(true);
       }
     } catch (err: any) {
       console.error("🔥 Error processing selections:", err.message);
+      isInitializingFromUrl.current = false;
+      hasInitializedFromUrl.current = true;  // Mark as initialized even in error case
     }
   }, [encodedSelections, carousels.length]);
 
@@ -252,7 +280,7 @@ const Preview: React.FC = () => {
       if (!isMountedRef.current) return;
 
       // Initialize only once when we have carousels data
-      if (!slidesLengthInitialized && data.carousels?.length > 0) {
+      if (!slidesLengthInitialized && data.carousels?.length > 0 && !hasInitializedFromUrl.current) {
         const length = data.carousels.length;
         const urlSelections = parsedSelectionsRef.current;
 
@@ -271,6 +299,7 @@ const Preview: React.FC = () => {
           if (isMountedRef.current) {
             setSelectedSlides(urlSelections);
             setSlidesLengthInitialized(true);
+            hasInitializedFromUrl.current = true;  // Mark as initialized
           }
           setTimeout(() => {
             isInitializingFromUrl.current = false;
@@ -280,6 +309,7 @@ const Preview: React.FC = () => {
           if (isMountedRef.current) {
             setSelectedSlides(Array(length).fill(0));
             setSlidesLengthInitialized(true);
+            hasInitializedFromUrl.current = true;  // Mark as initialized
           }
         }
       }
@@ -288,6 +318,8 @@ const Preview: React.FC = () => {
       if (isMountedRef.current) {
         setCarousels((prev) => {
           const workflowMap = new Map<string, ImageType[]>();
+          let hasNewImages = false;
+          const newImageWorkflows = new Set<number>();
 
           // Keep existing images
           prev.forEach((c) => {
@@ -296,8 +328,8 @@ const Preview: React.FC = () => {
             ));
           });
 
-          // Add new images from ComfyUI
-          (data.carousels || []).forEach((newC: { workflow: string; images: { filename: string; url: string }[] }) => {
+          // Add new images from ComfyUI and track which workflows got new images
+          (data.carousels || []).forEach((newC: { workflow: string; images: { filename: string; url: string }[] }, index: number) => {
             const workflowKey = newC.workflow;
             const prevImages = workflowMap.get(workflowKey) || [];
 
@@ -317,6 +349,11 @@ const Preview: React.FC = () => {
               (img) => !existingFilenames.has(img.filename)
             );
 
+            if (newImgs.length > 0) {
+              hasNewImages = true;
+              newImageWorkflows.add(index);
+            }
+
             const combined = [...cleanedPrev, ...newImgs];
             workflowMap.set(workflowKey, combined);
 
@@ -333,6 +370,28 @@ const Preview: React.FC = () => {
             workflow,
             images,
           }));
+
+          // If we have new images, update selections to point to them
+          if (hasNewImages && !isInitializingFromUrl.current) {
+            console.log("🆕 New images detected in workflows:", Array.from(newImageWorkflows));
+            setSelectedSlides(prev => {
+              const updated = [...prev];
+              newImageWorkflows.forEach(workflowIndex => {
+                const carousel = newCarousels[workflowIndex];
+                if (carousel && carousel.images.length > 0) {
+                  // Point to the latest non-placeholder image
+                  const validImages = carousel.images.filter(img =>
+                    img !== "loading-placeholder" &&
+                    (typeof img === "string" ? true : img.url)
+                  );
+                  if (validImages.length > 0) {
+                    updated[workflowIndex] = validImages.length - 1;
+                  }
+                }
+              });
+              return updated;
+            });
+          }
 
           const readyCount = newCarousels.filter(
             (c) =>
@@ -372,6 +431,21 @@ const Preview: React.FC = () => {
               if (completedWorkflows.length > 0) {
                 setRegeneratingWorkflow(prev => prev.filter(i => !completedWorkflows.includes(i)));
                 regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => !completedWorkflows.includes(i));
+
+                // Update selectedSlides to point to the newly generated image
+                setSelectedSlides(prev => {
+                  const updated = [...prev];
+                  completedWorkflows.forEach(index => {
+                    const workflow = carousels[index].workflow;
+                    const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
+                    if (updatedCarousel) {
+                      // Point to the latest image (length - 2 because -1 is the regenerate slide)
+                      updated[index] = updatedCarousel.images.length - 2;
+                    }
+                  });
+                  return updated;
+                });
+                latestSlidesRef.current = selectedSlides;
               }
 
               setImageCounts(prev => {
@@ -393,24 +467,44 @@ const Preview: React.FC = () => {
         });
 
         if (slidesLengthInitialized && data.carousels?.length > 0 &&
-          data.carousels.length !== selectedSlides.length &&
-          !parsedSelectionsRef.current) {
-          console.log("📏 Updating slides due to length mismatch:", {
-            currentLength: selectedSlides.length,
-            neededLength: data.carousels.length
-          });
-          const updatedSlides = data.carousels.map((carousel: { images: string | any[] }, i: number) => {
-            const images = Array.isArray(carousel.images) ? carousel.images : [];
-            // Preserve existing selection if possible
-            const slideIndex = i < selectedSlides.length ? selectedSlides[i] : 0;
-            // Fix: Don't allow negative indices when carousel has no images yet
-            if (images.length === 0) {
-              return 0; // Default to 0 when no images are loaded yet
+          data.carousels.length !== selectedSlides.length) {
+
+          // Check if we're in the middle of URL initialization
+          if (!isInitializingFromUrl.current) {
+            console.log("📏 Handling length mismatch:", {
+              currentLength: selectedSlides.length,
+              neededLength: data.carousels.length,
+              hasUrlSelections: !!parsedSelectionsRef.current
+            });
+
+            if (parsedSelectionsRef.current) {
+              // We have URL selections - preserve them while adjusting length
+              const newSlides = Array(data.carousels.length).fill(0).map((_, i) => {
+                // If we have a URL selection for this index, use it (with validation)
+                if (i < parsedSelectionsRef.current!.length) {
+                  const carousel = data.carousels[i];
+                  const maxIndex = (carousel.images?.length || 1) - 1;
+                  return Math.min(Math.max(0, parsedSelectionsRef.current![i]), maxIndex);
+                }
+                return 0;
+              });
+
+              if (isMountedRef.current) {
+                console.log("📏 Preserving URL selections while adjusting length");
+                setSelectedSlides(newSlides);
+                latestSlidesRef.current = newSlides;
+              }
+            } else {
+              // No URL selections - initialize with zeros
+              if (isMountedRef.current) {
+                console.log("📏 Initializing new slides array with zeros");
+                const newSlides = Array(data.carousels.length).fill(0);
+                setSelectedSlides(newSlides);
+                latestSlidesRef.current = newSlides;
+              }
             }
-            return Math.min(slideIndex, images.length - 1);
-          });
-          if (isMountedRef.current) {
-            setSelectedSlides(updatedSlides);
+          } else {
+            console.log("⏳ Skipping length adjustment during URL initialization");
           }
         }
 
@@ -473,25 +567,72 @@ const Preview: React.FC = () => {
   }, [encodedSelections, carousels.length]);
 
   const updateSelectedSlide = (workflowIndex: number, index: number) => {
-    setSelectedSlides((prev) => {
+    // Prevent updates during URL initialization
+    if (isInitializingFromUrl.current) {
+      console.log("🔒 Skipping update during URL initialization");
+      return;
+    }
+
+    // Check if this is a duplicate update
+    if (selectedSlides[workflowIndex] === index) {
+      console.log("⏭️ Skipping duplicate update");
+      return;
+    }
+
+    // Check if we've updated this workflow index recently
+    const now = Date.now();
+    const lastUpdate = lastUpdateRef.current;
+    if (lastUpdate &&
+      lastUpdate.workflowIndex === workflowIndex &&
+      now - lastUpdate.timestamp < 300) { // Increased debounce to 300ms
+      console.log("⏭️ Skipping rapid update");
+      return;
+    }
+
+    // Update the lastUpdate reference before the state change
+    lastUpdateRef.current = {
+      workflowIndex,
+      index,
+      timestamp: now
+    };
+
+    console.log("🎯 updateSelectedSlide called:", {
+      workflowIndex,
+      index,
+      isInitializingFromUrl: isInitializingFromUrl.current,
+      slidesLengthInitialized,
+      currentSelectedSlides: selectedSlides
+    });
+
+    // Use functional update to ensure we're working with latest state
+    setSelectedSlides(prev => {
+      // Double check we're not making a duplicate update
+      if (prev[workflowIndex] === index) {
+        console.log("⏭️ Skipping duplicate update (double-check)");
+        return prev;
+      }
+
       const updated = [...prev];
       updated[workflowIndex] = Math.max(0, index);
+      console.log("📈 New selectedSlides will be:", {
+        from: prev,
+        to: updated,
+        isInitializingFromUrl: isInitializingFromUrl.current
+      });
       return updated;
     });
   };
 
   useEffect(() => {
+    console.log("🔄 selectedSlides changed:", JSON.stringify(selectedSlides));
     if (!jobId || !carousels.length || isInitializingFromUrl.current) return;
 
     const newSearchParams = new URLSearchParams(window.location.search);
-
     newSearchParams.set("selected", LZString.compressToEncodedURIComponent(
       JSON.stringify(selectedSlides)
     ));
-
     const queryString = newSearchParams.toString();
     const newUrl = `/preview?${queryString}`;
-
     router.replace(newUrl, { scroll: false });
   }, [selectedSlides]);
 
@@ -830,6 +971,13 @@ const Preview: React.FC = () => {
                             slidesPerView={1}
                             effect="fade"
                             fadeEffect={{ crossFade: true }}
+                            allowTouchMove={true}
+                            preventInteractionOnTransition={true}
+                            speed={300}
+                            watchSlidesProgress={true}
+                            simulateTouch={false} // Disable touch simulation
+                            touchRatio={1} // Make touch more precise
+                            longSwipesRatio={0.2} // Make swipes more intentional
                             navigation={{
                               nextEl: `.next-${workflowIndex}`,
                               prevEl: `.prev-${workflowIndex}`,
@@ -850,17 +998,30 @@ const Preview: React.FC = () => {
                             }}
                             initialSlide={initialSlideIndex}
                             onSlideChange={(swiper) => {
-                              const lastIndex = carousel.images.length;
-                              const isRegenerateSlide = swiper.activeIndex === lastIndex;
+                              // Only handle if not in animation and not during initialization
+                              if (!swiper.animating && !isInitializingFromUrl.current) {
+                                const lastIndex = carousel.images.length;
+                                const isRegenerateSlide = swiper.activeIndex === lastIndex;
 
-                              if (isRegenerateSlide && swiper.swipeDirection && !approved) {
-                                swiper.slideTo(lastIndex - 1);
-                                return;
+                                if (isRegenerateSlide && swiper.swipeDirection && !approved) {
+                                  swiper.slideTo(lastIndex - 1);
+                                  return;
+                                }
+
+                                // Only update if it's not the regenerate slide and the index has actually changed
+                                if (!isRegenerateSlide && swiper.activeIndex !== selectedSlides[workflowIndex]) {
+                                  // Use requestAnimationFrame to ensure we're not in the middle of a render
+                                  requestAnimationFrame(() => {
+                                    updateSelectedSlide(workflowIndex, swiper.activeIndex);
+                                  });
+                                }
                               }
-
-                              // Only update if it's not the regenerate slide
-                              if (!isRegenerateSlide) {
-                                updateSelectedSlide(workflowIndex, swiper.activeIndex);
+                            }}
+                            onInit={(swiper) => {
+                              // Ensure the swiper shows the correct slide on initialization
+                              const currentIndex = selectedSlides[workflowIndex];
+                              if (currentIndex !== undefined && currentIndex !== swiper.activeIndex) {
+                                swiper.slideTo(currentIndex, 0, false); // Immediate transition
                               }
                             }}
                             className="w-full h-full pb-8"
