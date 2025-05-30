@@ -59,9 +59,15 @@ const Preview: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const hasInitializedFromUrl = useRef(false);
   const lastUpdateRef = useRef<{ workflowIndex: number, index: number, timestamp: number } | null>(null);
+  const previousCarouselLengths = useRef<number[]>([]);
 
   useEffect(() => {
     latestSlidesRef.current = selectedSlides;
+    console.log("🔄 Latest slides ref updated:", {
+      selectedSlides: selectedSlides.join(','),
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
   }, [selectedSlides]);
 
   useEffect(() => {
@@ -270,13 +276,27 @@ const Preview: React.FC = () => {
 
   const pollImages = async () => {
     try {
-      // Exit early if component is unmounted
       if (!isMountedRef.current) return;
+
+      console.log("🔄 Starting poll cycle:", {
+        jobId,
+        regeneratingIndexes: regeneratingIndexesRef.current.join(','),
+        regeneratingCount: regeneratingIndexesRef.current.length,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
 
       const response = await fetch(`${apiBaseUrl}/poll-images?job_id=${jobId}&t=${Date.now()}`);
       const data = await response.json();
 
-      // Check again after async operation
+      console.log("📥 Poll response received:", {
+        carouselsLength: data.carousels?.length,
+        regeneratingIndexes: regeneratingIndexesRef.current.join(','),
+        regeneratingCount: regeneratingIndexesRef.current.length,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
+
       if (!isMountedRef.current) return;
 
       // Initialize only once when we have carousels data
@@ -352,6 +372,12 @@ const Preview: React.FC = () => {
             if (newImgs.length > 0) {
               hasNewImages = true;
               newImageWorkflows.add(index);
+              console.log("🆕 New images detected in workflows:", Array.from(newImageWorkflows), {
+                workflowIndex: index,
+                newImagesCount: newImgs.length,
+                currentImages: cleanedPrev.length,
+                willUpdateTo: cleanedPrev.length + newImgs.length - 1
+              });
             }
 
             const combined = [...cleanedPrev, ...newImgs];
@@ -373,23 +399,69 @@ const Preview: React.FC = () => {
 
           // If we have new images, update selections to point to them
           if (hasNewImages && !isInitializingFromUrl.current) {
-            console.log("🆕 New images detected in workflows:", Array.from(newImageWorkflows));
+            console.log("📈 New selectedSlides will be:", {
+              from: selectedSlides.join(','),
+              to: newCarousels.map((c, i) => c.images.length - 1).join(','),
+              isInitializingFromUrl: isInitializingFromUrl.current,
+              newWorkflows: Array.from(newImageWorkflows).join(','),
+              carouselLengths: newCarousels.map(c => c.images.length).join(','),
+              env: process.env.NODE_ENV,
+              timestamp: new Date().toISOString()
+            });
+
             setSelectedSlides(prev => {
               const updated = [...prev];
               newImageWorkflows.forEach(workflowIndex => {
                 const carousel = newCarousels[workflowIndex];
                 if (carousel && carousel.images.length > 0) {
-                  // Point to the latest non-placeholder image
                   const validImages = carousel.images.filter(img =>
                     img !== "loading-placeholder" &&
                     (typeof img === "string" ? true : img.url)
                   );
+
+                  console.log(`🔍 Workflow ${workflowIndex} update check:`, {
+                    totalImages: carousel.images.length,
+                    validImages: validImages.length,
+                    currentSelection: prev[workflowIndex],
+                    wouldUpdateTo: validImages.length - 1,
+                    env: process.env.NODE_ENV,
+                    timestamp: new Date().toISOString()
+                  });
+
                   if (validImages.length > 0) {
-                    updated[workflowIndex] = validImages.length - 1;
+                    const newIndex = validImages.length - 1;
+                    if (prev[workflowIndex] !== newIndex) {
+                      updated[workflowIndex] = newIndex;
+                      console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
+                        from: prev[workflowIndex],
+                        to: newIndex,
+                        reason: 'New images detected',
+                        env: process.env.NODE_ENV,
+                        timestamp: new Date().toISOString(),
+                        isInitializingFromUrl: isInitializingFromUrl.current
+                      });
+                    }
                   }
                 }
               });
+
+              console.log("🔄 Final selection state:", {
+                from: prev.join(','),
+                to: updated.join(','),
+                hasChanges: !deepEqual(prev, updated),
+                affectedWorkflows: Array.from(newImageWorkflows).join(','),
+                env: process.env.NODE_ENV,
+                timestamp: new Date().toISOString()
+              });
+
               return updated;
+            });
+          }
+
+          if (regeneratingIndexesRef.current.length > 0) {
+            console.log("🔄 During poll - regeneratingIndexes:", regeneratingIndexesRef.current.length, "imageCounts:", imageCounts.length, "carousels:", carousels.length, {
+              regeneratingWorkflows: regeneratingIndexesRef.current.join(','),
+              currentSelections: selectedSlides.join(',')
             });
           }
 
@@ -400,10 +472,6 @@ const Preview: React.FC = () => {
           ).length;
 
           setVisibleCarousels((prev) => Math.max(prev, readyCount));
-
-          if (regeneratingIndexesRef.current.length > 0) {
-            console.log("🔄 During poll - regeneratingIndexes:", regeneratingIndexesRef.current.length, "imageCounts:", imageCounts.length, "carousels:", carousels.length);
-          }
 
           if (regeneratingIndexesRef.current.length > 0 && imageCounts.length === carousels.length) {
             const completed = regeneratingIndexesRef.current.filter(index => {
@@ -525,7 +593,11 @@ const Preview: React.FC = () => {
       }
 
     } catch (err: any) {
-      console.error("⚠️ Error during image polling:", err.message);
+      console.error("⚠️ Poll error:", {
+        error: err.message,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
       if (isMountedRef.current) {
         setError("An error occurred while fetching images.");
         setLoading(false);
@@ -567,81 +639,110 @@ const Preview: React.FC = () => {
   }, [encodedSelections, carousels.length]);
 
   const updateSelectedSlide = (workflowIndex: number, index: number) => {
-    // Prevent updates during URL initialization
+    console.log("🎯 Manual slide update triggered:", {
+      workflowIndex,
+      index,
+      currentSlides: selectedSlides.join(','),
+      isInitializingFromUrl: isInitializingFromUrl.current,
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
     if (isInitializingFromUrl.current) {
-      console.log("🔒 Skipping update during URL initialization");
+      console.log("🔒 Skipping update - URL initialization in progress");
       return;
     }
 
-    // Check if this is a duplicate update
-    if (selectedSlides[workflowIndex] === index) {
-      console.log("⏭️ Skipping duplicate update");
-      return;
-    }
-
-    // Check if we've updated this workflow index recently
     const now = Date.now();
     const lastUpdate = lastUpdateRef.current;
     if (lastUpdate &&
       lastUpdate.workflowIndex === workflowIndex &&
-      now - lastUpdate.timestamp < 300) { // Increased debounce to 300ms
-      console.log("⏭️ Skipping rapid update");
+      now - lastUpdate.timestamp < 300) {
+      console.log("⏭️ Skipping rapid update:", {
+        timeSinceLastUpdate: now - lastUpdate.timestamp,
+        env: process.env.NODE_ENV
+      });
       return;
     }
 
-    // Update the lastUpdate reference before the state change
     lastUpdateRef.current = {
       workflowIndex,
       index,
       timestamp: now
     };
 
-    console.log("🎯 updateSelectedSlide called:", {
-      workflowIndex,
-      index,
-      isInitializingFromUrl: isInitializingFromUrl.current,
-      slidesLengthInitialized,
-      currentSelectedSlides: selectedSlides
-    });
-
-    // Use functional update to ensure we're working with latest state
     setSelectedSlides(prev => {
-      // Double check we're not making a duplicate update
       if (prev[workflowIndex] === index) {
-        console.log("⏭️ Skipping duplicate update (double-check)");
+        console.log("⏭️ Skipping duplicate update");
         return prev;
       }
 
       const updated = [...prev];
       updated[workflowIndex] = Math.max(0, index);
-      console.log("📈 New selectedSlides will be:", {
-        from: prev,
-        to: updated,
-        isInitializingFromUrl: isInitializingFromUrl.current
+      console.log("📈 Manual selection update:", {
+        from: prev.join(','),
+        to: updated.join(','),
+        workflowIndex,
+        index,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
       });
       return updated;
     });
   };
 
+  // Track URL updates
   useEffect(() => {
-    console.log("🔄 selectedSlides changed:", JSON.stringify(selectedSlides));
     if (!jobId || !carousels.length || isInitializingFromUrl.current) return;
 
+    console.log("🔗 URL update cycle:", {
+      selectedSlides: selectedSlides.join(','),
+      carouselsLength: carousels.length,
+      carouselLengths: carousels.map(c => c.images.length).join(','),
+      isInitializingFromUrl: isInitializingFromUrl.current,
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
     const newSearchParams = new URLSearchParams(window.location.search);
-    newSearchParams.set("selected", LZString.compressToEncodedURIComponent(
-      JSON.stringify(selectedSlides)
-    ));
-    const queryString = newSearchParams.toString();
-    const newUrl = `/preview?${queryString}`;
+    const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selectedSlides));
+    newSearchParams.set("selected", selectedParam);
+    const newUrl = `/preview?${newSearchParams.toString()}`;
     router.replace(newUrl, { scroll: false });
-  }, [selectedSlides]);
+  }, [selectedSlides, jobId, carousels.length]);
+
+  // Track carousel updates
+  useEffect(() => {
+    const carouselLengths = carousels.map(c => c.images.length);
+    console.log("🎠 Carousel state updated:", {
+      count: carousels.length,
+      lengths: carouselLengths.join(','),
+      previousLengths: previousCarouselLengths.current.join(','),
+      hasNewImages: carousels.some((c, i) => c.images.length > (previousCarouselLengths.current[i] || 0)),
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+    previousCarouselLengths.current = carouselLengths;
+  }, [carousels]);
+
+  // Track initialization state
+  useEffect(() => {
+    if (!encodedSelections) return;
+    console.log("🎯 URL selection processing:", {
+      hasInitializedFromUrl: hasInitializedFromUrl.current,
+      isInitializingFromUrl: isInitializingFromUrl.current,
+      carouselsLength: carousels.length,
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+  }, [encodedSelections, carousels.length]);
 
   const handleSubmit = useCallback(async () => {
     try {
       setSubmitting(true);
       console.log("🔘 Submit clicked:", {
-        latestSlides: latestSlidesRef.current,
-        selectedSlides,
+        latestSlides: latestSlidesRef.current.join(','),
+        selectedSlides: selectedSlides.join(','),
         carouselsLength: carousels.length,
         jobId,
         name,
@@ -826,6 +927,13 @@ const Preview: React.FC = () => {
   const handleRegenerate = async (workflowIndex: number) => {
     if (!jobId) return;
 
+    console.log("🔄 Regeneration triggered:", {
+      workflowIndex,
+      currentImages: carousels[workflowIndex]?.images.length,
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
     try {
       console.log("🔄 Regenerating workflow", workflowIndex + 1);
 
@@ -880,12 +988,32 @@ const Preview: React.FC = () => {
       await response.json();
       startPolling();
 
-      console.log("Backend response: Regeneration triggered.");
+      console.log("✨ Regeneration request sent:", {
+        workflowIndex,
+        workflowKey: carousels[workflowIndex].workflow,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error) {
-      console.error('🔥 Error during regeneration:', error);
+      console.error("🔥 Regeneration error:", {
+        workflowIndex,
+        error,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
       setRegeneratingIndexes(prev => prev.filter(i => i !== workflowIndex));
     }
   };
+
+  useEffect(() => {
+    console.log("🔄 Selection effect triggered:", {
+      selectedSlides: selectedSlides.join(','),
+      regeneratingWorkflows: regeneratingIndexesRef.current.join(','),
+      isInitializing: isInitializingFromUrl.current,
+      timestamp: new Date().toISOString()
+    });
+  }, [selectedSlides]);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
