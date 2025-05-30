@@ -60,14 +60,46 @@ const Preview: React.FC = () => {
   const hasInitializedFromUrl = useRef(false);
   const lastUpdateRef = useRef<{ workflowIndex: number, index: number, timestamp: number } | null>(null);
   const previousCarouselLengths = useRef<number[]>([]);
+  const syncInProgressRef = useRef(false);
+
+  // First, add a new type for tracking carousel changes
+  type CarouselChange = {
+    workflowIndex: number;
+    previousLength: number;
+    newLength: number;
+  };
+
+  // Inside the component, add state for tracking changes
+  const [pendingSelectionUpdates, setPendingSelectionUpdates] = useState<CarouselChange[]>([]);
 
   useEffect(() => {
-    latestSlidesRef.current = selectedSlides;
-    console.log("🔄 Latest slides ref updated:", {
-      selectedSlides: selectedSlides.join(','),
-      env: process.env.NODE_ENV,
-      timestamp: new Date().toISOString()
+    // Skip if sync is already in progress
+    if (syncInProgressRef.current) {
+      return;
+    }
+
+    // Set sync flag
+    syncInProgressRef.current = true;
+
+    // Use microtask to ensure atomic update
+    queueMicrotask(() => {
+      latestSlidesRef.current = selectedSlides;
+      console.log("🔄 Latest slides ref updated:", {
+        selectedSlides: selectedSlides.join(','),
+        ref: latestSlidesRef.current.join(','),
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        stack: new Error().stack?.split('\n').slice(1, 3).join('\n')
+      });
+
+      // Reset sync flag after update
+      syncInProgressRef.current = false;
     });
+
+    // Cleanup function to reset sync flag if component unmounts during sync
+    return () => {
+      syncInProgressRef.current = false;
+    };
   }, [selectedSlides]);
 
   useEffect(() => {
@@ -440,8 +472,7 @@ const Preview: React.FC = () => {
                 to: newIndex,
                 reason: 'New images detected',
                 env: process.env.NODE_ENV,
-                timestamp: new Date().toISOString(),
-                isInitializingFromUrl: isInitializingFromUrl.current
+                timestamp: new Date().toISOString()
               });
 
               return newIndex;
@@ -458,8 +489,20 @@ const Preview: React.FC = () => {
                 timestamp: new Date().toISOString()
               });
 
-              setSelectedSlides(updatedSelections);
-              latestSlidesRef.current = updatedSelections;
+              // Ensure atomic update
+              setSelectedSlides(prev => {
+                const final = updatedSelections;
+                // Update ref immediately in the same batch
+                queueMicrotask(() => {
+                  latestSlidesRef.current = final;
+                  console.log("🔒 Synchronized ref in update:", {
+                    slides: final.join(','),
+                    env: process.env.NODE_ENV,
+                    timestamp: new Date().toISOString()
+                  });
+                });
+                return final;
+              });
             }
           }
 
@@ -518,7 +561,6 @@ const Preview: React.FC = () => {
                   });
                   return updated;
                 });
-                latestSlidesRef.current = selectedSlides;
               }
 
               setImageCounts(prev => {
@@ -565,7 +607,6 @@ const Preview: React.FC = () => {
               if (isMountedRef.current) {
                 console.log("📏 Preserving URL selections while adjusting length");
                 setSelectedSlides(newSlides);
-                latestSlidesRef.current = newSlides;
               }
             } else {
               // No URL selections - initialize with zeros
@@ -573,7 +614,6 @@ const Preview: React.FC = () => {
                 console.log("📏 Initializing new slides array with zeros");
                 const newSlides = Array(data.carousels.length).fill(0);
                 setSelectedSlides(newSlides);
-                latestSlidesRef.current = newSlides;
               }
             }
           } else {
@@ -1019,6 +1059,61 @@ const Preview: React.FC = () => {
       timestamp: new Date().toISOString()
     });
   }, [selectedSlides]);
+
+  // Add a new effect to handle selection updates separately
+  useEffect(() => {
+    if (pendingSelectionUpdates.length === 0 || isInitializingFromUrl.current) return;
+
+    console.log("📊 Processing pending selection updates:", {
+      updates: pendingSelectionUpdates.map(c => `workflow ${c.workflowIndex}: ${c.previousLength} -> ${c.newLength}`).join(', '),
+      currentSelections: selectedSlides.join(','),
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
+    const updatedSelections = [...selectedSlides];
+    let hasChanges = false;
+
+    pendingSelectionUpdates.forEach(change => {
+      const { workflowIndex, newLength } = change;
+      const carousel = carousels[workflowIndex];
+
+      if (!carousel || carousel.images.length === 0) return;
+
+      const validImages = carousel.images.filter(img =>
+        img !== "loading-placeholder" &&
+        (typeof img === "string" ? true : img.url)
+      );
+
+      if (validImages.length === 0) return;
+
+      const newIndex = validImages.length - 1;
+      if (updatedSelections[workflowIndex] !== newIndex) {
+        console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
+          from: updatedSelections[workflowIndex],
+          to: newIndex,
+          reason: 'New images detected',
+          env: process.env.NODE_ENV,
+          timestamp: new Date().toISOString()
+        });
+        updatedSelections[workflowIndex] = newIndex;
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      console.log("🔄 Applying batched selection updates:", {
+        from: selectedSlides.join(','),
+        to: updatedSelections.join(','),
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
+      setSelectedSlides(updatedSelections);
+    }
+
+    // Clear pending updates
+    setPendingSelectionUpdates([]);
+  }, [pendingSelectionUpdates, selectedSlides, carousels, isInitializingFromUrl]);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
