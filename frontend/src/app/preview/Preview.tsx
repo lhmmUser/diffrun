@@ -409,53 +409,58 @@ const Preview: React.FC = () => {
               timestamp: new Date().toISOString()
             });
 
-            setSelectedSlides(prev => {
-              const updated = [...prev];
-              newImageWorkflows.forEach(workflowIndex => {
-                const carousel = newCarousels[workflowIndex];
-                if (carousel && carousel.images.length > 0) {
-                  const validImages = carousel.images.filter(img =>
-                    img !== "loading-placeholder" &&
-                    (typeof img === "string" ? true : img.url)
-                  );
+            // Batch the updates to prevent race conditions
+            const updatedSelections = selectedSlides.map((current, workflowIndex) => {
+              if (!newImageWorkflows.has(workflowIndex)) return current;
 
-                  console.log(`🔍 Workflow ${workflowIndex} update check:`, {
-                    totalImages: carousel.images.length,
-                    validImages: validImages.length,
-                    currentSelection: prev[workflowIndex],
-                    wouldUpdateTo: validImages.length - 1,
-                    env: process.env.NODE_ENV,
-                    timestamp: new Date().toISOString()
-                  });
+              const carousel = newCarousels[workflowIndex];
+              if (!carousel || carousel.images.length === 0) return current;
 
-                  if (validImages.length > 0) {
-                    const newIndex = validImages.length - 1;
-                    if (prev[workflowIndex] !== newIndex) {
-                      updated[workflowIndex] = newIndex;
-                      console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
-                        from: prev[workflowIndex],
-                        to: newIndex,
-                        reason: 'New images detected',
-                        env: process.env.NODE_ENV,
-                        timestamp: new Date().toISOString(),
-                        isInitializingFromUrl: isInitializingFromUrl.current
-                      });
-                    }
-                  }
-                }
+              const validImages = carousel.images.filter(img =>
+                img !== "loading-placeholder" &&
+                (typeof img === "string" ? true : img.url)
+              );
+
+              console.log(`🔍 Workflow ${workflowIndex} update check:`, {
+                totalImages: carousel.images.length,
+                validImages: validImages.length,
+                currentSelection: current,
+                wouldUpdateTo: validImages.length - 1,
+                env: process.env.NODE_ENV,
+                timestamp: new Date().toISOString()
               });
 
-              console.log("🔄 Final selection state:", {
-                from: prev.join(','),
-                to: updated.join(','),
-                hasChanges: !deepEqual(prev, updated),
+              if (validImages.length === 0) return current;
+
+              const newIndex = validImages.length - 1;
+              if (current === newIndex) return current;
+
+              console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
+                from: current,
+                to: newIndex,
+                reason: 'New images detected',
+                env: process.env.NODE_ENV,
+                timestamp: new Date().toISOString(),
+                isInitializingFromUrl: isInitializingFromUrl.current
+              });
+
+              return newIndex;
+            });
+
+            // Only update if there are actual changes
+            if (!deepEqual(selectedSlides, updatedSelections)) {
+              console.log("🔄 Applying selection updates:", {
+                from: selectedSlides.join(','),
+                to: updatedSelections.join(','),
+                hasChanges: true,
                 affectedWorkflows: Array.from(newImageWorkflows).join(','),
                 env: process.env.NODE_ENV,
                 timestamp: new Date().toISOString()
               });
 
-              return updated;
-            });
+              setSelectedSlides(updatedSelections);
+              latestSlidesRef.current = updatedSelections;
+            }
           }
 
           if (regeneratingIndexesRef.current.length > 0) {
