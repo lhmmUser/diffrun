@@ -48,7 +48,7 @@ const TypingCycle: React.FC = () => {
         clearInterval(interval);
         setTypingDone(true);
       }
-    }, 30); 
+    }, 30);
 
     return () => clearInterval(interval);
   }, [currentIndex]);
@@ -57,7 +57,7 @@ const TypingCycle: React.FC = () => {
     if (!typingDone) return;
     const delay = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % texts.length);
-    }, 3000);
+    }, 6000);
 
     return () => clearTimeout(delay);
   }, [typingDone]);

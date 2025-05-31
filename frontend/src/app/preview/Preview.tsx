@@ -44,12 +44,13 @@ const Preview: React.FC = () => {
   const [jobType, setJobType] = useState<"story" | "comic">("story");
   const [approving, setApproving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const searchParams = useSearchParams();
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const latestSlidesRef = useRef<number[]>(selectedSlides);
   const paginationRefs = useRef<(HTMLDivElement | null)[]>([]);
   const parsedSelectionsRef = useRef<number[] | null>(null);
   const isInitializingFromUrl = useRef(false);
@@ -78,14 +79,53 @@ const Preview: React.FC = () => {
     timestamp: number;
   } | null>(null);
 
+  // Add validation helper
+  const validateSelectionArray = useCallback((selections: number[]) => {
+    return selections.map(val => Math.max(0, val));
+  }, []);
+
+  // Update the selection update mechanism
+  const updateSelections = useCallback((newSelections: number[], reason: string) => {
+    const validatedSelections = validateSelectionArray(newSelections);
+
+    // Batch updates in a microtask to ensure atomicity
+    queueMicrotask(() => {
+      // Then update state
+      setSelectedSlides(validatedSelections);
+
+      console.log("🔄 Selection update applied:", {
+        selections: validatedSelections.join(','),
+        reason,
+        env: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }, []);
+
+  // Update the regeneration handler
+  const handleRegeneration = useCallback((workflowIndex: number) => {
+    if (regeneratingWorkflowRef.current.includes(workflowIndex)) {
+      console.log("⏳ Regeneration already in progress, queuing update");
+      return;
+    }
+
+    regeneratingWorkflowRef.current = [...regeneratingWorkflowRef.current, workflowIndex];
+
+    try {
+      console.log("🔄 Regenerating workflow", workflowIndex);
+      // Your existing regeneration logic here
+    } finally {
+      regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => i !== workflowIndex);
+    }
+  }, []);
+
   // Remove the separate ref update effect and consolidate into a single update mechanism
   const syncRef = useCallback((slides: number[]) => {
     if (syncInProgressRef.current) return;
     syncInProgressRef.current = true;
 
     queueMicrotask(() => {
-      latestSlidesRef.current = slides;
-      console.log("🔒 Synchronized ref:", {
+      console.log("🔒 Synchronized state:", {
         slides: slides.join(','),
         env: process.env.NODE_ENV,
         timestamp: new Date().toISOString(),
@@ -117,7 +157,7 @@ const Preview: React.FC = () => {
 
       if (!hasChanges) return prev;
 
-      // Synchronize ref immediately after state update
+      // Synchronize state immediately after update
       syncRef(updated);
 
       return updated;
@@ -367,7 +407,6 @@ const Preview: React.FC = () => {
             });
 
             setSelectedSlides(validatedSlides);
-            latestSlidesRef.current = validatedSlides;
             setSlidesLengthInitialized(true);
             hasInitializedFromUrl.current = true;  // Mark as initialized
 
@@ -577,8 +616,7 @@ const Preview: React.FC = () => {
                 const final = updatedSelections;
                 // Update ref immediately in the same batch
                 queueMicrotask(() => {
-                  latestSlidesRef.current = final;
-                  console.log("🔒 Synchronized ref in update:", {
+                  console.log("🔒 Synchronized state in update:", {
                     slides: final.join(','),
                     env: process.env.NODE_ENV,
                     timestamp: new Date().toISOString()
@@ -812,11 +850,86 @@ const Preview: React.FC = () => {
     });
   }, [encodedSelections, carousels.length]);
 
+  const captureVisibleState = useCallback(() => {
+    const currentState = carousels.map((carousel, index) => {
+      const currentSelection = selectedSlides[index] || 0;
+      return {
+        workflowIndex: index,
+        selectedImage: currentSelection,
+        totalImages: carousel.images.length
+      };
+    });
+
+    console.log("📸 Captured visible state:", {
+      selections: currentState.map(s => s.selectedImage).join(','),
+      timestamp: new Date().toISOString()
+    });
+
+    return currentState;
+  }, [carousels, selectedSlides]);
+
+  const saveCurrentState = useCallback(async () => {
+    if (!jobId) return;
+
+    try {
+      setIsSaving(true);
+      const visibleState = captureVisibleState();
+
+      const selectedParam = LZString.compressToEncodedURIComponent(
+        JSON.stringify(visibleState.map(s => s.selectedImage))
+      );
+
+      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
+
+      console.log("💾 Saving state:", {
+        selections: visibleState.map(s => s.selectedImage).join(','),
+        url: previewUrl,
+        timestamp: new Date().toISOString()
+      });
+
+      const updateResponse = await fetch(`${apiBaseUrl}/update-preview-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_id: jobId,
+          preview_url: previewUrl,
+          current_state: visibleState
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error(`Failed to save state: ${updateResponse.status}`);
+      }
+
+    } catch (err) {
+      console.error("Failed to save state:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [jobId, name, gender, bookId, jobType, captureVisibleState]);
+
+  useEffect(() => {
+    if (isInitializingFromUrl.current || !jobId || !carousels.length) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      saveCurrentState();
+    }, 2000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [selectedSlides, carousels, saveCurrentState, jobId]);
+
   const handleSubmit = useCallback(async () => {
     try {
       setSubmitting(true);
       console.log("🔘 Submit clicked:", {
-        latestSlides: latestSlidesRef.current.join(','),
         selectedSlides: selectedSlides.join(','),
         carouselsLength: carousels.length,
         jobId,
@@ -845,7 +958,7 @@ const Preview: React.FC = () => {
       }
 
       const selectedParam = LZString.compressToEncodedURIComponent(
-        JSON.stringify(latestSlidesRef.current)
+        JSON.stringify(selectedSlides)
       );
 
       const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
@@ -874,21 +987,14 @@ const Preview: React.FC = () => {
 
       const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
       if (!res.ok) {
-        throw new Error(`Failed to fetch job status: ${res.status} ${res.statusText}`);
+        throw new Error(`Failed to fetch job status: ${res.status}`);
       }
 
       const data = await res.json();
-      console.log("🧾 get-job-status response:", data);
-
       const hasEmail = data.email && data.email.trim() !== "";
       const hasUserName = data.user_name && data.user_name.trim() !== "";
 
-      console.log("📌 Email present?", hasEmail);
-      console.log("📌 User name present?", hasUserName);
-
       const redirectPath = hasEmail && hasUserName ? "/purchase" : "/user-details";
-      console.log("➡️ Redirecting to:", redirectPath);
-
       router.push(`${redirectPath}?${queryParams.toString()}`);
     } catch (err: any) {
       console.error("🚨 Error during handleSubmit:", err);
@@ -896,7 +1002,7 @@ const Preview: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [jobId, name, gender, bookId, apiBaseUrl, router, carousels.length]);
+  }, [jobId, name, gender, bookId, apiBaseUrl, router, selectedSlides]);
 
   useEffect(() => {
     if (selectedSlides.some((i) => typeof i !== "number" || isNaN(i) || i < 0)) {
@@ -1126,6 +1232,15 @@ const Preview: React.FC = () => {
 
     queueSelectionUpdate(workflowIndex, Math.max(0, index));
   }, [selectedSlides, queueSelectionUpdate, isInitializingFromUrl]);
+
+  // Swiper slide change handler
+  const handleSlideChange = useCallback((carouselIdx: number, swiper: any) => {
+    setSelectedSlides(prev => {
+      const updated = [...prev];
+      updated[carouselIdx] = swiper.activeIndex;
+      return updated;
+    });
+  }, []);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -1465,6 +1580,12 @@ const Preview: React.FC = () => {
 
           </div>
         </footer>
+
+        {isSaving && (
+          <div className="fixed bottom-4 right-4 bg-black/80 text-white px-3 py-1 rounded-full text-sm z-50">
+            Saving...
+          </div>
+        )}
 
       </div>
     </Suspense>
