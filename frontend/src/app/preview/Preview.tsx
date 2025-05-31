@@ -805,11 +805,10 @@ const Preview: React.FC = () => {
   useEffect(() => {
     if (!jobId || !carousels.length || isInitializingFromUrl.current) return;
 
-    console.log("🔗 URL update cycle:", {
+    console.log("🔗 URL update lifecycle:", {
+      phase: "start",
       selectedSlides: selectedSlides.join(','),
       carouselsLength: carousels.length,
-      carouselLengths: carousels.map(c => c.images.length).join(','),
-      isInitializingFromUrl: isInitializingFromUrl.current,
       env: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     });
@@ -818,6 +817,15 @@ const Preview: React.FC = () => {
     const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selectedSlides));
     newSearchParams.set("selected", selectedParam);
     const newUrl = `/preview?${newSearchParams.toString()}`;
+
+    console.log("🔗 URL update lifecycle:", {
+      phase: "before_replace",
+      url: newUrl,
+      selectedSlides: selectedSlides.join(','),
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
     router.replace(newUrl, { scroll: false });
   }, [selectedSlides, jobId, carousels.length]);
 
