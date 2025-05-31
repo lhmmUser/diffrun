@@ -526,11 +526,13 @@ const Preview: React.FC = () => {
             if (newImgs.length > 0) {
               hasNewImages = true;
               newImageWorkflows.add(index);
-              console.log("🆕 New images detected in workflows:", Array.from(newImageWorkflows), {
+              console.log("🆕 New images detected:", {
                 workflowIndex: index,
                 newImagesCount: newImgs.length,
                 currentImages: cleanedPrev.length,
-                willUpdateTo: cleanedPrev.length + newImgs.length - 1
+                willUpdateTo: cleanedPrev.length + newImgs.length - 1,
+                env: process.env.NODE_ENV,
+                timestamp: new Date().toISOString()
               });
             }
 
@@ -553,12 +555,9 @@ const Preview: React.FC = () => {
 
           // If we have new images, update selections to point to them
           if (hasNewImages && !isInitializingFromUrl.current) {
-            console.log("📈 New selectedSlides will be:", {
-              from: selectedSlides.join(','),
-              to: newCarousels.map((c, i) => c.images.length - 1).join(','),
-              isInitializingFromUrl: isInitializingFromUrl.current,
-              newWorkflows: Array.from(newImageWorkflows).join(','),
-              carouselLengths: newCarousels.map(c => c.images.length).join(','),
+            console.log("📈 State update cycle:", {
+              before: selectedSlides.join(','),
+              after: newCarousels.map((c, i) => c.images.length - 1).join(','),
               env: process.env.NODE_ENV,
               timestamp: new Date().toISOString()
             });
@@ -614,13 +613,11 @@ const Preview: React.FC = () => {
               // Ensure atomic update
               setSelectedSlides(prev => {
                 const final = updatedSelections;
-                // Update ref immediately in the same batch
-                queueMicrotask(() => {
-                  console.log("🔒 Synchronized state in update:", {
-                    slides: final.join(','),
-                    env: process.env.NODE_ENV,
-                    timestamp: new Date().toISOString()
-                  });
+                console.log("🔄 State updated:", {
+                  from: prev.join(','),
+                  to: final.join(','),
+                  env: process.env.NODE_ENV,
+                  timestamp: new Date().toISOString()
                 });
                 return final;
               });
@@ -860,8 +857,10 @@ const Preview: React.FC = () => {
       };
     });
 
-    console.log("📸 Captured visible state:", {
-      selections: currentState.map(s => s.selectedImage).join(','),
+    console.log("📸 State comparison:", {
+      synchronized: selectedSlides.join(','),
+      visible: currentState.map(s => s.selectedImage).join(','),
+      env: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     });
 
@@ -1374,7 +1373,6 @@ const Preview: React.FC = () => {
                                 swiper.slideTo(currentIndex, 0, false);
                               }
                             }}
-                            key={`swiper-${workflowIndex}-${selectedSlides[workflowIndex]}-${carousel.images.length}`}
                             className="w-full h-full pb-8"
                           >
                             {carousel.images.map((image, imgIndex) => (
