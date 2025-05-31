@@ -763,6 +763,21 @@ const Preview: React.FC = () => {
             }
           }
 
+          // Clamp selectedSlides to valid range for each carousel
+          let needsClamp = false;
+          const clampedSelections = selectedSlides.map((sel, idx) => {
+            const maxIdx = (newCarousels[idx]?.images.length || 1) - 1;
+            if (sel > maxIdx) {
+              needsClamp = true;
+              console.warn(`Clamping selection for carousel ${idx}: was ${sel}, now ${maxIdx}`);
+              return maxIdx;
+            }
+            return sel;
+          });
+          if (needsClamp) {
+            setSelectedSlides(clampedSelections);
+          }
+
           if (!deepEqual(prev, newCarousels)) {
             return newCarousels;
           }

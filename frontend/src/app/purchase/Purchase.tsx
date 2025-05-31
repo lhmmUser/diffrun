@@ -34,7 +34,7 @@ const Purchase = () => {
 
   const handleSelectOption = async (option: "hardcover" | "paperback") => {
     setSelectedOption(option);
-  
+
     try {
       await fetch(`${apiBaseUrl}/update-book-style`, {
         method: "POST",
@@ -48,7 +48,7 @@ const Purchase = () => {
     } catch (err) {
       console.error("❌ Failed to save book style:", err);
     }
-  };  
+  };
 
   const handleCheckout = async () => {
     if (!selectedOption) return;
@@ -109,7 +109,7 @@ const Purchase = () => {
               <p className="text-sm text-gray-700 mb-4">
                 Durable, premium binding with matte finish.
               </p>
-              <span className="text-lg font-extrabold">₹ 2250</span>
+              <span className="text-lg font-extrabold">₹ 1950</span>
             </div>
 
             <div
@@ -129,7 +129,7 @@ const Purchase = () => {
               <p className="text-sm text-gray-700 mb-4">
                 Lightweight and portable softcover edition.
               </p>
-              <span className="text-lg font-extrabold">₹ 1650</span>
+              <span className="text-lg font-extrabold">₹ 1450</span>
             </div>
           </div>
 
@@ -138,8 +138,8 @@ const Purchase = () => {
               onClick={handleCheckout}
               disabled={!selectedOption}
               className={`relative px-8 py-3 text-lg font-bold text-white bg-black border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,0.2)] transition-all duration-200 active:translate-y-1 active:shadow-none ${!selectedOption
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-gray-800 hover:border-gray-800"
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-gray-800 hover:border-gray-800"
                 }`}
             >
               Proceed to Checkout
