@@ -90,6 +90,51 @@ const Preview: React.FC = () => {
     reason: string;
   } | null>(null);
 
+  // Move saveCurrentState before updateSelections
+  const saveCurrentState = useCallback(async () => {
+    if (!jobId) return;
+
+    try {
+      setIsSaving(true);
+      const currentSelections = pendingUpdateRef.current?.selections || selectedSlides;
+
+      const selectedParam = LZString.compressToEncodedURIComponent(
+        JSON.stringify(currentSelections)
+      );
+
+      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
+
+      console.log("💾 Saving state:", {
+        selections: currentSelections.join(','),
+        url: previewUrl,
+        timestamp: new Date().toISOString()
+      });
+
+      const updateResponse = await fetch(`${apiBaseUrl}/update-preview-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_id: jobId,
+          preview_url: previewUrl,
+          current_state: currentSelections.map((selection, index) => ({
+            workflowIndex: index,
+            selectedImage: selection,
+            totalImages: carousels[index]?.images.length || 0
+          }))
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error(`Failed to save state: ${updateResponse.status}`);
+      }
+
+    } catch (err) {
+      console.error("Failed to save state:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [jobId, name, gender, bookId, jobType, selectedSlides, carousels]);
+
   // Update the selection update mechanism
   const updateSelections = useCallback((newSelections: number[], reason: string) => {
     const validatedSelections = validateSelectionArray(newSelections);
@@ -123,12 +168,18 @@ const Preview: React.FC = () => {
         timestamp: new Date().toISOString()
       });
 
+      // Update URL
       router.replace(newUrl, { scroll: false });
+
+      // Save state to backend
+      if (jobId) {
+        saveCurrentState();
+      }
 
       // Clear the pending update
       pendingUpdateRef.current = null;
     });
-  }, [router]);
+  }, [router, jobId, saveCurrentState]);
 
   // Update the regeneration handler
   const handleRegeneration = useCallback((workflowIndex: number) => {
@@ -820,34 +871,6 @@ const Preview: React.FC = () => {
     }
   }, [encodedSelections, carousels.length]);
 
-  // Track URL updates
-  useEffect(() => {
-    if (!jobId || !carousels.length || isInitializingFromUrl.current) return;
-
-    console.log("🔗 URL update lifecycle:", {
-      phase: "start",
-      selectedSlides: selectedSlides.join(','),
-      carouselsLength: carousels.length,
-      env: process.env.NODE_ENV,
-      timestamp: new Date().toISOString()
-    });
-
-    const newSearchParams = new URLSearchParams(window.location.search);
-    const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selectedSlides));
-    newSearchParams.set("selected", selectedParam);
-    const newUrl = `/preview?${newSearchParams.toString()}`;
-
-    console.log("🔗 URL update lifecycle:", {
-      phase: "before_replace",
-      url: newUrl,
-      selectedSlides: selectedSlides.join(','),
-      env: process.env.NODE_ENV,
-      timestamp: new Date().toISOString()
-    });
-
-    router.replace(newUrl, { scroll: false });
-  }, [selectedSlides, jobId, carousels.length]);
-
   // Track carousel updates
   useEffect(() => {
     const carouselLengths = carousels.map(c => c.images.length);
@@ -893,46 +916,6 @@ const Preview: React.FC = () => {
 
     return currentState;
   }, [carousels, selectedSlides]);
-
-  const saveCurrentState = useCallback(async () => {
-    if (!jobId) return;
-
-    try {
-      setIsSaving(true);
-      const visibleState = captureVisibleState();
-
-      const selectedParam = LZString.compressToEncodedURIComponent(
-        JSON.stringify(visibleState.map(s => s.selectedImage))
-      );
-
-      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
-
-      console.log("💾 Saving state:", {
-        selections: visibleState.map(s => s.selectedImage).join(','),
-        url: previewUrl,
-        timestamp: new Date().toISOString()
-      });
-
-      const updateResponse = await fetch(`${apiBaseUrl}/update-preview-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          job_id: jobId,
-          preview_url: previewUrl,
-          current_state: visibleState
-        }),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error(`Failed to save state: ${updateResponse.status}`);
-      }
-
-    } catch (err) {
-      console.error("Failed to save state:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [jobId, name, gender, bookId, jobType, captureVisibleState]);
 
   useEffect(() => {
     if (isInitializingFromUrl.current || !jobId || !carousels.length) return;
@@ -1212,15 +1195,6 @@ const Preview: React.FC = () => {
       setRegeneratingIndexes(prev => prev.filter(i => i !== workflowIndex));
     }
   };
-
-  useEffect(() => {
-    console.log("🔄 Selection effect triggered:", {
-      selectedSlides: selectedSlides.join(','),
-      regeneratingWorkflows: regeneratingIndexesRef.current.join(','),
-      isInitializing: isInitializingFromUrl.current,
-      timestamp: new Date().toISOString()
-    });
-  }, [selectedSlides]);
 
   // Add back updateSelectedSlide using the new mechanism
   const updateSelectedSlide = useCallback((workflowIndex: number, index: number) => {
