@@ -88,19 +88,27 @@ const Preview: React.FC = () => {
   const updateSelections = useCallback((newSelections: number[], reason: string) => {
     const validatedSelections = validateSelectionArray(newSelections);
 
-    // Batch updates in a microtask to ensure atomicity
+    // Use a microtask to ensure state is updated before URL
     queueMicrotask(() => {
-      // Then update state
       setSelectedSlides(validatedSelections);
 
-      console.log("🔄 Selection update applied:", {
-        selections: validatedSelections.join(','),
+      // Update URL after state is set
+      const newSearchParams = new URLSearchParams(window.location.search);
+      const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(validatedSelections));
+      newSearchParams.set("selected", selectedParam);
+      const newUrl = `/preview?${newSearchParams.toString()}`;
+
+      console.log("🔄 Atomic state update:", {
+        state: validatedSelections.join(','),
+        url: newUrl,
         reason,
         env: process.env.NODE_ENV,
         timestamp: new Date().toISOString()
       });
+
+      router.replace(newUrl, { scroll: false });
     });
-  }, []);
+  }, [router]);
 
   // Update the regeneration handler
   const handleRegeneration = useCallback((workflowIndex: number) => {
