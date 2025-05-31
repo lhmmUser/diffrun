@@ -57,7 +57,7 @@ const TypingCycle: React.FC = () => {
     if (!typingDone) return;
     const delay = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % texts.length);
-    }, 6000);
+    }, 9000);
 
     return () => clearTimeout(delay);
   }, [typingDone]);

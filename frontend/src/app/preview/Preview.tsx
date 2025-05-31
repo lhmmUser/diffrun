@@ -1330,9 +1330,9 @@ const Preview: React.FC = () => {
                             preventInteractionOnTransition={true}
                             speed={300}
                             watchSlidesProgress={true}
-                            simulateTouch={false} // Disable touch simulation
-                            touchRatio={1} // Make touch more precise
-                            longSwipesRatio={0.2} // Make swipes more intentional
+                            simulateTouch={false}
+                            touchRatio={1}
+                            longSwipesRatio={0.2}
                             navigation={{
                               nextEl: `.next-${workflowIndex}`,
                               prevEl: `.prev-${workflowIndex}`,
@@ -1344,7 +1344,6 @@ const Preview: React.FC = () => {
                               bulletActiveClass: 'swiper-pagination-bullet-active',
                               renderBullet: (index, className) => {
                                 const isRegenerate = index === carousel.images.length;
-                                // Don't render pagination for regenerate slide
                                 if (isRegenerate && !approved) {
                                   return '';
                                 }
@@ -1353,7 +1352,6 @@ const Preview: React.FC = () => {
                             }}
                             initialSlide={initialSlideIndex}
                             onSlideChange={(swiper) => {
-                              // Only handle if not in animation and not during initialization
                               if (!swiper.animating && !isInitializingFromUrl.current) {
                                 const lastIndex = carousel.images.length;
                                 const isRegenerateSlide = swiper.activeIndex === lastIndex;
@@ -1363,9 +1361,7 @@ const Preview: React.FC = () => {
                                   return;
                                 }
 
-                                // Only update if it's not the regenerate slide and the index has actually changed
                                 if (!isRegenerateSlide && swiper.activeIndex !== selectedSlides[workflowIndex]) {
-                                  // Use requestAnimationFrame to ensure we're not in the middle of a render
                                   requestAnimationFrame(() => {
                                     updateSelectedSlide(workflowIndex, swiper.activeIndex);
                                   });
@@ -1373,12 +1369,12 @@ const Preview: React.FC = () => {
                               }
                             }}
                             onInit={(swiper) => {
-                              // Ensure the swiper shows the correct slide on initialization
                               const currentIndex = selectedSlides[workflowIndex];
                               if (currentIndex !== undefined && currentIndex !== swiper.activeIndex) {
-                                swiper.slideTo(currentIndex, 0, false); // Immediate transition
+                                swiper.slideTo(currentIndex, 0, false);
                               }
                             }}
+                            key={`swiper-${workflowIndex}-${selectedSlides[workflowIndex]}-${carousel.images.length}`}
                             className="w-full h-full pb-8"
                           >
                             {carousel.images.map((image, imgIndex) => (
