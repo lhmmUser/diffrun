@@ -84,22 +84,39 @@ const Preview: React.FC = () => {
     return selections.map(val => Math.max(0, val));
   }, []);
 
+  // Add a ref to track pending updates
+  const pendingUpdateRef = useRef<{
+    selections: number[];
+    reason: string;
+  } | null>(null);
+
   // Update the selection update mechanism
   const updateSelections = useCallback((newSelections: number[], reason: string) => {
     const validatedSelections = validateSelectionArray(newSelections);
 
+    // Store the update
+    pendingUpdateRef.current = {
+      selections: validatedSelections,
+      reason
+    };
+
     // Use a microtask to ensure state is updated before URL
     queueMicrotask(() => {
-      setSelectedSlides(validatedSelections);
+      if (!pendingUpdateRef.current) return;
+
+      const { selections, reason } = pendingUpdateRef.current;
+
+      // Update state
+      setSelectedSlides(selections);
 
       // Update URL after state is set
       const newSearchParams = new URLSearchParams(window.location.search);
-      const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(validatedSelections));
+      const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selections));
       newSearchParams.set("selected", selectedParam);
       const newUrl = `/preview?${newSearchParams.toString()}`;
 
       console.log("🔄 Atomic state update:", {
-        state: validatedSelections.join(','),
+        state: selections.join(','),
         url: newUrl,
         reason,
         env: process.env.NODE_ENV,
@@ -107,6 +124,9 @@ const Preview: React.FC = () => {
       });
 
       router.replace(newUrl, { scroll: false });
+
+      // Clear the pending update
+      pendingUpdateRef.current = null;
     });
   }, [router]);
 
@@ -618,17 +638,8 @@ const Preview: React.FC = () => {
                 timestamp: new Date().toISOString()
               });
 
-              // Ensure atomic update
-              setSelectedSlides(prev => {
-                const final = updatedSelections;
-                console.log("🔄 State updated:", {
-                  from: prev.join(','),
-                  to: final.join(','),
-                  env: process.env.NODE_ENV,
-                  timestamp: new Date().toISOString()
-                });
-                return final;
-              });
+              // Use the consolidated update mechanism
+              updateSelections(updatedSelections, 'New images detected');
             }
           }
 
