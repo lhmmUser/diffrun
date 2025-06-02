@@ -14,7 +14,8 @@ const Header = () => {
   const menuItems = [
     { label: "Home", href: "/" },
     { label: "Books for Kids", href: "/books" },
-    { label: "FAQ", href: "/faq"}
+    { label: "FAQ", href: "/faq" },
+    { label: "Team", href: "/team" }
   ];
 
   return (
@@ -22,21 +23,20 @@ const Header = () => {
       <header className="w-full bg-gray-100 shadow-md border-b border-gray-300 z-20">
         <div className="container mx-auto py-4 px-6 flex justify-between items-center">
           <Link href="/" className="flex justify-center items-center">
-          <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain" />
+            <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain" />
           </Link>
 
-          <nav className="hidden md:flex gap-8 text-lg font-medium">
+          <nav className="hidden md:flex gap-8 text-lg font-semibold font-montserrat">
             {menuItems.map((item, index) => (
               <Link
                 key={index}
                 href={item.href}
-                className="relative group text-gray-600 font-serif hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200"
+                className="relative group text-gray-700 hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200"
               >
                 {item.label}
                 <span
-                  className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-500 group-hover:w-full transition-all duration-300 ${
-                    index % 2 === 0 ? "bg-indigo-500" : "bg-purple-500"
-                  }`}
+                  className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-500 group-hover:w-full transition-all duration-300 ${index % 2 === 0 ? "bg-indigo-500" : "bg-purple-500"
+                    }`}
                 ></span>
               </Link>
             ))}
@@ -52,9 +52,8 @@ const Header = () => {
       </header>
 
       <aside
-        className={`fixed top-0 right-0 z-50 w-64 h-screen bg-white shadow-lg transform ${
-          isSidebarOpen ? "translate-x-0" : "translate-x-full"
-        } transition-transform duration-300 ease-in-out border-l border-gray-200`}
+        className={`fixed top-0 right-0 z-50 w-64 h-screen bg-white shadow-lg transform ${isSidebarOpen ? "translate-x-0" : "translate-x-full"
+          } transition-transform duration-300 ease-in-out border-l border-gray-200`}
       >
         <div className="flex justify-end p-4">
           <button
@@ -85,7 +84,7 @@ const Header = () => {
               <Link
                 href={item.href}
                 onClick={toggleSidebar}
-                className="w-full text-lg font-medium text-center text-gray-700 hover:text-indigo-500 transition-colors duration-300 py-3 rounded-lg hover:bg-gray-100"
+                className="w-full text-lg font-semibold font-montserrat text-center text-gray-700 hover:text-indigo-500 transition-colors duration-300 py-3 rounded-lg hover:bg-gray-100"
               >
                 {item.label}
               </Link>

@@ -12,7 +12,7 @@ export const Cards: CardProps[] = [
   {
     imageSrc: "/abcd-book.jpg",
     shortImg: "/short-aayat.png",
-    title: "My A to Z Quest",
+    title: "Max meets ABC",
     bookKey: "abcd",
     age: "2 - 4",
     description:
@@ -22,7 +22,7 @@ export const Cards: CardProps[] = [
   {
     imageSrc: "/astronaut-book.jpg",
     shortImg: "/short-kush.png",
-    title: "Astronaut in Space",
+    title: "Zoey's Space Adventure",
     bookKey: "astro",
     age: "4 - 10",
     description:
@@ -32,7 +32,7 @@ export const Cards: CardProps[] = [
   {
     imageSrc: "/wigu-book.png",
     shortImg: "/short-aayat.png",
-    title: "When I Grow Up",
+    title: "When Sara Grow Up",
     bookKey: "wigu",
     age: "3 - 7",
     description:
