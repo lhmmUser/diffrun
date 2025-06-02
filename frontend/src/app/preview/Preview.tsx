@@ -1523,7 +1523,7 @@ const Preview: React.FC = () => {
           </div>
         </div>
 
-        {!loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
+        {loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
           <div
             className="fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-6 rounded-lg shadow-brutalist text-center"
             style={{
