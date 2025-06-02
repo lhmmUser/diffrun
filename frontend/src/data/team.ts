@@ -2,37 +2,37 @@ export const teamMembers = [
   {
     id: '1',
     name: 'Husain Jafar',
-    role: 'Founder',
+    role: 'Head of Playful Futures',
     image: '/founder.jpg'
   },
   {
     id: '2',
     name: 'Kush Sharma',
-    role: 'Full Stack Developer',
+    role: 'Chief Experience Technologist',
     image: '/developer-1.jpg',
   },
   {
     id: '3',
     name: 'Hari Priya',
-    role: 'Full Stack Developer',
+    role: 'Scalability Sorcerer',
     image: '/developer-2.jpg',
   },
   {
     id: '4',
     name: 'Manish Poojary',
-    role: '3D Artist',
+    role: 'Fantasy World Builder',
     image: '/designer-1.jpg',
   },
   {
-      id: '5',
-      name: 'Derin Thomas',
-      role: '3D Artist',
-      image: '/designer-2.jpg',
-    },
-    {
-      id: '6',
-      name: 'Reshma Karuppiah',
-      role: '3D Artist',
-      image: '/designer-3.jpg',
-    },
+    id: '5',
+    name: 'Derin Thomas',
+    role: 'Aesthetics Specialist',
+    image: '/designer-2.jpg',
+  },
+  {
+    id: '6',
+    name: 'Reshma Karuppiah',
+    role: 'Imagination Designer',
+    image: '/designer-3.jpg',
+  },
 ]
