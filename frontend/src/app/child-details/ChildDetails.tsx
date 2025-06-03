@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { FcPrivacy } from "react-icons/fc";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { containerVariants, headingVariants, subHeadingVariants, loadingContainerVariants } from "@/types";
-import { TypingAnimation } from "@/components/animated/typing-animation";
 import { FaExpandAlt } from "react-icons/fa";
+import CropModal from "@/components/custom/CropModal";
+import { v4 as uuidv4 } from "uuid";
+import { getCroppedImg } from "@/lib/cropImage";
 
 interface ImageFile {
   file: File;
@@ -101,64 +103,67 @@ const Form: React.FC = () => {
     gender: string;
     bookId: string;
   } | null>(null);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  useEffect(() => {
-    return () => {
-      if (process.env.NODE_ENV === "development") {
-        console.log("🧹 Cleaning up image previews");
-      }
-      images.forEach((image) => URL.revokeObjectURL(image.preview));
-    };
-  }, [images]);
+  const [cropTarget, setCropTarget] = useState<File | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [croppedImages, setCroppedImages] = useState<ImageFile[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [showCropFinalizeModal, setShowCropFinalizeModal] = useState<boolean>(false);
+  const croppedAreaPixelsRef = useRef<any>(null);
 
-  const handleFileProcessing = async (file: File): Promise<ImageFile | null> => {
-    if (process.env.NODE_ENV === "development") {
-      console.info(`🔍 Processing file: ${file.name} (${file.type})`);
-    }
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const handleFileProcessing = async (file: File): Promise<{ file: File } | null> => {
     if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
       try {
-        console.info(`📌 Converting HEIC to JPEG: ${file.name}`);
         const heic2any = (await import("heic2any")).default;
         const convertedBlob = await heic2any({
           blob: file,
           toType: "image/jpeg",
           quality: 0.8,
         });
-        if (!convertedBlob) throw new Error("HEIC conversion failed");
+
         const convertedFile = new File(
           [convertedBlob as Blob],
           file.name.replace(/\.heic$/i, ".jpg"),
           { type: "image/jpeg" }
         );
-        console.log("✅ HEIC converted successfully:", convertedFile);
-        return { file: convertedFile, preview: URL.createObjectURL(convertedFile) };
+
+        return { file: convertedFile };
       } catch (err) {
-        console.error("❌ HEIC conversion failed:", err);
+        console.error("HEIC conversion failed:", err);
         setError("HEIC conversion failed. Please try another image.");
         return null;
       }
     }
-    console.log(`✅ Supported format detected: ${file.name}`);
-    return { file, preview: URL.createObjectURL(file) };
+
+    return { file };
   };
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      if (process.env.NODE_ENV === "development") {
-        console.info("📦 Files dropped:", acceptedFiles);
-      }
-      if (images.length + acceptedFiles.length > 3) {
-        console.warn("⚠️ Too many images uploaded");
-        setError("You can upload a maximum of 3 images.");
-        return;
-      }
-      setError(null);
-      const processedImages = await Promise.all(acceptedFiles.map(handleFileProcessing));
-      const validImages = processedImages.filter((img): img is ImageFile => img !== null);
-      setImages((prev) => [...prev, ...validImages].slice(0, 3));
-    },
-    [images]
-  );
+  const imagesRef = useRef<ImageFile[]>([]);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length + imagesRef.current.length > 3) {
+      setError("You can upload a maximum of 3 images.");
+      return;
+    }
+
+    const processed: File[] = [];
+    for (const file of acceptedFiles) {
+      const result = await handleFileProcessing(file);
+      if (result) processed.push(result.file);
+    }
+
+    if (processed.length > 0) {
+      setPendingFiles(processed);
+      setCroppedImages([]);
+      setCurrentIndex(images.length);
+      setCropTarget(processed[0]);
+      setShowCropFinalizeModal(true);
+    }
+  }, []);
 
   const { getRootProps, getInputProps } = useDropzone({
     accept: { "image/*": [] },
@@ -325,10 +330,57 @@ const Form: React.FC = () => {
                 {...getRootProps()}
                 className="border-2 border-dashed border-black p-6 rounded-lg text-center bg-gray-50 hover:bg-gray-100 cursor-pointer"
               >
-                <input {...getInputProps()} />
+                <input {...getInputProps()} disabled={showCropFinalizeModal} />
                 <p className="text-black font-medium">
                   Drag & drop up to 3 images or <span className="underline">browse files</span>
                 </p>
+                {showCropFinalizeModal && cropTarget && pendingFiles.length > 0 && (
+                  <CropModal
+                    image={cropTarget}
+                    index={currentIndex}
+                    existingImageCount={images.length}
+                    total={pendingFiles.length}
+                    onCropComplete={(blob, croppedPixels) => {
+                      const file = new File([blob], `cropped_${uuidv4()}.jpg`, { type: "image/jpeg" });
+                      const imageObj = { file, preview: URL.createObjectURL(file) };
+                      setCroppedImages((prev) => [...prev, imageObj]);
+                      croppedAreaPixelsRef.current = croppedPixels;
+                    }}
+                    onNext={() => {
+                      setCurrentIndex((prevIndex) => {
+                        const nextIndex = prevIndex + 1;
+                        setCropTarget(pendingFiles[nextIndex] || null);
+                        return nextIndex;
+                      });
+                    }}
+                    onFinalize={async () => {
+                      if (!cropTarget || !croppedAreaPixelsRef.current) return;
+
+                      const finalBlob = await getCroppedImg(
+                        URL.createObjectURL(cropTarget),
+                        croppedAreaPixelsRef.current
+                      );
+                      const finalFile = new File([finalBlob], `cropped_${uuidv4()}.jpg`, { type: "image/jpeg" });
+                      const finalImageObj = { file: finalFile, preview: URL.createObjectURL(finalFile) };
+
+                      const updated = [...croppedImages, finalImageObj];
+                      setImages((prev) => [...prev, ...updated]);
+                      setCroppedImages([]);
+                      setPendingFiles([]);
+                      setCropTarget(null);
+                      setCurrentIndex(0);
+                      setShowCropFinalizeModal(false);
+                    }}
+
+                    onClose={() => {
+                      setPendingFiles([]);
+                      setCropTarget(null);
+                      setCroppedImages([]);
+                      setCurrentIndex(0);
+                      setShowCropFinalizeModal(false);
+                    }}
+                  />
+                )}
               </div>
               {images.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
@@ -356,11 +408,6 @@ const Form: React.FC = () => {
               )}
             </div>
 
-            {/* <ul className="list-none pl-5 text-black space-y-2">
-                <li>👤 Only one person in the photo</li>
-                <li>😊 Images where the face is clearly visible</li>
-                <li>🚫 Avoid wearing sunglasses or hats</li>
-              </ul> */}
             <div className="relative w-full">
               <img
                 src="/instructions.jpg"
