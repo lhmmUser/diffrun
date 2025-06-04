@@ -78,6 +78,7 @@ S3_DIFFRUN_GENERATIONS = os.getenv("S3_DIFFRUN_GENERATIONS")
 S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
 APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
 APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
+IP_ADAPTER = os.getenv("IP_ADAPTER")
 
 if not EMAIL_USER or not EMAIL_PASS:
     raise RuntimeError(
@@ -917,6 +918,22 @@ def run_workflow_in_background(
         if isinstance(workflow_data, list):
             workflow_data = workflow_data[0] if workflow_data else {}
 
+
+        allowed_values = workflow_data["4"].get("inputs", {}).get("instantid_file", [])
+        logger.info(f"📋 Allowed instantid_file values: {allowed_values}")
+
+
+        if "4" in workflow_data and "inputs" in workflow_data["4"]:
+            instantid_file_path = os.getenv("IP_ADAPTER")
+            workflow_data["4"]["inputs"]["instantid_file"] = instantid_file_path
+            logger.info(f"🧠 Injected instantid_file into node 4: {instantid_file_path}")
+
+        if "6" in workflow_data and "inputs" in workflow_data["4"]:
+            control_net_file_path = os.getenv("PYTORCH_MODEL")
+            workflow_data["6"]["inputs"]["control_net_name"] = control_net_file_path
+            logger.info(f"🧠 Injected control_net_name into node 6: {control_net_file_path}")
+
+
         # 🖼️ Inject images into nodes 12, 13, 14
         for i, node_id in enumerate(["12", "13", "14"][:len(saved_filenames)]):
             if node_id in workflow_data and "inputs" in workflow_data[node_id]:
@@ -927,6 +944,8 @@ def run_workflow_in_background(
         if "46" in workflow_data and "inputs" in workflow_data["46"]:
             workflow_data["46"]["inputs"]["value"] = name
             logger.info("📝 Injected name into node 46")
+
+        
 
         # 🆔 Inject job_id into string node
         known_job_id = "e44054af-f0ce-4413-8b37-853e1cc680aa"
@@ -1389,7 +1408,7 @@ def run_coverpage_workflow_in_background(
         logger.info(f"✅ Coverpage workflow completed for job_id={job_id}")
 
         # ✅ Generate cover PDF
-        pdf_path = create_front_cover_pdf(job_id, book_style)
+        pdf_path = create_front_cover_pdf(job_id, book_style, book_id)
         logger.info(f"📄 Cover PDF generated: {pdf_path}")
 
         try:
