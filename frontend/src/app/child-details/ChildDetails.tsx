@@ -7,10 +7,9 @@ import { FcPrivacy } from "react-icons/fc";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { containerVariants, headingVariants, subHeadingVariants, loadingContainerVariants } from "@/types";
-import { FaExpandAlt } from "react-icons/fa";
+import { FaExpandAlt, FaCropAlt, FaTrash } from "react-icons/fa";
 import CropModal from "@/components/custom/CropModal";
 import { v4 as uuidv4 } from "uuid";
-import { getCroppedImg } from "@/lib/cropImage";
 
 interface ImageFile {
   file: File;
@@ -103,13 +102,8 @@ const Form: React.FC = () => {
     gender: string;
     bookId: string;
   } | null>(null);
-  const [cropTarget, setCropTarget] = useState<File | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [croppedImages, setCroppedImages] = useState<ImageFile[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [showCropFinalizeModal, setShowCropFinalizeModal] = useState<boolean>(false);
-  const croppedAreaPixelsRef = useRef<any>(null);
 
+  const [imageToCrop, setImageToCrop] = useState<number | null>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const handleFileProcessing = async (file: File): Promise<{ file: File } | null> => {
@@ -145,45 +139,54 @@ const Form: React.FC = () => {
   }, [images]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length + imagesRef.current.length > 3) {
-      setError("You can upload a maximum of 3 images.");
+    const currentCount = imagesRef.current.length;
+    const remaining = 3 - currentCount;
+
+    if (acceptedFiles.length === 0) {
+      alert("Please select at least one image.");
       return;
     }
 
-    const processed: File[] = [];
+    if (acceptedFiles.length > remaining) {
+      alert(`You can only upload ${remaining} more image${remaining > 1 ? "s" : ""}.`);
+      return;
+    }
+
+    const processed: ImageFile[] = [];
+
     for (const file of acceptedFiles) {
       const result = await handleFileProcessing(file);
-      if (result) processed.push(result.file);
+      if (result) {
+        processed.push({
+          file: result.file,
+          preview: URL.createObjectURL(result.file),
+        });
+      }
     }
 
     if (processed.length > 0) {
-      setPendingFiles(processed);
-      setCroppedImages([]);
-      setCurrentIndex(images.length);
-      setCropTarget(processed[0]);
-      setShowCropFinalizeModal(true);
+      setImages((prev) => [...prev, ...processed]);
     }
   }, []);
 
   const { getRootProps, getInputProps } = useDropzone({
     accept: { "image/*": [] },
     multiple: true,
-    maxFiles: 3,
     onDrop,
+    disabled: imageToCrop !== null,
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!name.trim() || !gender) {
-      setError("Please fill all fields.");
+
+    if (!name.trim() || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
+      setError("Please fill all fields correctly and confirm consent.");
       return;
     }
-    if (images.length === 0) {
-      setError("Please upload at least 1 image.");
-      return;
-    }
+
     setError(null);
     setLoading(true);
+
     try {
       const formData = new FormData();
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
@@ -281,6 +284,8 @@ const Form: React.FC = () => {
     }
   }, [loadingProgress, redirectData, router]);
 
+  const openCropModal = (index: number) => setImageToCrop(index);
+
   return (
     <main className="w-full min-h-screen flex flex-col items-center bg-white py-12 px-4 sm:px-8">
       {showContent ? (
@@ -328,56 +333,29 @@ const Form: React.FC = () => {
               <label className="block text-lg font-semibold text-black">Upload Images of Your Child</label>
               <div
                 {...getRootProps()}
-                className="border-2 border-dashed border-black p-6 rounded-lg text-center bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                className={`border-2 border-dashed border-black p-6 rounded-lg text-center bg-gray-50 hover:bg-gray-100 cursor-pointer ${imageToCrop !== null ? 'pointer-events-none opacity-50' : ''
+                  }`}
               >
-                <input {...getInputProps()} disabled={showCropFinalizeModal} />
+                <input {...getInputProps()} disabled={imageToCrop !== null} />
                 <p className="text-black font-medium">
                   Drag & drop up to 3 images or <span className="underline">browse files</span>
                 </p>
-                {showCropFinalizeModal && cropTarget && pendingFiles.length > 0 && (
+                {imageToCrop !== null && (
                   <CropModal
-                    image={cropTarget}
-                    index={currentIndex}
-                    existingImageCount={images.length}
-                    total={pendingFiles.length}
-                    onCropComplete={(blob, croppedPixels) => {
+                    image={images[imageToCrop].file}
+                    index={imageToCrop}
+                    total={images.length}
+                    existingImageCount={0}
+                    onClose={() => setImageToCrop(null)}
+                    onNext={() => { }}
+                    onFinalize={() => { }}
+                    onCropComplete={(blob, _) => {
                       const file = new File([blob], `cropped_${uuidv4()}.jpg`, { type: "image/jpeg" });
-                      const imageObj = { file, preview: URL.createObjectURL(file) };
-                      setCroppedImages((prev) => [...prev, imageObj]);
-                      croppedAreaPixelsRef.current = croppedPixels;
-                    }}
-                    onNext={() => {
-                      setCurrentIndex((prevIndex) => {
-                        const nextIndex = prevIndex + 1;
-                        setCropTarget(pendingFiles[nextIndex] || null);
-                        return nextIndex;
-                      });
-                    }}
-                    onFinalize={async () => {
-                      if (!cropTarget || !croppedAreaPixelsRef.current) return;
-
-                      const finalBlob = await getCroppedImg(
-                        URL.createObjectURL(cropTarget),
-                        croppedAreaPixelsRef.current
-                      );
-                      const finalFile = new File([finalBlob], `cropped_${uuidv4()}.jpg`, { type: "image/jpeg" });
-                      const finalImageObj = { file: finalFile, preview: URL.createObjectURL(finalFile) };
-
-                      const updated = [...croppedImages, finalImageObj];
-                      setImages((prev) => [...prev, ...updated]);
-                      setCroppedImages([]);
-                      setPendingFiles([]);
-                      setCropTarget(null);
-                      setCurrentIndex(0);
-                      setShowCropFinalizeModal(false);
-                    }}
-
-                    onClose={() => {
-                      setPendingFiles([]);
-                      setCropTarget(null);
-                      setCroppedImages([]);
-                      setCurrentIndex(0);
-                      setShowCropFinalizeModal(false);
+                      const preview = URL.createObjectURL(file);
+                      const updated = [...images];
+                      updated[imageToCrop] = { file, preview };
+                      setImages(updated);
+                      setImageToCrop(null);
                     }}
                   />
                 )}
@@ -385,23 +363,29 @@ const Form: React.FC = () => {
               {images.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
                   {images.map((img, index) => (
-                    <div
-                      key={index}
-                      className="relative border-2 border-black rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,0.8)]"
-                    >
+                    <div key={index} className="relative border-2 border-black rounded-lg shadow-md">
                       <img
                         src={img.preview}
-                        alt="preview"
-                        className="w-full h-24 object-contain rounded-lg"
+                        alt={`preview-${index}`}
+                        className="w-full h-24 object-contain rounded-lg mt-6"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setImages(images.filter((_, i) => i !== index))}
-                        className="absolute top-1 right-1 bg-black text-white text-sm rounded-full px-2 py-1 shadow-lg"
-                        aria-label={`Remove image ${index + 1}`}
-                      >
-                        ✕
-                      </button>
+
+                      <div className="absolute top-1 left-1 right-1 flex justify-between px-1">
+                        <button
+                          onClick={() => openCropModal(index)}
+                          className="bg-gray-800 text-white text-xs p-2 rounded-full shadow hover:bg-gray-800"
+                          aria-label="Crop Image"
+                        >
+                          <FaCropAlt className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setImages(images.filter((_, i) => i !== index))}
+                          className="bg-red-600 text-white text-xs px-3 py-1 rounded-full shadow hover:bg-red-700"
+                          aria-label="Remove Image"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

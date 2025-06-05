@@ -54,12 +54,10 @@ const UserDetails: React.FC = () => {
   
       setLoading(true);
   
-      // ✅ Fallback preview URL if not yet in DB
       const safePreviewUrl = previewUrl?.startsWith("http")
   ? previewUrl
   : `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selected}`;
   
-      // Step 1: Save user details
       const payload = {
         job_id: jobId,
         name,
@@ -86,8 +84,7 @@ const UserDetails: React.FC = () => {
       const savedEmail = data.email;
   
       setSuccessMessage("Your details have been saved successfully!");
-  
-      // Step 2: Send preview email
+
       if (freshPreviewUrl && savedEmail && savedUsername && savedName) {
         await fetch(`${apiBaseUrl}/preview-email`, {
           method: "POST",
@@ -103,9 +100,8 @@ const UserDetails: React.FC = () => {
         console.warn("⚠️ Missing data for preview email. Skipping email send.");
       }
   
-      // Step 3: Navigate to purchase page
       router.push(
-        `/purchase?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}`
+        `/purchase?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}&selected=${selected}`
       );
   
     } catch (err: any) {
@@ -118,7 +114,7 @@ const UserDetails: React.FC = () => {
 
   const handleBackToPreview = () => {
     router.push(
-      `/preview?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}`
+      `/preview?job_id=${encodeURIComponent(jobId)}&name=${encodeURIComponent(name)}&gender=${encodeURIComponent(gender)}&book_id=${encodeURIComponent(bookId)}&selected=${selected}`
     );
   };
 

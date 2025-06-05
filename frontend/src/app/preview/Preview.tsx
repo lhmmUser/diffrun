@@ -63,34 +63,28 @@ const Preview: React.FC = () => {
   const previousCarouselLengths = useRef<number[]>([]);
   const syncInProgressRef = useRef(false);
 
-  // First, add a new type for tracking carousel changes
   type CarouselChange = {
     workflowIndex: number;
     previousLength: number;
     newLength: number;
   };
 
-  // Inside the component, add state for tracking changes
   const [pendingSelectionUpdates, setPendingSelectionUpdates] = useState<CarouselChange[]>([]);
 
-  // Add a new ref to track batched updates
   const batchUpdateRef = useRef<{
     updates: Map<number, number>;
     timestamp: number;
   } | null>(null);
 
-  // Add validation helper
   const validateSelectionArray = useCallback((selections: number[]) => {
     return selections.map(val => Math.max(0, val));
   }, []);
 
-  // Add a ref to track pending updates
   const pendingUpdateRef = useRef<{
     selections: number[];
     reason: string;
   } | null>(null);
 
-  // Move saveCurrentState before updateSelections
   const saveCurrentState = useCallback(async () => {
     if (!jobId) return;
 
@@ -135,26 +129,21 @@ const Preview: React.FC = () => {
     }
   }, [jobId, name, gender, bookId, jobType, selectedSlides, carousels]);
 
-  // Update the selection update mechanism
   const updateSelections = useCallback((newSelections: number[], reason: string) => {
     const validatedSelections = validateSelectionArray(newSelections);
 
-    // Store the update
     pendingUpdateRef.current = {
       selections: validatedSelections,
       reason
     };
 
-    // Use a microtask to ensure state is updated before URL
     queueMicrotask(() => {
       if (!pendingUpdateRef.current) return;
 
       const { selections, reason } = pendingUpdateRef.current;
 
-      // Update state
       setSelectedSlides(selections);
 
-      // Update URL after state is set
       const newSearchParams = new URLSearchParams(window.location.search);
       const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selections));
       newSearchParams.set("selected", selectedParam);
@@ -168,20 +157,16 @@ const Preview: React.FC = () => {
         timestamp: new Date().toISOString()
       });
 
-      // Update URL
       router.replace(newUrl, { scroll: false });
 
-      // Save state to backend
       if (jobId) {
         saveCurrentState();
       }
 
-      // Clear the pending update
       pendingUpdateRef.current = null;
     });
   }, [router, jobId, saveCurrentState]);
 
-  // Update the regeneration handler
   const handleRegeneration = useCallback((workflowIndex: number) => {
     if (regeneratingWorkflowRef.current.includes(workflowIndex)) {
       console.log("⏳ Regeneration already in progress, queuing update");
@@ -192,13 +177,12 @@ const Preview: React.FC = () => {
 
     try {
       console.log("🔄 Regenerating workflow", workflowIndex);
-      // Your existing regeneration logic here
+
     } finally {
       regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => i !== workflowIndex);
     }
   }, []);
 
-  // Remove the separate ref update effect and consolidate into a single update mechanism
   const syncRef = useCallback((slides: number[]) => {
     if (syncInProgressRef.current) return;
     syncInProgressRef.current = true;
@@ -236,7 +220,6 @@ const Preview: React.FC = () => {
 
       if (!hasChanges) return prev;
 
-      // Synchronize state immediately after update
       syncRef(updated);
 
       return updated;
@@ -245,7 +228,6 @@ const Preview: React.FC = () => {
     batchUpdateRef.current = null;
   }, [syncRef]);
 
-  // Update the selection update logic to use the new syncRef
   const queueSelectionUpdate = useCallback((workflowIndex: number, newIndex: number) => {
     console.log("🎯 Queueing selection update:", {
       workflowIndex,
@@ -264,11 +246,9 @@ const Preview: React.FC = () => {
       batchUpdateRef.current.updates.set(workflowIndex, newIndex);
     }
 
-    // Schedule the batch update
     Promise.resolve().then(applyBatchedUpdates);
   }, [selectedSlides, applyBatchedUpdates]);
 
-  // Update direct selection updates to use the new mechanism
   useEffect(() => {
     if (pendingSelectionUpdates.length === 0 || isInitializingFromUrl.current) return;
 
@@ -469,16 +449,14 @@ const Preview: React.FC = () => {
           length: parsed.length,
           sample: parsed.slice(0, 3)
         });
-        // Always store parsed selections
+
         parsedSelectionsRef.current = parsed;
 
-        // Only update state if we have matching carousels
         if (carousels.length > 0) {
           if (parsed.length === carousels.length) {
             console.log("📏 Setting selections from URL");
             isInitializingFromUrl.current = true;
 
-            // Validate selections against carousel lengths
             const validatedSlides = parsed.map((selection, idx) => {
               if (!carousels[idx] || !carousels[idx].images) return 0;
               const maxIndex = carousels[idx].images.length - 1;
@@ -487,7 +465,7 @@ const Preview: React.FC = () => {
 
             setSelectedSlides(validatedSlides);
             setSlidesLengthInitialized(true);
-            hasInitializedFromUrl.current = true;  // Mark as initialized
+            hasInitializedFromUrl.current = true;
 
             setTimeout(() => {
               isInitializingFromUrl.current = false;
@@ -496,14 +474,14 @@ const Preview: React.FC = () => {
             console.log("📏 Setting default zeros due to length mismatch");
             setSelectedSlides(Array(carousels.length).fill(0));
             setSlidesLengthInitialized(true);
-            hasInitializedFromUrl.current = true;  // Mark as initialized even in mismatch case
+            hasInitializedFromUrl.current = true;
           }
         }
       }
     } catch (err: any) {
       console.error("🔥 Error processing selections:", err.message);
       isInitializingFromUrl.current = false;
-      hasInitializedFromUrl.current = true;  // Mark as initialized even in error case
+      hasInitializedFromUrl.current = true;
     }
   }, [encodedSelections, carousels.length]);
 
@@ -532,7 +510,6 @@ const Preview: React.FC = () => {
 
       if (!isMountedRef.current) return;
 
-      // Initialize only once when we have carousels data
       if (!slidesLengthInitialized && data.carousels?.length > 0 && !hasInitializedFromUrl.current) {
         const length = data.carousels.length;
         const urlSelections = parsedSelectionsRef.current;
@@ -552,7 +529,7 @@ const Preview: React.FC = () => {
           if (isMountedRef.current) {
             setSelectedSlides(urlSelections);
             setSlidesLengthInitialized(true);
-            hasInitializedFromUrl.current = true;  // Mark as initialized
+            hasInitializedFromUrl.current = true;
           }
           setTimeout(() => {
             isInitializingFromUrl.current = false;
@@ -562,26 +539,23 @@ const Preview: React.FC = () => {
           if (isMountedRef.current) {
             setSelectedSlides(Array(length).fill(0));
             setSlidesLengthInitialized(true);
-            hasInitializedFromUrl.current = true;  // Mark as initialized
+            hasInitializedFromUrl.current = true;
           }
         }
       }
 
-      // Only update carousels if component is still mounted
       if (isMountedRef.current) {
         setCarousels((prev) => {
           const workflowMap = new Map<string, ImageType[]>();
           let hasNewImages = false;
           const newImageWorkflows = new Set<number>();
 
-          // Keep existing images
           prev.forEach((c) => {
             workflowMap.set(c.workflow, c.images.filter(img =>
               typeof img === 'object' ? img.url : img
             ));
           });
 
-          // Add new images from ComfyUI and track which workflows got new images
           (data.carousels || []).forEach((newC: { workflow: string; images: { filename: string; url: string }[] }, index: number) => {
             const workflowKey = newC.workflow;
             const prevImages = workflowMap.get(workflowKey) || [];
@@ -632,7 +606,6 @@ const Preview: React.FC = () => {
             images,
           }));
 
-          // If we have new images, update selections to point to them
           if (hasNewImages && !isInitializingFromUrl.current) {
             console.log("📈 State update cycle:", {
               before: selectedSlides.join(','),
@@ -641,7 +614,6 @@ const Preview: React.FC = () => {
               timestamp: new Date().toISOString()
             });
 
-            // Batch the updates to prevent race conditions
             const updatedSelections = selectedSlides.map((current, workflowIndex) => {
               if (!newImageWorkflows.has(workflowIndex)) return current;
 
@@ -678,7 +650,6 @@ const Preview: React.FC = () => {
               return newIndex;
             });
 
-            // Only update if there are actual changes
             if (!deepEqual(selectedSlides, updatedSelections)) {
               console.log("🔄 Applying selection updates:", {
                 from: selectedSlides.join(','),
@@ -689,7 +660,6 @@ const Preview: React.FC = () => {
                 timestamp: new Date().toISOString()
               });
 
-              // Use the consolidated update mechanism
               updateSelections(updatedSelections, 'New images detected');
             }
           }
@@ -711,7 +681,6 @@ const Preview: React.FC = () => {
 
           if (regeneratingIndexesRef.current.length > 0 && imageCounts.length === carousels.length) {
             const completed = regeneratingIndexesRef.current.filter(index => {
-              // Safety check: ensure carousel exists at this index
               if (!carousels[index]) {
                 console.warn(`⚠️ Carousel not found at index ${index}, skipping`);
                 return false;
@@ -730,20 +699,18 @@ const Preview: React.FC = () => {
               setRegeneratingIndexes(prev => prev.filter(i => !completed.includes(i)));
               regeneratingIndexesRef.current = regeneratingIndexesRef.current.filter(i => !completed.includes(i));
 
-              // Clear regeneratingWorkflow if it's in the completed list
               const completedWorkflows = completed.filter(index => regeneratingWorkflowRef.current.includes(index));
               if (completedWorkflows.length > 0) {
                 setRegeneratingWorkflow(prev => prev.filter(i => !completedWorkflows.includes(i)));
                 regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => !completedWorkflows.includes(i));
 
-                // Update selectedSlides to point to the newly generated image
                 setSelectedSlides(prev => {
                   const updated = [...prev];
                   completedWorkflows.forEach(index => {
                     const workflow = carousels[index].workflow;
                     const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
                     if (updatedCarousel) {
-                      // Point to the latest image (length - 2 because -1 is the regenerate slide)
+
                       updated[index] = updatedCarousel.images.length - 2;
                     }
                   });
@@ -763,7 +730,6 @@ const Preview: React.FC = () => {
             }
           }
 
-          // Clamp selectedSlides to valid range for each carousel
           let needsClamp = false;
           const clampedSelections = selectedSlides.map((sel, idx) => {
             const maxIdx = (newCarousels[idx]?.images.length || 1) - 1;
@@ -787,7 +753,6 @@ const Preview: React.FC = () => {
         if (slidesLengthInitialized && data.carousels?.length > 0 &&
           data.carousels.length !== selectedSlides.length) {
 
-          // Check if we're in the middle of URL initialization
           if (!isInitializingFromUrl.current) {
             console.log("📏 Handling length mismatch:", {
               currentLength: selectedSlides.length,
@@ -796,9 +761,9 @@ const Preview: React.FC = () => {
             });
 
             if (parsedSelectionsRef.current) {
-              // We have URL selections - preserve them while adjusting length
+
               const newSlides = Array(data.carousels.length).fill(0).map((_, i) => {
-                // If we have a URL selection for this index, use it (with validation)
+
                 if (i < parsedSelectionsRef.current!.length) {
                   const carousel = data.carousels[i];
                   const maxIndex = (carousel.images?.length || 1) - 1;
@@ -812,7 +777,6 @@ const Preview: React.FC = () => {
                 setSelectedSlides(newSlides);
               }
             } else {
-              // No URL selections - initialize with zeros
               if (isMountedRef.current) {
                 console.log("📏 Initializing new slides array with zeros");
                 const newSlides = Array(data.carousels.length).fill(0);
@@ -826,7 +790,6 @@ const Preview: React.FC = () => {
 
         const hasPlaceholders = Object.values(placeholders).some((count) => count > 0);
 
-        // Only schedule next poll if component is still mounted
         if (isMountedRef.current) {
           pollingRef.current = setTimeout(pollImages, 2000);
         }
@@ -856,7 +819,6 @@ const Preview: React.FC = () => {
   useEffect(() => {
     if (!jobId) return;
 
-    // Use an immediate flag to prevent multiple timeouts
     let cancelled = false;
 
     const startPollingTimeout = setTimeout(() => {
@@ -886,7 +848,6 @@ const Preview: React.FC = () => {
     }
   }, [encodedSelections, carousels.length]);
 
-  // Track carousel updates
   useEffect(() => {
     const carouselLengths = carousels.map(c => c.images.length);
     console.log("🎠 Carousel state updated:", {
@@ -900,7 +861,6 @@ const Preview: React.FC = () => {
     previousCarouselLengths.current = carouselLengths;
   }, [carousels]);
 
-  // Track initialization state
   useEffect(() => {
     if (!encodedSelections) return;
     console.log("🎯 URL selection processing:", {
@@ -1211,7 +1171,6 @@ const Preview: React.FC = () => {
     }
   };
 
-  // Add back updateSelectedSlide using the new mechanism
   const updateSelectedSlide = useCallback((workflowIndex: number, index: number) => {
     console.log("🎯 Manual slide update triggered:", {
       workflowIndex,
@@ -1248,7 +1207,6 @@ const Preview: React.FC = () => {
     queueSelectionUpdate(workflowIndex, Math.max(0, index));
   }, [selectedSlides, queueSelectionUpdate, isInitializingFromUrl]);
 
-  // Swiper slide change handler
   const handleSlideChange = useCallback((carouselIdx: number, swiper: any) => {
     setSelectedSlides(prev => {
       const updated = [...prev];
@@ -1297,11 +1255,11 @@ const Preview: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <BsImages size={20} className="text-indigo-600" />
-              <p>Pages get shown one below the other</p>
+              <p>Watch the story come alive one page at a time!</p>
             </div>
             <div className="flex items-center gap-2">
               <BsArrowLeftRight size={20} className="text-indigo-600" />
-              <p>Swipe and leave each page at the option you like best</p>
+              <p>Slide left or right to pick the best moment</p>
             </div>
           </motion.div>
         </header>
@@ -1326,11 +1284,6 @@ const Preview: React.FC = () => {
                   ) : (
                     <div>
                       {paginationRefs.current[workflowIndex] && (() => {
-                        const imageCount = carousel.images.length;
-                        const maxValidIndex = Math.max(0, (!approved ? imageCount : imageCount - 1) - 1);
-                        const safeIndex = Math.min(selectedSlides[workflowIndex] || 0, maxValidIndex);
-
-                        // Add safety check for valid slide index
                         const initialSlideIndex = selectedSlides[workflowIndex] !== undefined
                           ? Math.max(0, Math.min(selectedSlides[workflowIndex], carousel.images.length - 1))
                           : 0;
@@ -1410,32 +1363,15 @@ const Preview: React.FC = () => {
                               <SwiperSlide key="generate-more">
                                 <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
                                   {regeneratingWorkflow.includes(workflowIndex) ? (
-                                    // Centered loader
                                     <div className="flex flex-col items-center justify-center h-full w-full">
-                                      <svg
-                                        className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-black mb-4"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <circle
-                                          className="opacity-25"
-                                          cx="12"
-                                          cy="12"
-                                          r="10"
-                                          stroke="currentColor"
-                                          strokeWidth="4"
-                                        />
-                                        <path
-                                          className="opacity-75"
-                                          fill="currentColor"
-                                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                        />
-                                      </svg>
-                                      <p className="text-sm sm:text-base font-semibold text-gray-800 text-center">Regenerating...</p>
+                                      <div className="flex space-x-1 mb-2">
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-gray-800 rounded-full animate-bounce"></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-gray-800 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-gray-800 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                                      </div>
+                                      <p className="text-sm sm:text-base font-semibold text-gray-800">Regenerating...</p>
                                     </div>
                                   ) : (
-                                    // Normal regenerate UI
                                     <>
                                       <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
                                         Not Happy with the Previously Generated Image?
@@ -1523,7 +1459,7 @@ const Preview: React.FC = () => {
           </div>
         </div>
 
-        {!loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
+        {loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
           <div
             className="fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-6 rounded-lg shadow-brutalist text-center"
             style={{
@@ -1540,13 +1476,12 @@ const Preview: React.FC = () => {
                   job_id: jobId || "",
                   name,
                   gender,
-                  job_type: jobType,
                   book_id: bookId,
                   selected: LZString.compressToEncodedURIComponent(
                     JSON.stringify(selectedSlides)
                   ),
                 });
-                router.push(`/email-preview-request?${query.toString()}`);
+                router.push(`/user-details?${query.toString()}`);
               }}
               className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
@@ -1571,7 +1506,7 @@ const Preview: React.FC = () => {
                     ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 shadow-[3px_3px_0px_#232323]'
                     : 'bg-gray-300 cursor-not-allowed'}`}
               >
-                {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Preview & Show Price"}
+                {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Story"}
               </button>
             )}
 

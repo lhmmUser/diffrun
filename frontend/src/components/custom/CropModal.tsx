@@ -25,7 +25,7 @@ const CropModal: React.FC<CropModalProps> = ({
     onCropComplete,
     onNext,
     onFinalize,
-     existingImageCount 
+    existingImageCount
 }) => {
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -48,43 +48,43 @@ const CropModal: React.FC<CropModalProps> = ({
     }, []);
 
     const handleCropAndNext = async () => {
-  try {
-    setIsCropping(true);
-    const croppedBlob = await getCroppedImg(imageUrl, croppedAreaPixels);
-    onCropComplete(croppedBlob, croppedAreaPixels); // 👈 pass both
-    onNext();
-  } catch (error) {
-    console.error("Crop failed:", error);
-  } finally {
-    setIsCropping(false);
-  }
-};
+        try {
+            setIsCropping(true);
+            const croppedBlob = await getCroppedImg(imageUrl, croppedAreaPixels);
+            onCropComplete(croppedBlob, croppedAreaPixels); // 👈 pass both
+            onNext();
+        } catch (error) {
+            console.error("Crop failed:", error);
+        } finally {
+            setIsCropping(false);
+        }
+    };
 
-const handleCropAndFinalize = async () => {
-  try {
-    setIsCropping(true);
-    const croppedBlob = await getCroppedImg(imageUrl, croppedAreaPixels);
-    onCropComplete(croppedBlob, croppedAreaPixels); // 👈 pass both
-    onFinalize();
-  } catch (error) {
-    console.error("Final crop failed:", error);
-  } finally {
-    setIsCropping(false);
-  }
-};
+    const handleCropAndFinalize = async () => {
+        try {
+            setIsCropping(true);
+            const croppedBlob = await getCroppedImg(imageUrl, croppedAreaPixels);
+            onCropComplete(croppedBlob, croppedAreaPixels); // 👈 pass both
+            onFinalize();
+        } catch (error) {
+            console.error("Final crop failed:", error);
+        } finally {
+            setIsCropping(false);
+        }
+    };
 
     return (
         <Dialog
             open={true}
             onClose={onClose}
-            className="fixed z-50 inset-0 flex items-center justify-center bg-blue-400 bg-opacity-60 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-400 bg-opacity-40 px-4"
         >
-            <div className="bg-white p-6 w-full max-w-2xl border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)] relative">
-                <Dialog.Title className="font-bold text-xl mb-2">
-                    Crop your Image 
+            <div className="bg-white w-full max-w-3xl rounded-lg p-6 shadow-lg">
+                <Dialog.Title className="text-xl font-semibold text-gray-800 mb-4">
+                    Crop your Image
                 </Dialog.Title>
 
-                <div className="relative w-full h-80 bg-gray-100 border-2 border-black mb-4">
+                <div className="relative w-full h-96 rounded-md bg-gray-100 overflow-hidden">
                     <Cropper
                         image={imageUrl}
                         crop={crop}
@@ -93,14 +93,15 @@ const handleCropAndFinalize = async () => {
                         onCropChange={setCrop}
                         onZoomChange={setZoom}
                         onCropComplete={onCropCompleteHandler}
+                        showGrid={false}
                     />
                 </div>
 
-                <div className="flex items-center justify-between gap-4 mt-2">
+                <div className="mt-6 flex justify-end gap-3">
                     <button
                         onClick={onClose}
                         disabled={isCropping}
-                        className="px-4 py-2 border-2 border-black bg-white hover:bg-gray-100 font-semibold rounded-sm"
+                        className="px-4 py-2 rounded-md border-2 border-gray-300 text-gray-700 font-semibold bg-white hover:bg-gray-50 disabled:opacity-50"
                     >
                         Cancel
                     </button>
@@ -109,17 +110,19 @@ const handleCropAndFinalize = async () => {
                         <button
                             onClick={handleCropAndNext}
                             disabled={isCropping}
-                            className="flex items-center gap-2 px-4 py-2 border-2 border-black bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-sm"
+                            className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                            <FaCrop /> Crop & Next
+                            <FaCrop className="w-4 h-4" />
+                            Crop & Next
                         </button>
                     ) : (
                         <button
                             onClick={handleCropAndFinalize}
                             disabled={isCropping}
-                            className="flex items-center gap-2 px-4 py-2 border-2 border-black bg-green-600 hover:bg-green-700 text-white font-semibold rounded-sm"
+                            className="flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                         >
-                            <FaCheckCircle /> Finalize
+                            <FaCheckCircle className="w-4 h-4" />
+                            Finalize
                         </button>
                     )}
                 </div>
