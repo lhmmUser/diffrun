@@ -45,6 +45,8 @@ const Preview: React.FC = () => {
   const [approving, setApproving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewCountry, setPreviewCountry] = useState<string>("");
+  const [countryFetched, setCountryFetched] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,7 +88,7 @@ const Preview: React.FC = () => {
   } | null>(null);
 
   const saveCurrentState = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId || !countryFetched) return;  
 
     try {
       setIsSaving(true);
@@ -101,6 +103,7 @@ const Preview: React.FC = () => {
       console.log("💾 Saving state:", {
         selections: currentSelections.join(','),
         url: previewUrl,
+        preview_country: previewCountry,  
         timestamp: new Date().toISOString()
       });
 
@@ -114,7 +117,8 @@ const Preview: React.FC = () => {
             workflowIndex: index,
             selectedImage: selection,
             totalImages: carousels[index]?.images.length || 0
-          }))
+          })),
+          preview_country: previewCountry || ""  
         }),
       });
 
@@ -127,7 +131,7 @@ const Preview: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [jobId, name, gender, bookId, jobType, selectedSlides, carousels]);
+  }, [jobId, name, gender, bookId, jobType, selectedSlides, carousels, previewCountry, countryFetched]);
 
   const updateSelections = useCallback((newSelections: number[], reason: string) => {
     const validatedSelections = validateSelectionArray(newSelections);
@@ -283,6 +287,26 @@ const Preview: React.FC = () => {
 
     setPendingSelectionUpdates([]);
   }, [pendingSelectionUpdates, selectedSlides, carousels, isInitializingFromUrl, applyBatchedUpdates]);
+
+  useEffect(() => {
+  const fetchCountry = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/get-country`);
+      const data = await response.json();
+      console.log("🌍 Country detected:", data.country_code);
+      setPreviewCountry(data.country_code || "");
+    } catch (err) {
+      console.error("Failed to fetch country:", err);
+      setPreviewCountry("");
+    } finally {
+      setCountryFetched(true);  
+    }
+  };
+
+  if (jobId && isHydrated) {
+    fetchCountry();
+  }
+}, [jobId, isHydrated]);
 
   useEffect(() => {
     setIsHydrated(true);

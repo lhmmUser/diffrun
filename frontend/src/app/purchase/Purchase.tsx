@@ -101,7 +101,7 @@ const Purchase = () => {
                 {selectedOption === "hardcover" ? "Selected" : "Popular Choice"}
               </div>
               <img
-                src={`/hardcover-${bookId}.png`}
+                src={`/hardcover-${bookId}.jpg`}
                 alt="Hardcover Book"
                 className="w-full h-48 object-cover mb-4 rounded-md"
               />
@@ -121,7 +121,7 @@ const Purchase = () => {
                 {selectedOption === "paperback" ? "Selected" : ""}
               </div>
               <img
-                src={`/softpaper-${bookId}.png`}
+                src={`/softpaper-${bookId}.jpg`}
                 alt="Paperback Book"
                 className="w-full h-48 object-cover mb-4 rounded-md"
               />

@@ -303,7 +303,8 @@ def handle_after_payment(record: dict):
 @app.post("/update-preview-url")
 async def update_preview_url(
     job_id: str = Body(...),
-    preview_url: str = Body(...)
+    preview_url: str = Body(...),
+    preview_country: Optional[str] = Body(default=None) 
 ):
     if not preview_url or not preview_url.strip().lower().startswith("http"):
         print(f"⛔️ Invalid preview_url for job_id={job_id}: {preview_url}")
@@ -313,10 +314,15 @@ async def update_preview_url(
         )
 
     print(f"🔧 Updating preview_url for job_id={job_id}: {preview_url}")
+    if preview_country:
+        print(f"🌍 Detected preview_country for job_id={job_id}: {preview_country}")
+
+    update_fields = {"preview_url": preview_url.strip()}    
+    update_fields["preview_country"] = preview_country or ""
 
     result = user_details_collection.update_one(
         {"job_id": job_id},
-        {"$set": {"preview_url": preview_url.strip()}}
+        {"$set": update_fields}
     )
 
     if result.matched_count == 0:
@@ -326,7 +332,7 @@ async def update_preview_url(
             detail="Job ID not found"
         )
 
-    print(f"✅ Updated preview_url for job_id={job_id}")
+    print(f"✅ Updated preview_url for job_id={job_id}, country={preview_country or 'N/A'}")
     return {"message": "Preview URL updated successfully"}
 
 @app.get("/get-job-status/{job_id}")

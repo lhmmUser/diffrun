@@ -16,13 +16,25 @@ export default function Home() {
           className="w-full object-cover"
           loading="lazy"
         />
-        <div className="absolute top-0 w-full flex flex-col items-center text-center mt-20 px-6">
-          <h1 className="text-3xl font-serif sm:text-4xl md:text-5xl font-bold text-white drop-shadow-md">
-            Turn photos into storybooks
+        <div className="absolute top-0 w-full flex flex-col items-center text-center md:mt-5 lg:mt-10 px-4 md:px-8 lg:px-12">
+          <h1 className="text-2xl md:text-3xl lg:text-6xl font-serif font-bold text-white drop-shadow-md leading-tight">
+            Turn photos into storybooks, instantly!
           </h1>
-          <p className="mt-2 text-xl sm:text-2xl text-white max-w-3xl drop-shadow-md">
-            Personalized books where they are the hero
+          <p className="text-xl md:text-2xl text-white max-w-4xl drop-shadow-md flex items-center justify-center">
+            <span>Delivered anywhere in India</span>
+            <img src="/india.png" alt="India" className="w-6 h-6 rounded-full mx-2 inline-block" />
+            <span>in 7 days</span>
           </p>
+          <div className="flex justify-center items-center w-full py-4">
+            <Link href="/books">
+              <button
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-3 px-10 font-medium border border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 rounded-lg text-xl"
+                aria-label="Shop Now"
+              >
+                Generate free preview
+              </button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -33,27 +45,26 @@ export default function Home() {
           className="w-full object-cover"
           loading="lazy"
         />
-        <div className="absolute top-0 w-full flex flex-col items-center text-center px-1 sm:px-4 md:px-6 mt-4 sm:mt-8 md:mt-28">
-          <h1 className="font-serif font-bold text-white drop-shadow-md
-    text-xl sm:text-2xl md:text-4xl lg:text-5xl leading-tight sm:leading-snug md:leading-snug lg:leading-snug max-w-4xl">
-            Turn photos into storybooks
+        <div className="absolute top-0 w-full flex flex-col items-center text-center mt-2 px-2">
+          <h1 className="text-lg font-serif font-bold text-white drop-shadow-md leading-tight">
+            Turn photos into storybooks, instantly!
           </h1>
-          <p className="mt-2 sm:mt-4 md:mt-5 text-white drop-shadow-md font-thin md:font-medium
-    text-lg sm:text-xl md:text-2xl leading-relaxed max-w-2xl">
-            Personalized books where they are the hero
+          <p className="mt-2 text-sm text-white drop-shadow-md flex items-center justify-center">
+            <span>Delivered anywhere in India</span>
+            <img src="/india.png" alt="India" className="w-4 h-4 rounded-full mx-1" />
+            <span>in 7 days</span>
           </p>
+          <div className="w-full flex justify-center py-3">
+            <Link href="/books">
+              <button
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2 px-6 font-medium border border-gray-900 shadow-[2px_2px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[3px_3px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 rounded text-sm"
+                aria-label="Shop Now"
+              >
+                Generate free preview
+              </button>
+            </Link>
+          </div>
         </div>
-      </div>
-
-      <div className="flex justify-center items-center w-full py-8">
-        <Link href="/books">
-          <button
-            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 sm:py-4 px-8 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 rounded-lg text-lg sm:text-2xl"
-            aria-label="Shop Now"
-          >
-            Shop Now
-          </button>
-        </Link>
       </div>
 
       <div className="my-10">

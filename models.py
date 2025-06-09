@@ -6,8 +6,8 @@ class UserDetails(BaseModel):
     job_id: str
     name: str
     gender: str
-    job_type: Optional[str] = None       # ✅ Optional now
-    book_id: Optional[str] = None        # ✅ Optional now
+    job_type: Optional[str] = None      
+    book_id: Optional[str] = None       
     saved_files: List[str] = []
     preview_url: str
     user_name: Optional[str] = None
@@ -17,6 +17,7 @@ class UserDetails(BaseModel):
     approved: bool = False
     order_id: Optional[str] = None
     workflow_status: str = "initiated"
+    preview_country: Optional[str] = None 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
