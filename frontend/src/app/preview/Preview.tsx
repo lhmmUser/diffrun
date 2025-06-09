@@ -126,25 +126,7 @@ const Preview: React.FC = () => {
       if (!updateResponse.ok) {
         throw new Error(`Failed to save state: ${updateResponse.status}`);
       }
-
-      if (!countrySavedRef.current && previewCountry) {
-        const countryResponse = await fetch(`${apiBaseUrl}/update-country`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            job_id: jobId,
-            country_code: previewCountry
-          }),
-        });
-
-        if (!countryResponse.ok) {
-          throw new Error(`Failed to save country: ${countryResponse.status}`);
-        }
-
-        console.log(`✅ Country code ${previewCountry} saved to DB`);
-        countrySavedRef.current = true;
-      }
-
+      
     } catch (err) {
       console.error("Failed to save state:", err);
     } finally {

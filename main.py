@@ -269,8 +269,6 @@ async def shopify_webhook(request: Request):
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
-
 def handle_after_payment(record: dict):
     name = record.get("child_name")
     username = record.get("username")
@@ -299,12 +297,11 @@ def handle_after_payment(record: dict):
     else:
         print("⚠️ Missing data for email, skipping send")
 
-
 @app.post("/update-preview-url")
 async def update_preview_url(
     job_id: str = Body(...),
     preview_url: str = Body(...),
-    preview_country: Optional[str] = Body(default=None) 
+    preview_country: Optional[str] = Body(default=None)
 ):
     if not preview_url or not preview_url.strip().lower().startswith("http"):
         print(f"⛔️ Invalid preview_url for job_id={job_id}: {preview_url}")
@@ -314,25 +311,29 @@ async def update_preview_url(
         )
 
     print(f"🔧 Updating preview_url for job_id={job_id}: {preview_url}")
-    if preview_country:
-        print(f"🌍 Detected preview_country for job_id={job_id}: {preview_country}")
 
-    update_fields = {"preview_url": preview_url.strip()}    
-    update_fields["preview_country"] = preview_country or ""
-
-    result = user_details_collection.update_one(
-        {"job_id": job_id},
-        {"$set": update_fields}
-    )
-
-    if result.matched_count == 0:
+    existing_job = user_details_collection.find_one({"job_id": job_id})
+    if not existing_job:
         print("⚠️ No matching job_id found in DB")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job ID not found"
         )
 
-    print(f"✅ Updated preview_url for job_id={job_id}, country={preview_country or 'N/A'}")
+    update_fields = {"preview_url": preview_url.strip()}
+
+    if (not existing_job.get("preview_country")) and preview_country:
+        update_fields["preview_country"] = preview_country
+        print(f"🌍 Setting initial preview_country for job_id={job_id}: {preview_country}")
+    else:
+        print(f"ℹ️ preview_country already set: {existing_job.get('preview_country', '')}, not updating.")
+
+    result = user_details_collection.update_one(
+        {"job_id": job_id},
+        {"$set": update_fields}
+    )
+
+    print(f"✅ Updated preview_url for job_id={job_id}")
     return {"message": "Preview URL updated successfully"}
 
 @app.get("/get-job-status/{job_id}")
@@ -978,26 +979,6 @@ def run_workflow_in_background(
             {"$set": {f"workflows.{workflow_key}.status": "failed"}}
         )
         raise HTTPException(status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
-
-@app.post("/update-country")
-async def update_country(data: dict):
-    job_id = data.get("job_id")
-    country_code = data.get("country_code")
-
-    job = user_details_collection.find_one({"job_id": job_id})
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    if not job.get("country_code"):
-        user_details_collection.update_one(
-            {"job_id": job_id},
-            {"$set": {"country_code": country_code}}
-        )
-        print(f"✅ Saved country_code={country_code} for job_id={job_id}")
-    else:
-        print(f"ℹ️ Country already set ({job['country_code']}), not updating.")
-
-    return {"status": "ok"}
 
 @app.get("/get-country")
 def get_country(request: Request):
