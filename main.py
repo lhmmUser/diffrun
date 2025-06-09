@@ -979,6 +979,26 @@ def run_workflow_in_background(
         )
         raise HTTPException(status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
 
+@app.post("/update-country")
+async def update_country(data: dict):
+    job_id = data.get("job_id")
+    country_code = data.get("country_code")
+
+    job = user_details_collection.find_one({"job_id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.get("country_code"):
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"country_code": country_code}}
+        )
+        print(f"✅ Saved country_code={country_code} for job_id={job_id}")
+    else:
+        print(f"ℹ️ Country already set ({job['country_code']}), not updating.")
+
+    return {"status": "ok"}
+
 @app.get("/get-country")
 def get_country(request: Request):
     client_ip = request.headers.get("X-Forwarded-For", request.client.host)
@@ -1344,8 +1364,6 @@ async def run_combined_workflow(job_id: str = Form(...)):
         logger.exception("🔥 Error running combined workflow")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# 👇 Add this at the bottom of main.py
 def run_coverpage_workflow_in_background(
     job_id: str,
     book_id: str,

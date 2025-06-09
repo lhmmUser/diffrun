@@ -64,6 +64,7 @@ const Preview: React.FC = () => {
   const lastUpdateRef = useRef<{ workflowIndex: number, index: number, timestamp: number } | null>(null);
   const previousCarouselLengths = useRef<number[]>([]);
   const syncInProgressRef = useRef(false);
+  const countrySavedRef = useRef(false);
 
   type CarouselChange = {
     workflowIndex: number;
@@ -88,7 +89,7 @@ const Preview: React.FC = () => {
   } | null>(null);
 
   const saveCurrentState = useCallback(async () => {
-    if (!jobId || !countryFetched) return;  
+    if (!jobId || !countryFetched) return;
 
     try {
       setIsSaving(true);
@@ -103,7 +104,7 @@ const Preview: React.FC = () => {
       console.log("💾 Saving state:", {
         selections: currentSelections.join(','),
         url: previewUrl,
-        preview_country: previewCountry,  
+        preview_country: previewCountry,
         timestamp: new Date().toISOString()
       });
 
@@ -118,12 +119,30 @@ const Preview: React.FC = () => {
             selectedImage: selection,
             totalImages: carousels[index]?.images.length || 0
           })),
-          preview_country: previewCountry || ""  
+          preview_country: previewCountry || ""
         }),
       });
 
       if (!updateResponse.ok) {
         throw new Error(`Failed to save state: ${updateResponse.status}`);
+      }
+
+      if (!countrySavedRef.current && previewCountry) {
+        const countryResponse = await fetch(`${apiBaseUrl}/update-country`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            job_id: jobId,
+            country_code: previewCountry
+          }),
+        });
+
+        if (!countryResponse.ok) {
+          throw new Error(`Failed to save country: ${countryResponse.status}`);
+        }
+
+        console.log(`✅ Country code ${previewCountry} saved to DB`);
+        countrySavedRef.current = true;
       }
 
     } catch (err) {
@@ -289,24 +308,24 @@ const Preview: React.FC = () => {
   }, [pendingSelectionUpdates, selectedSlides, carousels, isInitializingFromUrl, applyBatchedUpdates]);
 
   useEffect(() => {
-  const fetchCountry = async () => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/get-country`);
-      const data = await response.json();
-      console.log("🌍 Country detected:", data.country_code);
-      setPreviewCountry(data.country_code || "");
-    } catch (err) {
-      console.error("Failed to fetch country:", err);
-      setPreviewCountry("");
-    } finally {
-      setCountryFetched(true);  
-    }
-  };
+    const fetchCountry = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/get-country`);
+        const data = await response.json();
+        console.log("🌍 Country detected:", data.country_code);
+        setPreviewCountry(data.country_code || "");
+      } catch (err) {
+        console.error("Failed to fetch country:", err);
+        setPreviewCountry("");
+      } finally {
+        setCountryFetched(true);
+      }
+    };
 
-  if (jobId && isHydrated) {
-    fetchCountry();
-  }
-}, [jobId, isHydrated]);
+    if (jobId && isHydrated) {
+      fetchCountry();
+    }
+  }, [jobId, isHydrated]);
 
   useEffect(() => {
     setIsHydrated(true);
