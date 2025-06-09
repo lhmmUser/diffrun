@@ -975,13 +975,6 @@ def run_workflow_in_background(
 
 @app.get("/get-country")
 def get_country(request: Request):
-    # First try Cloudflare header
-    cf_country = request.headers.get("CF-IPCountry")
-    if cf_country:
-        print(f"🌍 CF-IPCountry detected: {cf_country}")
-        return {"country_code": cf_country}
-
-    # Fallback to IP-based detection
     client_ip = request.headers.get("X-Forwarded-For", request.client.host)
     client_ip = client_ip.split(",")[0].strip()
     print(f"Client IP: {client_ip}")
@@ -994,8 +987,8 @@ def get_country(request: Request):
         print(f"Geo detection result: {country_code}")
     except Exception as e:
         print(f"Geo detection failed: {e}")
-        country_code = ""
-
+        country_code = ""  
+        
     return {"country_code": country_code}
 
 @app.post("/execute-workflow")
