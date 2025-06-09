@@ -5,7 +5,6 @@ from helper.pdf_generator import create_interior_pdf
 from helper.random_seed import generate_random_seed
 from helper.create_front_cover_pdf import create_front_cover_pdf
 from email.message import EmailMessage
-import httpx
 import smtplib
 from pydantic import BaseModel, EmailStr
 import logging
@@ -13,6 +12,7 @@ import base64
 import datetime
 import io
 import os
+import requests
 from typing import List, Optional
 import uuid
 import json
@@ -35,8 +35,6 @@ from config import SERVER_ADDRESS, INPUT_FOLDER, STORIES_FOLDER, OUTPUT_FOLDER, 
 from dotenv import load_dotenv
 from pathlib import Path
 import glob
-from pymongo.collection import Collection
-from bson import ObjectId 
 
 load_dotenv(dotenv_path="./.env")
 
@@ -79,6 +77,7 @@ S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
 APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
 APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
 IP_ADAPTER = os.getenv("IP_ADAPTER")
+GEO = os.getenv("GEO")
 
 if not EMAIL_USER or not EMAIL_PASS:
     raise RuntimeError(
@@ -410,8 +409,6 @@ def load_workflow(file_path):
             f"Invalid JSON in workflow file: {file_path}. Error: {str(e)}")
 
 # Function to queue a prompt
-
-
 def queue_prompt(prompt, client_id):
     payload = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(payload).encode('utf-8')
@@ -427,8 +424,6 @@ def queue_prompt(prompt, client_id):
             status_code=400, detail=f"ComfyUI API Error: {str(e)}")
 
 # Function to get an image from the server
-
-
 def get_image(filename, subfolder, folder_type):
     params = {"filename": filename,
               "subfolder": subfolder, "type": folder_type}
@@ -437,15 +432,11 @@ def get_image(filename, subfolder, folder_type):
         return response.read()
 
 # Function to get history of a prompt execution
-
-
 def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{SERVER_ADDRESS}/history/{prompt_id}") as response:
         return json.loads(response.read())
 
 # Function to convert PNG to JPG
-
-
 def convert_png_to_jpg(png_data, output_path, watermark_path):
     try:
         img = Image.open(io.BytesIO(png_data))
@@ -480,7 +471,6 @@ def convert_png_to_jpg(png_data, output_path, watermark_path):
         raise ValueError(f"Error converting PNG to JPG: {str(e)}")
 
 # Function to get images after execution
-
 def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
     logger.info("🔧 Copying selected interior PNGs...")
 
@@ -509,9 +499,8 @@ def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
             logger.warning(f"⚠️ Interior image not found using pattern: {pattern}")
 
     return approved_dir
+
 # Helper function to copy interior images to approved_images folder
-
-
 def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"🧲 get_images() started for workflow {workflow_number}")
 
@@ -740,8 +729,7 @@ def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]
 
     logger.info(f"✅ Total valid workflows detected: {len(workflow_files)}")
     return workflow_files
-
-    
+  
 @app.post("/approve")
 async def approve_for_printing(
     background_tasks: BackgroundTasks,
@@ -755,7 +743,6 @@ async def approve_for_printing(
         "status": "processing_started",
         "message": "Approval started. Backend is finalizing the book in background."
     }
-
 
 def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
@@ -986,6 +973,30 @@ def run_workflow_in_background(
         )
         raise HTTPException(status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
 
+@app.get("/get-country")
+def get_country(request: Request):
+    # First try Cloudflare header
+    cf_country = request.headers.get("CF-IPCountry")
+    if cf_country:
+        print(f"🌍 CF-IPCountry detected: {cf_country}")
+        return {"country_code": cf_country}
+
+    # Fallback to IP-based detection
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host)
+    client_ip = client_ip.split(",")[0].strip()
+    print(f"Client IP: {client_ip}")
+
+    try:
+        response = requests.get(f"https://ipinfo.io/{client_ip}/json?token={GEO}")
+        response.raise_for_status()
+        data = response.json()
+        country_code = data.get("country")
+        print(f"Geo detection result: {country_code}")
+    except Exception as e:
+        print(f"Geo detection failed: {e}")
+        country_code = ""
+
+    return {"country_code": country_code}
 
 @app.post("/execute-workflow")
 async def execute_workflow(

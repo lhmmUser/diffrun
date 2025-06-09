@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export default function FAQPage() {
-  return <main className='bg-white'>
+  return <main className='bg-gray-100'>
       <FAQClient items={faqData} />
     </main>
 }
