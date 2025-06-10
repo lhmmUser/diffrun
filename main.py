@@ -161,27 +161,6 @@ def create_checkout(payload: CheckoutRequest):
 
     return {"checkout_url": full_url}
 
-@app.post("/create_checkout")
-def create_checkout(payload: CheckoutRequest):
-    shopify_store_domain = os.getenv("SHOPIFY_STORE_DOMAIN")
-    if not shopify_store_domain:
-        return {"error": "SHOPIFY_STORE_DOMAIN is not set"}
-
-    shopify_cart_url = f"https://{shopify_store_domain}/cart/{payload.variant_id}:1"
-
-    attributes = {
-        "Book Name": payload.book_name,
-        "Request ID": payload.request_id
-    }
-
-    encoded_attributes = "&".join(
-        [f"attributes[{urllib.parse.quote(k)}]={urllib.parse.quote(v)}" for k, v in attributes.items()]
-    )
-    full_url = f"{shopify_cart_url}?{encoded_attributes}"
-
-    return {"checkout_url": full_url}
-
-
 @app.post("/webhooks/shopify")
 async def shopify_webhook(request: Request):
     try:
@@ -350,6 +329,7 @@ async def get_job_status(job_id: str):
                 "user_name": 1,
                 "name": 1,
                 "workflow_status": 1,
+                "locale": 1,
             }
         )
         if not user_details:
@@ -990,13 +970,33 @@ def get_country(request: Request):
         response = requests.get(f"https://ipinfo.io/{client_ip}/json?token={GEO}")
         response.raise_for_status()
         data = response.json()
-        country_code = data.get("country")
-        print(f"Geo detection result: {country_code}")
+        locale = data.get("country") 
+        print(f"Geo detection result: {locale}")
     except Exception as e:
         print(f"Geo detection failed: {e}")
-        country_code = ""  
+        locale = ""  
         
-    return {"country_code": country_code}
+    return {"locale": locale} 
+
+@app.post("/update-country")
+async def update_country(data: dict):
+    job_id = data.get("job_id")
+    locale = data.get("locale") 
+
+    job = user_details_collection.find_one({"job_id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.get("locale") or job["locale"] == "":
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"locale": locale}}
+        )
+        print(f"✅ Saved locale={locale} for job_id={job_id}")
+    else:
+        print(f"ℹ️ Locale already set ({job['locale']}), not updating.")
+
+    return {"status": "ok"}
 
 @app.post("/execute-workflow")
 async def execute_workflow(

@@ -106,6 +106,32 @@ const Form: React.FC = () => {
   const [imageToCrop, setImageToCrop] = useState<number | null>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+  useEffect(() => {
+    const fetchCountry = async () => {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+        const locale = data.country || "";
+
+        if (locale && redirectData?.jobId) {
+          await fetch(`${apiBaseUrl}/update-country`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              job_id: redirectData.jobId,
+              locale,  
+            }),
+          });
+          console.log("✅ Locale sent:", locale);
+        }
+      } catch (err) {
+        console.error("🌐 Failed to fetch locale:", err);
+      }
+    };
+
+    fetchCountry();
+  }, [redirectData]);
+
   const handleFileProcessing = async (file: File): Promise<{ file: File } | null> => {
     if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
       try {

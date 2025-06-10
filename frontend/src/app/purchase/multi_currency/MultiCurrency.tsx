@@ -14,41 +14,26 @@ const MultiCurrency = () => {
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [countryCode, setCountryCode] = useState("IN");
+  const [locale, setLocale] = useState("IN"); 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
-    const fetchCountry = async () => {
-      try {
-        const res = await fetch(`${apiBaseUrl}/get-country`);
-        if (!res.ok) throw new Error("Failed to fetch country");
-        const data = await res.json();
-        setCountryCode(data.country_code || "IN");
-        console.log("🌍 Detected country code:", data.country_code);
-      } catch (err) {
-        console.error("Geo detection failed:", err);
-        setCountryCode("IN");
-      }
-    };
-
-    fetchCountry();
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    const fetchPreviewUrl = async () => {
+    const fetchJobStatus = async () => {
       if (!jobId) return;
       try {
         const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-        if (!response.ok) throw new Error("Failed to fetch preview URL");
+        if (!response.ok) throw new Error("Failed to fetch job status");
 
         const data = await response.json();
         setPreviewUrl(data.preview_url || "");
+        setLocale(data.locale || "IN");
+        console.log("🌍 Using locale from DB:", data.locale);
       } catch (err: any) {
-        console.error("❌ Error fetching preview URL:", err.message);
+        console.error("❌ Error fetching job status:", err.message);
       }
     };
 
-    fetchPreviewUrl();
+    fetchJobStatus();
   }, [jobId, apiBaseUrl]);
 
   const handleSelectOption = async (option: "hardcover" | "paperback") => {
@@ -101,7 +86,7 @@ const MultiCurrency = () => {
   };
 
   return (
-    <div className="flex flex-col items-center bg-gray-100 min-h-screen py-8 px-4">
+    <div className="flex flex-col items-center bg-gray-100 min-h-screen py-8 md:py-10 px-4">
       <section className="w-full max-w-4xl mb-16">
         <div className="border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] overflow-hidden">
           <h1 className="text-2xl font-extrabold bg-black text-white py-4 px-6">
@@ -128,7 +113,7 @@ const MultiCurrency = () => {
                 Durable, premium binding with matte finish.
               </p>
               <span className="text-lg font-extrabold">
-                {getPriceByCountry(countryCode, 1950)}
+                {getPriceByCountry(locale, 1950)}
               </span>
             </div>
 
@@ -151,7 +136,7 @@ const MultiCurrency = () => {
                 Lightweight and portable softcover edition.
               </p>
               <span className="text-lg font-extrabold">
-                {getPriceByCountry(countryCode, 1450)}
+                {getPriceByCountry(locale, 1450)}
               </span>
             </div>
           </div>

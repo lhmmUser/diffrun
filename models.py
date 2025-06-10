@@ -17,7 +17,7 @@ class UserDetails(BaseModel):
     approved: bool = False
     order_id: Optional[str] = None
     workflow_status: str = "initiated"
-    preview_country: Optional[str] = None 
+    locale: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
