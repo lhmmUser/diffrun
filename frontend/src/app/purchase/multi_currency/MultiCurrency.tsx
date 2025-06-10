@@ -4,17 +4,17 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import FAQClient from "../../faq/faq-client";
 import { faqData } from "@/data/data";
-import { getPriceByCountry } from "@/data/countryCurrency";
+import { getFixedPriceByCountry } from "@/data/fixedPrices";
 
 const MultiCurrency = () => {
   const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<"hardcover" | "paperback" | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [locale, setLocale] = useState("IN");
 
   const jobId = searchParams.get("job_id") || "";
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
-  const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [locale, setLocale] = useState("IN"); 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
@@ -28,6 +28,8 @@ const MultiCurrency = () => {
         setPreviewUrl(data.preview_url || "");
         setLocale(data.locale || "IN");
         console.log("🌍 Using locale from DB:", data.locale);
+        setLocale(data.locale || "IN");
+        if (!data.locale) console.warn("⚠️ No locale in DB, defaulting to IN");
       } catch (err: any) {
         console.error("❌ Error fetching job status:", err.message);
       }
@@ -96,9 +98,8 @@ const MultiCurrency = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 p-6">
             <div
               onClick={() => handleSelectOption("hardcover")}
-              className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${
-                selectedOption === "hardcover" ? "bg-yellow-200" : "hover:bg-gray-100"
-              }`}
+              className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "hardcover" ? "bg-yellow-200" : "hover:bg-gray-100"
+                }`}
             >
               <div className="absolute top-2 right-2 bg-black text-white text-xs px-4 py-2">
                 {selectedOption === "hardcover" ? "Selected" : "Popular Choice"}
@@ -112,16 +113,18 @@ const MultiCurrency = () => {
               <p className="text-sm text-gray-700 mb-4">
                 Durable, premium binding with matte finish.
               </p>
-              <span className="text-lg font-extrabold">
-                {getPriceByCountry(locale, 1950)}
-              </span>
+              {(() => {
+                const { price } = getFixedPriceByCountry(locale, "hardcover");
+                return (
+                  <span className="text-lg font-extrabold block mb-1">{price}</span>
+                );
+              })()}
             </div>
 
             <div
               onClick={() => handleSelectOption("paperback")}
-              className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${
-                selectedOption === "paperback" ? "bg-yellow-200" : "hover:bg-gray-100"
-              }`}
+              className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "paperback" ? "bg-yellow-200" : "hover:bg-gray-100"
+                }`}
             >
               <div className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1">
                 {selectedOption === "paperback" ? "Selected" : ""}
@@ -135,21 +138,33 @@ const MultiCurrency = () => {
               <p className="text-sm text-gray-700 mb-4">
                 Lightweight and portable softcover edition.
               </p>
-              <span className="text-lg font-extrabold">
-                {getPriceByCountry(locale, 1450)}
-              </span>
+              {(() => {
+                const { price } = getFixedPriceByCountry(locale, "paperback");
+                return (
+                  <span className="text-lg font-extrabold block mb-1">{price}</span>
+                );
+              })()}
             </div>
           </div>
+          {(() => {
+            const { shipping } = getFixedPriceByCountry(locale, "hardcover");
+            return (
+              <div className="text-center mt-4">
+                <p className="text-sm md:text-lg font-semibold text-gray-800">
+                  Shipping: {shipping}
+                </p>
+              </div>
+            );
+          })()}
 
-          <div className="flex justify-center mt-10 px-6 py-8">
+          <div className="flex flex-col items-center mt-10 px-6 py-8 space-y-2">
             <button
               onClick={handleCheckout}
               disabled={!selectedOption}
-              className={`relative px-8 py-3 text-lg font-bold text-white bg-black border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,0.2)] transition-all duration-200 active:translate-y-1 active:shadow-none ${
-                !selectedOption
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-gray-800 hover:border-gray-800"
-              }`}
+              className={`relative px-8 py-3 text-lg font-bold text-white bg-blue-800 border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,0.2)] transition-all duration-200 active:translate-y-1 active:shadow-none ${!selectedOption
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-gray-800 hover:border-gray-800"
+                }`}
             >
               Proceed to Checkout
             </button>
@@ -160,10 +175,6 @@ const MultiCurrency = () => {
               You can still make edits within 12 hours after placing your order
             </p>
             <p className="text-sm mt-2">Printing and shipping may take up to 10 days</p>
-          </div>
-
-          <div className="text-center bg-indigo-500 text-white text-sm font-bold py-2">
-            Free Shipping All Across India
           </div>
         </div>
       </section>
