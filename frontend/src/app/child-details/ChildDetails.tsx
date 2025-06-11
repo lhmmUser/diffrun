@@ -277,7 +277,7 @@ const Form: React.FC = () => {
         if (remainingProgress <= 0 || remainingTime <= 0) {
           setLoadingProgress(100);
           router.push(
-            `/preview?job_id=${redirectPayload.jobId}&job_type=${redirectPayload.jobType}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approve=false&paid=false`
+            `/preview?job_id=${redirectPayload.jobId}&job_type=${redirectPayload.jobType}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
           );
           return;
         }

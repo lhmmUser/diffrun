@@ -1051,7 +1051,7 @@ const Preview: React.FC = () => {
       const newSearchParams = new URLSearchParams({
         job_id: jobId,
         paid: String(paid),
-        approved: "true",
+        approved: String(approved),
         selected: selectedParam,
         job_type: jobType,
         book_id: bookId,
@@ -1133,6 +1133,7 @@ const Preview: React.FC = () => {
 
       setRegeneratingWorkflow(prev => [...prev, workflowIndex]);
       regeneratingWorkflowRef.current = [...regeneratingWorkflowRef.current, workflowIndex];
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const response = await fetch(`${apiBaseUrl}/regenerate-workflow`, {
         method: 'POST',
@@ -1215,6 +1216,13 @@ const Preview: React.FC = () => {
     });
   }, []);
 
+  const formatName = (name: string) => 
+  name
+    .trim()
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
@@ -1226,13 +1234,14 @@ const Preview: React.FC = () => {
             className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900"
           >
             {approved ? (
-              `${name.charAt(0).toUpperCase() + name.slice(1)}'s Finalized Book`
+              `${formatName(name)}'s Finalized Book`
             ) : paid ? (
               `Finalize ${name.charAt(0).toUpperCase() + name.slice(1)}'s Book`
             ) : jobType === "comic" ? (
               "Your Comic Preview"
             ) : (
-              `${name.charAt(0).toUpperCase() + name.slice(1)}'s Book Preview`
+              `${formatName(name)}'s Preview Book`
+
             )}
           </motion.h1>
           <motion.p
@@ -1365,11 +1374,11 @@ const Preview: React.FC = () => {
                                   {regeneratingWorkflow.includes(workflowIndex) ? (
                                     <div className="flex flex-col items-center justify-center h-full w-full">
                                       <div className="flex space-x-1 mb-2">
-                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-gray-800 rounded-full animate-bounce"></span>
-                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-gray-800 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-gray-800 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-orange-400 rounded-full animate-bounce"></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
                                       </div>
-                                      <p className="text-sm sm:text-base font-semibold text-gray-800">Regenerating...</p>
+                                      <p className="text-sm sm:text-base font-semibold text-gray-500">Regenerating...</p>
                                     </div>
                                   ) : (
                                     <>

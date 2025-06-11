@@ -35,6 +35,7 @@ from config import SERVER_ADDRESS, INPUT_FOLDER, STORIES_FOLDER, OUTPUT_FOLDER, 
 from dotenv import load_dotenv
 from pathlib import Path
 import glob
+import time 
 
 load_dotenv(dotenv_path="./.env")
 
@@ -556,7 +557,22 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
             jpg_path = os.path.join(JPG_OUTPUT, jpg_filename)
 
             try:
+                # Step 1 → Save PNG to output/{job_id}/interior
+                local_interior_dir = os.path.join(OUTPUT_FOLDER, job_id, "interior")
+                os.makedirs(local_interior_dir, exist_ok=True)
+
+                # Use original filename → do NOT add timestamp
+                png_filename_clean = os.path.basename(image['filename'])
+                png_path = os.path.join(local_interior_dir, png_filename_clean)
+
+                # Save PNG
+                with open(png_path, "wb") as f:
+                    f.write(image_data)
+                logger.info(f"🖼️ Saved PNG to local interior: {png_path}")
+
+                # Step 2 → Convert PNG to JPG for frontend
                 convert_png_to_jpg(image_data, jpg_path, WATERMARK_PATH)
+                logger.info(f"🖼️ Saved JPG to JPG_OUTPUT: {jpg_path}")
             except Exception as e:
                 logger.error(f"❌ Conversion failed: {e}")
                 continue
@@ -599,6 +615,8 @@ async def store_user_details(
     book_id: str = Form(...),
     images: List[UploadFile] = File(...)
 ):
+    name = name.strip().lower().capitalize()
+
     logger.info("📥 Received user details: name=%s, gender=%s", name, gender)
     logger.debug("📦 Number of uploaded files: %d", len(images))
 
@@ -735,8 +753,7 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
         selected = json.loads(selectedSlides)
         logger.info(f"🧪 Selected slides: {selected}")
-        interior_selected = selected[1:]  # Skip cover page
-
+        interior_selected = selected[1:]
         source_dir = Path(OUTPUT_FOLDER) / job_id / "interior"
         approved_dir = Path(OUTPUT_FOLDER) / job_id / "approved_output" / "interior_approved"
         approved_dir.mkdir(parents=True, exist_ok=True)
@@ -892,10 +909,8 @@ def run_workflow_in_background(
         if isinstance(workflow_data, list):
             workflow_data = workflow_data[0] if workflow_data else {}
 
-
         allowed_values = workflow_data["4"].get("inputs", {}).get("instantid_file", [])
         logger.info(f"📋 Allowed instantid_file values: {allowed_values}")
-
 
         if "4" in workflow_data and "inputs" in workflow_data["4"]:
             instantid_file_path = os.getenv("IP_ADAPTER")
@@ -917,9 +932,7 @@ def run_workflow_in_background(
         # ✍️ Inject name into node 46
         if "46" in workflow_data and "inputs" in workflow_data["46"]:
             workflow_data["46"]["inputs"]["value"] = name
-            logger.info("📝 Injected name into node 46")
-
-        
+            logger.info("📝 Injected name into node 46")        
 
         # 🆔 Inject job_id into string node
         known_job_id = "e44054af-f0ce-4413-8b37-853e1cc680aa"
@@ -1010,7 +1023,7 @@ async def execute_workflow(
 ):
     logger.info("📩 Received request to execute workflow: job_id=%s", job_id)
 
-    name = name.capitalize()
+    name = name.strip().lower().capitalize()
     gender = gender.lower()
     job_type = job_type.lower()
     force_flag = force.lower() == "true"
