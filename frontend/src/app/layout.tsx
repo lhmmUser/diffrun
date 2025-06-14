@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Montserrat } from "next/font/google";
+import { Geist, Geist_Mono, Montserrat, Playfair_Display, David_Libre, Poppins } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/custom/Header";
 import Footer from "@/components/custom/Footer";
@@ -17,6 +17,27 @@ const geistMono = Geist_Mono({
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const PlayfairDisplay = Playfair_Display({
+  variable: "--font-play",
+  weight: ["500", "400"],
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const poppins = Poppins({
+  variable: "--font-play",
+  weight: ["500", "400"],
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const DavidLibre = David_Libre({
+  variable: "--font-libre",
+  weight: ["500", "400"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -161,10 +182,19 @@ export default function RootLayout({
           strategy="lazyOnload"
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} antialiased`}>
+      <body 
+      className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${DavidLibre.variable}  ${PlayfairDisplay.variable} ${montserrat.variable} antialiased`}
+      >
+        <p className="bg-[#9ac8eb] text-sm md:text-lg text-white flex items-center font-libre justify-center py-2 leading-tight">
+            <span>Delivered anywhere in India</span>
+            <img src="/india.png" alt="India" className="w-4 h-4 rounded-full mx-1" />
+            <span>in 7 days</span>
+          </p>
+          <div className="">
         <Header />
         {children}
         <Footer />
+          </div>
       </body>
     </html>
   );

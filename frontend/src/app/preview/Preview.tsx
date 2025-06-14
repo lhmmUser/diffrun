@@ -1225,7 +1225,7 @@ const Preview: React.FC = () => {
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-8" style={{ backgroundImage: "url('/background-grid.jpg')" }} >
         <header className="max-w-4xl mx-auto mb-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}

@@ -13,20 +13,20 @@ const Header = () => {
 
   const menuItems = [
     { label: "Home", href: "/" },
-    { label: "Books for Kids", href: "/books" },
+    { label: "Books", href: "/books" },
     { label: "FAQ", href: "/faq" },
     { label: "Team", href: "/team" }
   ];
 
   return (
     <>
-      <header className="w-full bg-gray-100 shadow-md border-b border-gray-300 z-20">
-        <div className="container mx-auto py-4 px-6 flex justify-between items-center">
+      <header className="w-full z-20">
+        <div className="mx-auto py-4 px-4 md:px-8 flex justify-between items-center">
           <Link href="/" className="flex justify-center items-center">
-            <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain" />
+            <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain ml-2 md:ml-10" />
           </Link>
 
-          <nav className="hidden md:flex gap-8 text-lg font-semibold font-montserrat">
+          <nav className="hidden md:flex gap-8 text-lg font-poppins">
             {menuItems.map((item, index) => (
               <Link
                 key={index}
@@ -84,7 +84,7 @@ const Header = () => {
               <Link
                 href={item.href}
                 onClick={toggleSidebar}
-                className="w-full text-lg font-semibold font-montserrat text-center text-gray-700 hover:text-indigo-500 transition-colors duration-300 py-3 rounded-lg hover:bg-gray-100"
+                className="w-full text-lg font-poppins text-center text-gray-700 hover:text-indigo-500 transition-colors duration-300 py-3 rounded-lg hover:bg-gray-100"
               >
                 {item.label}
               </Link>

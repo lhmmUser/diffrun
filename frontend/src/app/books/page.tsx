@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function Books() {
   return (
-    <main className="w-full min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <main className="w-full min-h-screen bg-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-12 sm:mb-16">
         <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-800">
           Start crafting your one-of-a-kind story ✨

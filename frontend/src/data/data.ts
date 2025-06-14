@@ -1,6 +1,5 @@
 interface CardProps {
   imageSrc: string;
-  shortImg: string;
   title: string;
   bookKey: string;
   age: string;
@@ -10,8 +9,7 @@ interface CardProps {
 
 export const Cards: CardProps[] = [
   {
-    imageSrc: "/abcd-book.jpg",
-    shortImg: "/short-aayat.png",
+    imageSrc: "/abcd-book.avif",
     title: "Max meets ABC",
     bookKey: "abcd",
     age: "2 - 4",
@@ -20,8 +18,7 @@ export const Cards: CardProps[] = [
     link: "https://diffrunassets.s3.ap-south-1.amazonaws.com/ABCD_Book.pdf"
   },
   {
-    imageSrc: "/astronaut-book.jpg",
-    shortImg: "/short-kush.png",
+    imageSrc: "/astronaut-book.avif",
     title: "Zoey's Space Adventure",
     bookKey: "astro",
     age: "4 - 10",
@@ -30,8 +27,7 @@ export const Cards: CardProps[] = [
     link: "https://diffrunassets.s3.ap-south-1.amazonaws.com/astronaut_book.pdf"
   },
   {
-    imageSrc: "/wigu-book.png",
-    shortImg: "/short-aayat.png",
+    imageSrc: "/wigu-book.avif",
     title: "When Sara Grow Up",
     bookKey: "wigu",
     age: "3 - 7",
@@ -77,3 +73,21 @@ export const faqData = [
     "answer": "Currently, our system allows you to create and order one book per transaction. If you'd like to order more than one, kindly place separate orders for each book."
   }
 ]
+
+export const bookDetails: Record<string, { title: string; description: string }> = {
+  astro: {
+    title: "Zoey's Space Adventure",
+    description:
+      "Join Zoey on an unforgettable journey through the stars! A beautifully illustrated, personalized story that celebrates your child’s imagination and wonder.",
+  },
+  wigu: {
+    title: "When Sara Grow Up",
+    description:
+      "Let your child explore exciting careers and dream big! This storybook brings future possibilities to life in a fun and inspiring way.",
+  },
+  abcd: {
+    title: "Max meets ABC",
+    description:
+      "From A to Z, every letter celebrates your child's unique qualities. A colorful and heartfelt story to treasure forever.",
+  },
+};

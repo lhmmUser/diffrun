@@ -45,7 +45,7 @@ const headerVariants = {
 
 export default function TeamComponent() {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-8 sm:py-12 lg:py-16">
         <motion.div initial="hidden" animate="visible" variants={headerVariants} className="text-center mb-16">
           <motion.div

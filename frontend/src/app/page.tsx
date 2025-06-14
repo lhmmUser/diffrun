@@ -7,7 +7,7 @@ import { faqData } from '@/data/data'
 
 export default function Home() {
   return (
-    <main className="w-full min-h-screen relative overflow-hidden">
+    <main className="w-full min-h-screen relative overflow-hidden sm:px-0 md:px-20 lg:px-40 xl:px-60">
       {/* <AnimatedBackground /> */}
       <div className="relative w-full hidden md:block">
         <img
@@ -17,18 +17,13 @@ export default function Home() {
           loading="lazy"
         />
         <div className="absolute top-0 w-full flex flex-col items-center text-center md:mt-5 lg:mt-10 px-4 md:px-8 lg:px-12">
-          <h1 className="text-2xl md:text-3xl lg:text-6xl font-serif font-bold text-white drop-shadow-md leading-tight">
+          <h1 className="sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-libre font-bold text-white drop-shadow-md leading-tight">
             Turn photos into storybooks, instantly!
           </h1>
-          <p className="text-xl md:text-2xl text-white max-w-4xl drop-shadow-md flex items-center justify-center">
-            <span>Delivered anywhere in India</span>
-            <img src="/india.png" alt="India" className="w-6 h-6 rounded-full mx-2 inline-block" />
-            <span>in 7 days</span>
-          </p>
           <div className="flex justify-center items-center w-full py-4">
             <Link href="/books">
               <button
-                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-3 px-10 font-medium border border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 rounded-lg text-xl"
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-3 px-10 font-medium border border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 rounded-lg sm:text-sm"
                 aria-label="Shop Now"
               >
                 Generate free preview
@@ -46,14 +41,9 @@ export default function Home() {
           loading="lazy"
         />
         <div className="absolute top-0 w-full flex flex-col items-center text-center mt-2 px-2">
-          <h1 className="text-lg font-serif font-bold text-white drop-shadow-md leading-tight">
+          <h1 className="text-lg xs:text-xl sm:text-3xl font-libre text-white drop-shadow-md leading-tight">
             Turn photos into storybooks, instantly!
           </h1>
-          <p className="mt-2 text-sm text-white drop-shadow-md flex items-center justify-center">
-            <span>Delivered anywhere in India</span>
-            <img src="/india.png" alt="India" className="w-4 h-4 rounded-full mx-1" />
-            <span>in 7 days</span>
-          </p>
           <div className="w-full flex justify-center py-3">
             <Link href="/books">
               <button
@@ -71,55 +61,41 @@ export default function Home() {
         <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
       </div>
 
-      <div className="flex flex-col items-center px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-        <div className="text-center mb-0 sm:mb-16">
+      <div className="flex flex-col items-center px-4 sm:px-6 lg:px-8 pt-4 pb-12">
+        <div className="text-center">
           <p className="text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium">
             Choose your story and start personalizing ✨
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-16 lg:gap-20 w-full max-w-7xl p-4 md:p-12 [grid-auto-rows:1fr]">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full max-w-7xl p-2 md:p-4">
           {Cards.map((card, index) => (
             <div
               key={index}
-              className="flex flex-col h-full bg-white border border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(0,0,0,1)]"
+              className="flex flex-col h-full transition-transform duration-300 overflow-hidden"
             >
-              <div className="relative h-auto w-full">
+              <div className="relative w-full pt-[100%] sm:pt-[90%] md:pt-[80%] lg:pt-[75%]">
                 <img
                   src={card.imageSrc}
                   alt={card.title}
-                  className="object-contain w-full h-full"
+                  className="absolute inset-0 object-cover w-full h-full"
                 />
               </div>
 
-              <div className="p-4 sm:p-6 space-y-4 flex-1">
-
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+              <div className="flex flex-col flex-1 mt-2 space-y-4">
+                <h3 className="text-lg sm:text-xl font-semibold font-libre text-gray-800">
                   {card.title}
                   <br />
-                  <span className="text-sm font-medium md:text-lg text-gray-800">Age: {card.age} years</span>
+                  <span className="text-sm font-medium md:text-base text-gray-700">Age: {card.age} years</span>
                 </h3>
 
-                <div className="flex flex-col gap-4 mt-4">
-                  <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`} className="flex-1">
-                    <button
-                      className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    >
-                      Personalize this book
+                <div className="mt-auto">
+                  <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`} className="block">
+                    <button className="w-full bg-[#5784ba] text-gray-100 py-2.5 px-5 font-medium shadow-sm font-play transition-all duration-300 hover:bg-black hover:text-white focus:outline-none">
+                      Personalize
                     </button>
                   </Link>
-
-                  {/* {card.link && (
-                    <Link href={card.link} className="flex-1" target="_blank" rel="noopener noreferrer">
-                      <button
-                        className="w-full bg-white text-gray-900 py-2 px-4 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
-                      >
-                        View Sample
-                      </button>
-                    </Link>
-                  )} */}
                 </div>
-
               </div>
             </div>
           ))}

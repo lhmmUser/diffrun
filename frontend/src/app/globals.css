@@ -4,6 +4,9 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-montserrat: var(--font-montserrat);
+  --font-play: var(--font-play);
+  --font-libre: var(--font-libre);
+  --font-poppins: var(--font-poppins);
 }
 
 :root {
@@ -17,7 +20,38 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Gradient Animation */
+.bg-soft-gray {
+  background-color: #dbdbdb;
+}
+
+.bg-pastel-blue {
+  background-color: #9ed6f7;
+}
+
+.bg-pastel-purple {
+  background-color: #c893f3;
+}
+
+.text-pastel-purple {
+  color: #e8d8f5;
+}
+
+.text-gray-800 {
+  color: #2d3748;
+}
+
+.text-gray-600 {
+  color: #718096;
+}
+
+.bg-pastel-pink{
+  color: #fac6fa;
+}
+
+.shadow-sm {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
 @keyframes gradientAnimation {
   0% {
     background-position: 0% 50%;
@@ -35,7 +69,6 @@ body {
   animation: gradientAnimation 5s ease infinite;
 }
 
-/* Shake Animation */
 @keyframes shake {
   0%, 100% {
     transform: translateX(0);
@@ -51,7 +84,6 @@ body {
   }
 }
 
-/* Neutral bullet */
 .swiper-pagination-bullet {
   width: 12px;
   height: 12px;
@@ -65,7 +97,6 @@ body {
   opacity: 1;
 }
 
-/* Active bullet → lock icon */
 .swiper-pagination-bullet-active {
   background: #fff !important;
   border: 2px solid #000;
@@ -74,21 +105,10 @@ body {
   font-size: 10px;
 }
 
-/* Lock icon emoji or text centered */
-.swiper-pagination-bullet-active::before {
-  content: "🔒";
-  font-size: 12px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
 .animate-shake {
   animation: shake 0.5s ease-in-out;
 }
 
-/* Fade-In Animation */
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -102,19 +122,6 @@ body {
   animation: fadeIn 1s ease-in-out;
 }
 
-/* Aspect Ratio Classes */
-.aspect-square {
-  aspect-ratio: 1 / 1; 
-}
-
-.aspect-video {
-  aspect-ratio: 16 / 9; 
-}
-
-.aspect-portrait {
-  aspect-ratio: 3 / 4; 
-}
-
 @media (max-width: 640px) {
   .aspect-square,
   .aspect-video,
@@ -123,21 +130,17 @@ body {
   }
 }
 
-/* Custom pagination bullet styles */
-.swiper-pagination-bullet-custom {
-  width: 0.75rem; /* 12px */
-  height: 0.75rem; /* 12px */
-  background-color: #454545;
-  border-radius: 9999px; /* Fully rounded */
-  margin: 0 0.25rem; /* 4px spacing */
-  opacity: 1; /* Ensure bullets are visible */
-  transition: background-color 0.3s ease; /* Smooth transition */
+.swiper-pagination-bullet {
+  width: 16px !important;
+  height: 16px !important;
+  background-color: black;
+  opacity: 1;
 }
 
-.swiper-pagination-bullet-active-custom {
-  background-color: #FF6B6B; /* Active bullet color */
+.swiper-pagination-bullet-active {
+  background-color: #f0fa6b !important; 
 }
-/* Add to your global CSS */
+
 .swiper-slide {
   transition: opacity 0.6s ease-in-out;
 }
@@ -176,8 +179,14 @@ body {
 }
 
 .swiper-pagination {
-  margin-top: 1rem;
-  z-index: 0;
+  position: absolute !important;
+  bottom: 10px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: auto !important;
 }
 
 .animate-fade-in {
@@ -190,13 +199,4 @@ body {
 
 .shadow-brutalist {
   box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.3);
-}
-
-.swiper-pagination-bullet {
-  background: #555;
-  opacity: 0.6;
-}
-.swiper-pagination-bullet-active {
-  background: #000;
-  opacity: 1;
 }

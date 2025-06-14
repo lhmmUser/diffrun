@@ -10,6 +10,13 @@ import { containerVariants, headingVariants, subHeadingVariants, loadingContaine
 import { FaExpandAlt, FaCropAlt, FaTrash } from "react-icons/fa";
 import CropModal from "@/components/custom/CropModal";
 import { v4 as uuidv4 } from "uuid";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
+import "swiper/css/pagination";
+import "swiper/css/navigation";
+import { Autoplay, Pagination } from "swiper/modules";
+import { FiUser, FiEye, FiTruck, FiImage } from 'react-icons/fi';
+import { bookDetails } from "@/data/data";
 
 interface ImageFile {
   file: File;
@@ -64,7 +71,7 @@ const TypingCycle: React.FC = () => {
   }, [typingDone]);
 
   return (
-    <p className="text-left text-base sm:text-lg text-[#454545] italic w-full">
+    <p className="text-left text-base sm:text-lg font-poppins-200 text-[#454545] italic w-full">
       {displayedText}
       <span className="animate-pulse">|</span>
     </p>
@@ -119,7 +126,7 @@ const Form: React.FC = () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               job_id: redirectData.jobId,
-              locale,  
+              locale,
             }),
           });
           console.log("✅ Locale sent:", locale);
@@ -305,177 +312,285 @@ const Form: React.FC = () => {
   useEffect(() => {
     if (loadingProgress === 100 && redirectData) {
       router.push(
-        `/preview?job_id=${redirectData.jobId}&job_type=${redirectData.jobType}&name=${encodeURIComponent(redirectData.name)}&gender=${redirectData.gender}&book_id=${redirectData.bookId}&approve=false&paid=false`
+        `/preview?job_id=${redirectData.jobId}&job_type=${redirectData.jobType}&name=${encodeURIComponent(redirectData.name)}&gender=${redirectData.gender}&book_id=${redirectData.bookId}&approved=false&paid=false`
       );
     }
   }, [loadingProgress, redirectData, router]);
 
+  const formatName = (name: string) =>
+    name
+      .trim()
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
   const openCropModal = (index: number) => setImageToCrop(index);
 
+  const { title, description } = bookDetails[bookId] || bookDetails["astro"];
+
   return (
-    <main className="w-full min-h-screen flex flex-col items-center bg-white py-12 px-4 sm:px-8">
+    <main
+      className="w-full min-h-screen flex flex-col items-center bg-white"
+    // style={{ backgroundImage: "url('/background-grid.jpg')" }} 
+    >
       {showContent ? (
         <>
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-black leading-tight">
-              Let's start personalizing
-            </h2>
-          </div>
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white p-8 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,0.8)] max-w-lg w-full space-y-8 border-2 border-black"
-          >
-            <div className="space-y-2">
-              <label htmlFor="name" className="block text-lg font-semibold text-black">
-                Child's First Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                disabled={loading}
-                className="block w-full px-4 py-3 text-lg border-2 border-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black bg-gray-100 rounded-sm placeholder-gray-500"
-                placeholder="Enter child's first name"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-lg font-semibold text-black">Select Gender</label>
-              <select
-                id="gender"
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                required
-                disabled={loading}
-                className="block w-full px-4 py-3 text-lg border-2 border-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black bg-gray-100 rounded-sm appearance-none"
-              >
-                <option value="">Select</option>
-                <option value="boy">Boy</option>
-                <option value="girl">Girl</option>
-              </select>
-            </div>
-            <div className="space-y-4">
-              <label className="block text-lg font-semibold text-black">Upload Images of Your Child</label>
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed border-black p-6 rounded-lg text-center bg-gray-50 hover:bg-gray-100 cursor-pointer ${imageToCrop !== null ? 'pointer-events-none opacity-50' : ''
-                  }`}
-              >
-                <input {...getInputProps()} disabled={imageToCrop !== null} />
-                <p className="text-black font-medium">
-                  Drag & drop up to 3 images or <span className="underline">browse files</span>
-                </p>
-                {imageToCrop !== null && (
-                  <CropModal
-                    image={images[imageToCrop].file}
-                    index={imageToCrop}
-                    total={images.length}
-                    existingImageCount={0}
-                    onClose={() => setImageToCrop(null)}
-                    onNext={() => { }}
-                    onFinalize={() => { }}
-                    onCropComplete={(blob, _) => {
-                      const file = new File([blob], `cropped_${uuidv4()}.jpg`, { type: "image/jpeg" });
-                      const preview = URL.createObjectURL(file);
-                      const updated = [...images];
-                      updated[imageToCrop] = { file, preview };
-                      setImages(updated);
-                      setImageToCrop(null);
-                    }}
-                  />
-                )}
-              </div>
-              {images.length > 0 && (
-                <div className="grid grid-cols-3 gap-3">
-                  {images.map((img, index) => (
-                    <div key={index} className="relative border-2 border-black rounded-lg shadow-md">
+          <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto justify-between items-start px-4 lg:px-0 py-8">
+
+            <div className="w-full lg:w-[50%]">
+              <div className="max-w-md mx-auto w-full md:max-w-3xl">
+                <h2 className="block lg:hidden text-center mr-20 text-gray-700 text-2xl md:text-3xl font-libre font-semibold mb-4">
+                  {title}
+                </h2>
+                <Swiper
+                  modules={[Autoplay, Pagination]}
+                  spaceBetween={20}
+                  slidesPerView={1}
+                  loop={true}
+                  autoplay={{ delay: 5000, disableOnInteraction: false }}
+                  pagination={{
+                    clickable: true,
+                    renderBullet: (index, className) => {
+                      return `
+                      <span 
+                        class="${className}" 
+                        style="
+                          display:inline-block;
+                          width:clamp(12px, 4vw, 24px);
+                          height:clamp(12px, 4vw, 24px);
+                          background:url('/circle.png') no-repeat center center / contain;
+                          margin:0 6px;
+                        ">
+                      </span>
+                    `;
+                    },
+                  }}
+                  className="w-full h-auto mx-auto relative"
+                >
+                  {[1, 2].map((num) => (
+                    <SwiperSlide key={num}>
                       <img
-                        src={img.preview}
-                        alt={`preview-${index}`}
-                        className="w-full h-24 object-contain rounded-lg mt-6"
+                        src={`/${bookId}-book-${num}.avif`}
+                        alt={`Book ${num}`}
+                        className="w-full h-auto object-contain mx-auto aspect-square max-w-sm lg:max-w-md"
                       />
-
-                      <div className="absolute top-1 left-1 right-1 flex justify-between px-1">
-                        <button
-                          onClick={() => openCropModal(index)}
-                          className="bg-gray-800 text-white text-xs p-2 rounded-full shadow hover:bg-gray-800"
-                          aria-label="Crop Image"
-                        >
-                          <FaCropAlt className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setImages(images.filter((_, i) => i !== index))}
-                          className="bg-red-600 text-white text-xs px-3 py-1 rounded-full shadow hover:bg-red-700"
-                          aria-label="Remove Image"
-                        >
-                          <FaTrash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+                    </SwiperSlide>
                   ))}
+                </Swiper>
+                <div className="flex lg:justify-start justify-center mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
+
+                  <ul className="text-left text-sm text-gray-700 md:text-base font-poppins">
+                    <li className="flex items-center space-x-2">
+                      <FiUser aria-hidden="true" />
+                      <span>Perfect for children aged 0 to 6</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <FiEye aria-hidden="true" />
+                      <span>Enjoy a full preview of the story before purchase</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <FiTruck aria-hidden="true" />
+                      <span>Printed and shipped within 2–4 business days</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <FiImage aria-hidden="true" />
+                      <span>Personalize with your child’s special photo</span>
+                    </li>
+                  </ul>
                 </div>
-              )}
-            </div>
-
-            <div className="relative w-full">
-              <img
-                src="/instructions.jpg"
-                alt="Instructions"
-                className="border-2 p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,0.8)] w-full"
-              />
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="absolute top-2 right-2 text-white bg-black p-2 rounded-full hover:bg-gray-800"
-                aria-label="Expand instructions"
-              >
-                <FaExpandAlt />
-              </button>
-            </div>
-
-            <div className="flex items-start gap-2 text-gray-800 font-bold">
-              <input
-                type="checkbox"
-                id="confirmation"
-                checked={isConfirmed}
-                onChange={(e) => setIsConfirmed(e.target.checked)}
-                disabled={loading}
-                className="mt-1 h-5 w-5 text-indigo-600 border-2 border-black rounded"
-              />
-              <label htmlFor="confirmation" className="text-sm leading-5">
-                I confirm that I am at least 18 years old and have obtained consent from the child's parent or guardian to share this information for the purpose of creating a personalized storybook, in accordance with the <Link className="underline" href="/privacy-policy">Privacy Policy</Link>.
-              </label>
-            </div>
-            <button
-              type="submit"
-              disabled={
-                !name || !gender || images.length < 1 || images.length > 3 || loading || !isConfirmed
-              }
-              title={
-                !name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
-                  ? "Fill all details and confirm consent to continue"
-                  : ""
-              }
-              className={`w-full py-3 text-lg font-bold border-2 border-black rounded-sm shadow-[4px_4px_0px_rgba(0,0,0,0.8)] transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-indigo-500 text-white hover:bg-indigo-600"
-                }`}
-            >
-              {loading ? "Processing..." : "Preview your book"}
-            </button>
-
-            <p className="text-gray-800 text-center font-bold flex items-center justify-center gap-2">
-              <span>We follow strict data privacy standards</span>
-              <FcPrivacy className="text-xl" />
-            </p>
-
-            {error && (
-              <div className="bg-red-50 text-red-600 border-2 border-black p-4 rounded-lg mt-4 shadow-[4px_4px_0px_rgba(0,0,0,0.8)]">
-                {error}
               </div>
-            )}
-          </form>
+            </div>
+
+            <div className="w-full lg:w-[50%]">
+              <form
+                onSubmit={handleSubmit}
+                className="max-w-md mx-auto w-full space-y-4"
+              >
+                <h2 className="hidden lg:block text-left text-gray-700 text-2xl md:text-3xl font-libre font-semibold">
+                  {title}
+                </h2>
+
+                <p className="text-left text-gray-700 text-base mb-4 font-poppins leading-tight">
+                  {description}
+                </p>
+
+                <h2 className="text-left text-gray-700 text-lg md:text-xl font-libre font-semibold">
+                  Personalize your Child's Book
+                </h2>
+
+                <div className="flex gap-12 mt-4">
+
+                  <div className="">
+                    <input
+                      type="text"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      disabled={loading}
+                      className="block w-full px-4 md:py-1 text-lg bg-white border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-pastel-purple shadow-sm placeholder-gray-400"
+                      placeholder="Child's First Name"
+                    />
+                  </div>
+
+                  <div className="">
+                    <div className="flex space-x-6">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="boy"
+                          checked={gender === "boy"}
+                          onChange={() => setGender("boy")}
+                          disabled={loading}
+                          className="h-5 w-5 accent-pastel-purple"
+                        />
+                        <span className="text-gray-700 text-lg">Boy</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="girl"
+                          checked={gender === "girl"}
+                          onChange={() => setGender("girl")}
+                          disabled={loading}
+                          className="h-5 w-5 accent-pastel-purple"
+                        />
+                        <span className="text-gray-700 text-lg">Girl</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div
+                    {...getRootProps()}
+                    className={`py-3 text-center bg-indigo-800 text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
+                      }`}
+                  >
+                    <input {...getInputProps()} disabled={imageToCrop !== null} />
+                    <button className="">
+                      <span className="text-left font-medium ml-4">
+                        Upload Images of Your Child
+                      </span>
+                    </button>
+                    {imageToCrop !== null && (
+                      <CropModal
+                        image={images[imageToCrop].file}
+                        index={imageToCrop}
+                        total={images.length}
+                        existingImageCount={0}
+                        onClose={() => setImageToCrop(null)}
+                        onNext={() => { }}
+                        onFinalize={() => { }}
+                        onCropComplete={(blob, _) => {
+                          const file = new File([blob], `cropped_${uuidv4()}.jpg`, { type: "image/jpeg" });
+                          const preview = URL.createObjectURL(file);
+                          const updated = [...images];
+                          updated[imageToCrop] = { file, preview };
+                          setImages(updated);
+                          setImageToCrop(null);
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {images.length > 0 && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {images.map((img, index) => (
+                        <div key={index} className="relative bg-white border border-gray-200 rounded-sm shadow-sm">
+                          <img
+                            src={img.preview}
+                            alt={`preview-${index}`}
+                            className="w-full h-24 object-contain rounded-t-sm"
+                          />
+
+                          <div className="absolute top-1 left-1 right-1 flex justify-between px-1">
+                            <button
+                              onClick={() => openCropModal(index)}
+                              className="bg-pastel-purple text-white text-xs p-1 rounded-full shadow"
+                              aria-label="Crop Image"
+                            >
+                              <FaCropAlt className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setImages(images.filter((_, i) => i !== index))}
+                              className="bg-pastel-pink text-white text-xs p-1 rounded-full shadow"
+                              aria-label="Remove Image"
+                            >
+                              <FaTrash className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative inline-block">
+                  <img
+                    src="/instructions.jpg"
+                    alt="Instructions"
+                    className="w-auto h-60 border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(true)}
+                    className="absolute top-1 right-1 text-white bg-pink-300 p-1 rounded-full hover:bg-pink-400 cursor-pointer"
+                    aria-label="Expand instructions"
+                  >
+                    <FaExpandAlt />
+                  </button>
+                </div>
+
+                <div className="flex items-start gap-2 text-gray-700 font-poppins">
+                  <input
+                    type="checkbox"
+                    id="confirmation"
+                    checked={isConfirmed}
+                    onChange={(e) => setIsConfirmed(e.target.checked)}
+                    disabled={loading}
+                    className="mt-1 h-5 w-5 accent-pastel-purple"
+                  />
+                  <label htmlFor="confirmation" className="text-sm leading-5">
+                    I confirm that I am at least 18 years old and have obtained consent from the child's parent or guardian to share this information for the purpose of creating a personalized storybook, in accordance with the{" "}
+                    <Link className="underline" href="/privacy-policy">
+                      Privacy Policy
+                    </Link>.
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!name || !gender || images.length < 1 || images.length > 3 || loading || !isConfirmed}
+                  title={
+                    !name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
+                      ? "Fill all details and confirm consent to continue"
+                      : ""
+                  }
+                  className={`w-full py-3 text-lg font-bold rounded-sm shadow-sm transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-purple-400 text-white hover:bg-purple-300"
+                    }`}
+                >
+                  {loading ? "Processing..." : "Preview your book"}
+                </button>
+
+                <p className="text-zinc-700 text-center font-poppins flex items-center justify-center gap-2">
+                  <span>We follow strict data privacy standards</span>
+                  <FcPrivacy className="text-lg" />
+                </p>
+
+                {error && (
+                  <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-sm mt-4 shadow-sm">
+                    {error}
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
         </>
       ) : (
         <motion.div
@@ -485,14 +600,14 @@ const Form: React.FC = () => {
           animate="visible"
         >
           <motion.h1
-            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900"
+            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 font-montserrat"
             variants={headingVariants}
           >
-            {name.charAt(0).toUpperCase() + name.slice(1)}'s Book Preview
+            {formatName(name)}'s Book Preview
           </motion.h1>
 
           <motion.p
-            className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2"
+            className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2 font-poppins-200"
             variants={subHeadingVariants}
           >
             Creating storybook magic...
@@ -503,7 +618,7 @@ const Form: React.FC = () => {
             variants={loadingContainerVariants}
           >
             <LoadingBar progress={loadingProgress} />
-            <p className="text-sm text-black font-bold tracking-wide">
+            <p className="text-sm text-black tracking-wide font-poppins-200">
               Progress: {loadingProgress}%
             </p>
           </motion.div>
