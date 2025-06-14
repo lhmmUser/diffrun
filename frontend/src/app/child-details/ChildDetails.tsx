@@ -418,8 +418,7 @@ const Form: React.FC = () => {
                   Personalize your Child's Book
                 </h2>
 
-                <div className="flex gap-12 mt-4">
-
+                <div className="flex flex-col md:flex-row gap-4 md:gap-12 mt-4">
                   <div className="">
                     <input
                       type="text"
