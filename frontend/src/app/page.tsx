@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import AnimatedBackground from "@/components/animated/Particles";
 import { Cards } from "@/data/data";
 import FAQClient from "./faq/faq-client";
 import { faqData } from '@/data/data'
@@ -8,14 +7,21 @@ import { faqData } from '@/data/data'
 export default function Home() {
   return (
     <main className="w-full min-h-screen relative overflow-hidden sm:px-0 md:px-20 lg:px-40 xl:px-60">
-      {/* <AnimatedBackground /> */}
       <div className="relative w-full hidden md:block">
         <img
-          src="/web-banner_.jpg"
+          src="/web-banner-640.jpg"
+          srcSet="
+    /web-banner-640.jpg 640w,
+    /web-banner-1280.jpg 1280w,
+    /web-banner-1920.jpg 1920w
+  "
+          sizes="100vw"
+          width="1920"
+          height="833"
           alt="Large Banner Image"
           className="w-full object-cover"
-          loading="lazy"
         />
+
         <div className="absolute top-0 w-full flex flex-col items-center text-center md:mt-5 lg:mt-10 px-4 md:px-8 lg:px-12">
           <h1 className="sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-libre font-bold text-white drop-shadow-md leading-tight">
             Turn photos into storybooks, instantly!
@@ -35,17 +41,22 @@ export default function Home() {
 
       <div className="relative w-full block md:hidden">
         <img
-          src="/banner_mobile1.jpg"
+          src="/banner_mobile1-640.jpg"
+          srcSet="
+            /banner_mobile1-320.jpg 320w,
+            /banner_mobile1-640.jpg 640w,
+            /banner_mobile1-960.jpg 960w
+          "
+          sizes="(max-width: 480px) 320px, (max-width: 768px) 640px, 960px"
           alt="Small Banner Image"
           className="w-full object-cover"
-          loading="lazy"
         />
         <div className="absolute top-0 w-full flex flex-col items-center text-center mt-2 px-2">
           <h1 className="text-lg xs:text-xl sm:text-3xl font-libre text-white drop-shadow-md leading-tight">
             Turn photos into storybooks, instantly!
           </h1>
           <div className="w-full flex justify-center py-3">
-            <Link href="/books">
+            <Link href="/books" aria-label="Go to Books page">
               <button
                 className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2 px-6 font-medium border border-gray-900 shadow-[2px_2px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[3px_3px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 rounded text-sm"
                 aria-label="Shop Now"
@@ -90,8 +101,8 @@ export default function Home() {
                 </h3>
 
                 <div className="mt-auto">
-                  <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`} className="block">
-                    <button className="w-full bg-[#5784ba] text-gray-100 py-2.5 px-5 font-medium shadow-sm font-play transition-all duration-300 hover:bg-black hover:text-white focus:outline-none">
+                  <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`} className="block" aria-label={`Personalize ${card.title} story for ages ${card.age}`}>
+                    <button className="w-full bg-[#5784ba] text-gray-100 py-2.5 px-5 font-medium shadow-sm font-play transition-all duration-300 hover:bg-black hover:text-white focus:outline-none" aria-label={`Personalize the ${card.title} book`}>
                       Personalize
                     </button>
                   </Link>

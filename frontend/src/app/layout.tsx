@@ -62,8 +62,8 @@ export const metadata: Metadata = {
     "custom children's literature",
     "magical adventure books",
   ],
-  authors: [{ name: "Kush", url: "https://diffrun.com" }],
-  creator: "Kush Sharma",
+  authors: [{ name: "Husain Jafar", url: "https://diffrun.com" }],
+  creator: "Husain Jafar",
   publisher: "Lighthouse Generic",
   metadataBase: new URL("https://diffrun.com"),
   alternates: {
@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/web-banner.jpg",
+        url: "/diffrun.png",
         width: 1200,
         height: 630,
         alt: "Diffrun - Create personalized storybooks for children",
@@ -93,7 +93,7 @@ export const metadata: Metadata = {
       "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
     site: "@diffrun",
     creator: "@diffrun",
-    images: ["/web-banner.jpg"],
+    images: ["/diffrun.png"],
   },
   robots: {
     index: true,
@@ -122,7 +122,6 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-H85K60DDFD"
           strategy="afterInteractive"
@@ -177,25 +176,24 @@ export default function RootLayout({
             }
           })}
         </Script>
-        <Script
-          src="https://static.elfsight.com/platform/platform.js"
-          strategy="lazyOnload"
-        />
+        
       </head>
-      <body 
-      className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${DavidLibre.variable}  ${PlayfairDisplay.variable} ${montserrat.variable} antialiased`}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${DavidLibre.variable}  ${PlayfairDisplay.variable} ${montserrat.variable} antialiased`}
       >
-        <p className="bg-[#9ac8eb] text-sm md:text-lg text-white flex items-center font-libre justify-center py-2 leading-tight">
-            <span>Delivered anywhere in India</span>
-            <img src="/india.png" alt="India" className="w-4 h-4 rounded-full mx-1" />
-            <span>in 7 days</span>
-          </p>
-          <div className="">
+        <p className="bg-[#1a5fb4] text-base md:text-lg text-white flex items-center font-libre font-medium justify-center py-2 leading-tight">
+          <span>Delivered anywhere in India</span>
+          <img src="/india.png" alt="India" className="w-4 h-4 rounded-full mx-1" />
+          <span>in 7 days</span>
+        </p>
         <Header />
         {children}
         <Footer />
-          </div>
       </body>
+      <Script
+          src="https://static.elfsight.com/platform/platform.js"
+          strategy="lazyOnload"
+        />
     </html>
   );
 }

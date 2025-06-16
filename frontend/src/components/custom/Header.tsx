@@ -22,11 +22,11 @@ const Header = () => {
     <>
       <header className="w-full z-20">
         <div className="mx-auto py-4 px-4 md:px-8 flex justify-between items-center">
-          <Link href="/" className="flex justify-center items-center">
-            <img src="/gradient.png" alt="logo" className="w-40 h-auto object-contain ml-2 md:ml-10" />
+          <Link href="/" className="flex justify-center items-center" aria-label="Go to Diffrun homepage">
+            <img src="/gradient.png" alt="logo" width="160" height="40" className="w-40 h-auto object-contain ml-2 md:ml-10" />
           </Link>
 
-          <nav className="hidden md:flex gap-8 text-lg font-poppins">
+          <nav className="hidden md:flex gap-8 text-lg font-poppins" role="navigation" aria-label="Main navigation">
             {menuItems.map((item, index) => (
               <Link
                 key={index}
@@ -45,6 +45,7 @@ const Header = () => {
           <button
             onClick={toggleSidebar}
             className="md:hidden text-gray-500 text-xl focus:outline-none rounded-lg hover:bg-gray-200"
+            aria-label="Open main menu"
           >
             <RxHamburgerMenu />
           </button>
@@ -59,6 +60,7 @@ const Header = () => {
           <button
             onClick={toggleSidebar}
             className="text-gray-800 focus:outline-none p-2 rounded-lg hover:bg-gray-200"
+            aria-label="Close main menu"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
