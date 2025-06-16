@@ -14,24 +14,23 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   return (
-    <main className="p-6 md:p-12 bg-white">
+    <main className="bg-white my-20">
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="text-center pb-6">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-800">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-800 font-libre">
             Frequently Asked Questions
           </h1>
         </div>
 
         <div className="space-y-4">
           {items.map((item) => (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               className="border border-black overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 bg-white"
             >
               <button
-                className={`w-full text-left px-6 py-4 focus:outline-none ${
-                  activeId === item.id ? 'bg-pastel-blue' : ''
-                }`}
+                className={`w-full text-left px-6 py-4 focus:outline-none ${activeId === item.id ? 'bg-gray-100' : ''
+                  }`}
                 onClick={() => setActiveId(activeId === item.id ? null : item.id)}
                 aria-expanded={activeId === item.id}
                 aria-controls={`faq-answer-${item.id}`}
@@ -62,7 +61,7 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                     className="overflow-hidden"
                   >
-                    <div 
+                    <div
                       id={`faq-answer-${item.id}`}
                       className="p-6 pt-2 text-gray-700"
                     >
@@ -80,11 +79,11 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
         </div>
 
         <div className="bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 text-white p-6 text-center rounded-lg space-y-4 shadow-md border-2 border-black">
-          <h3 className="text-xl font-semibold">Still need help?</h3>
+          <h2 className="text-xl font-semibold">Still need help?</h2>
           <p className="text-sm sm:text-base text-gray-200">
             Have a question or need assistance with your order? Just respond to our emails{' '}
-            <Link 
-              href="mailto:support@diffrun.com" 
+            <Link
+              href="mailto:support@diffrun.com"
               className="underline text-white transition-colors"
               rel="noopener noreferrer"
             >

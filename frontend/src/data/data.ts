@@ -4,7 +4,6 @@ interface CardProps {
   bookKey: string;
   age: string;
   description?: string;
-  link?: string;
 }
 
 export const Cards: CardProps[] = [
@@ -14,8 +13,7 @@ export const Cards: CardProps[] = [
     bookKey: "abcd",
     age: "2 - 4",
     description:
-      "An engaging and colorful storybook that introduces the alphabet through fun characters, vibrant illustrations, and playful rhymes that kids love.",
-    link: "https://diffrunassets.s3.ap-south-1.amazonaws.com/ABCD_Book.pdf"
+      "A joyful introduction to the alphabet through playful rhymes, colorful characters, and interactive storytelling that makes learning fun and memorable.",
   },
   {
     imageSrc: "/astronaut-book.avif",
@@ -23,27 +21,24 @@ export const Cards: CardProps[] = [
     bookKey: "astro",
     age: "4 - 10",
     description:
-      "Blast off on a galactic adventure! Follow a brave astronaut exploring distant planets, alien life, and the wonders of outer space.",
-    link: "https://diffrunassets.s3.ap-south-1.amazonaws.com/astronaut_book.pdf"
+      "Blast off into space as the hero of your own mission. Discover distant planets, meet alien friends, and explore the wonders of the galaxy.",
   },
   {
     imageSrc: "/wigu-book.avif",
-    title: "When Sara Grow Up",
+    title: "When Sara Grows Up",
     bookKey: "wigu",
     age: "3 - 7",
     description:
-      "An inspiring journey through childhood dreams—join curious kids as they explore exciting careers, big dreams, and how imagination leads the way.",
-    link: "https://abcd-book-sample.tiiny.site"
+      "Imagine all the amazing things you can grow up to be. From firefighter to inventor, this story inspires big dreams and bold adventures.",
   },
-  // {
-  //   imageSrc: "/White.jpg",
-  //   shortImg: "/short-kush.png",
-  //   title: "Test Book",
-  //   category: "story",
-  //   bookKey: "test",
-  //   age: "2 - 10",
-  //   description: "Test Book"
-  // },
+  {
+    imageSrc: "/dream-book.png",
+    title: "Many Dreams of Leo",
+    bookKey: "dream",
+    age: "2 - 6",
+    description:
+      "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests in a world where every dream feels real.",
+  },
 ];
 
 export const faqData = [
@@ -78,16 +73,21 @@ export const bookDetails: Record<string, { title: string; description: string }>
   astro: {
     title: "Zoey's Space Adventure",
     description:
-      "Join Zoey on an unforgettable journey through the stars! A beautifully illustrated, personalized story that celebrates your child’s imagination and wonder.",
+      "Blast off into the stars in this exciting space mission! A beautifully illustrated story that celebrates curiosity, courage, and imagination.",
   },
   wigu: {
-    title: "When Sara Grow Up",
+    title: "When Sara Grows Up",
     description:
-      "Let your child explore exciting careers and dream big! This storybook brings future possibilities to life in a fun and inspiring way.",
+      "Explore exciting careers and dream big! This personalized story inspires your child to imagine a bright future full of possibilities.",
   },
   abcd: {
     title: "Max meets ABC",
     description:
-      "From A to Z, every letter celebrates your child's unique qualities. A colorful and heartfelt story to treasure forever.",
+      "From A to Z, every letter comes alive with color and rhythm. A joyful journey through the alphabet that sparks early learning and fun.",
   },
+  dream: {
+    title: "Many Dreams of Leo",
+    description:
+      "A magical journey through imagination—soar above clouds, tame dragons, and dive into a world where anything is possible and every dream feels real.",
+  }
 };

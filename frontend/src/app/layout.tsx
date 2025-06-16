@@ -176,14 +176,20 @@ export default function RootLayout({
             }
           })}
         </Script>
-        
+
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${DavidLibre.variable}  ${PlayfairDisplay.variable} ${montserrat.variable} antialiased`}
       >
         <p className="bg-[#1a5fb4] text-base md:text-lg text-white flex items-center font-libre font-medium justify-center py-2 leading-tight">
           <span>Delivered anywhere in India</span>
-          <img src="/india.png" alt="India" className="w-4 h-4 rounded-full mx-1" />
+          <img
+            src="/india.png"
+            alt="India"
+            className="h-4 w-auto align-middle mx-2 inline"
+            width="27"
+            height="18"
+          />
           <span>in 7 days</span>
         </p>
         <Header />
@@ -191,9 +197,9 @@ export default function RootLayout({
         <Footer />
       </body>
       <Script
-          src="https://static.elfsight.com/platform/platform.js"
-          strategy="lazyOnload"
-        />
+        src="https://static.elfsight.com/platform/platform.js"
+        strategy="lazyOnload"
+      />
     </html>
   );
 }

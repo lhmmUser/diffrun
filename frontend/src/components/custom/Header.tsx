@@ -21,12 +21,12 @@ const Header = () => {
   return (
     <>
       <header className="w-full z-20">
-        <div className="mx-auto py-4 px-4 md:px-8 flex justify-between items-center">
+        <div className="py-4 px-4 md:px-30 lg:px-50 flex justify-between items-center">
           <Link href="/" className="flex justify-center items-center" aria-label="Go to Diffrun homepage">
-            <img src="/gradient.png" alt="logo" width="160" height="40" className="w-40 h-auto object-contain ml-2 md:ml-10" />
+            <img src="/gradient.png" alt="logo" width="160" height="40" className="w-32 h-auto object-contain ml-2 md:ml-10" />
           </Link>
 
-          <nav className="hidden md:flex gap-8 text-lg font-poppins" role="navigation" aria-label="Main navigation">
+          <nav className="hidden md:flex gap-8 text-lg font-poppins mr-2 md:mr-10" role="navigation" aria-label="Main navigation">
             {menuItems.map((item, index) => (
               <Link
                 key={index}

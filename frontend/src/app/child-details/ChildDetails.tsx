@@ -16,7 +16,7 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import { Autoplay, Pagination } from "swiper/modules";
 import { FiUser, FiEye, FiTruck, FiImage } from 'react-icons/fi';
-import { bookDetails } from "@/data/data";
+import { bookDetails, Cards } from "@/data/data";
 
 interface ImageFile {
   file: File;
@@ -588,6 +588,40 @@ const Form: React.FC = () => {
                   </div>
                 )}
               </form>
+            </div>
+
+          </div>
+
+          <div className="w-full max-w-5xl mx-auto px-4 py-8">
+            <h2 className="text-3xl font-libre font-semibold mb-6 text-gray-800 text-left">
+              Explore More Books
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Cards.filter(book => book.bookKey !== bookId).map((book, index) => (
+                <div
+                  key={index}
+                  className="bg-white overflow-hidden"
+                >
+                  <img
+                    src={book.imageSrc}
+                    alt={book.title}
+                    width={400}
+                    height={400}
+                    className="w-full h-64 object-cover object-left"
+                  />
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold font-libre text-gray-800 my-2">{book.title}</h3>
+                    <p className="text-sm text-gray-600 font-poppins my-2">Age : {book.age}</p>
+                    <p className="text-gray-700 font-poppins my-2 text-sm">{book.description}</p>
+                    <Link
+                      href={`/child-details?book_id=${book.bookKey}&job_type=story`}
+                      className="inline-block mb-4 text-indigo-600 font-play font-medium"
+                    >
+                      Personalize this book →
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </>
