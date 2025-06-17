@@ -86,7 +86,7 @@ export const bookDetails: Record<string, { title: string; description: string }>
       "From A to Z, every letter comes alive with color and rhythm. A joyful journey through the alphabet that sparks early learning and fun.",
   },
   dream: {
-    title: "Many Dreams of Leo",
+    title: "Many Dreams of Zohaan",
     description:
       "A magical journey through imagination—soar above clouds, tame dragons, and dive into a world where anything is possible and every dream feels real.",
   }

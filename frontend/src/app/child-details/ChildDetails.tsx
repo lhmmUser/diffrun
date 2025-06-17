@@ -633,14 +633,14 @@ const Form: React.FC = () => {
           animate="visible"
         >
           <motion.h1
-            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 font-libre"
+            className="text-2xl sm:text-4xl font-medium mb-2 text-blue-900 font-libre"
             variants={headingVariants}
           >
             {formatName(name)}'s Book Preview
           </motion.h1>
 
           <motion.p
-            className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2 font-poppins-200"
+            className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2 font-poppins"
             variants={subHeadingVariants}
           >
             Creating storybook magic...

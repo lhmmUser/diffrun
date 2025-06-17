@@ -1231,7 +1231,7 @@ const Preview: React.FC = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900"
+            className="text-2xl sm:text-4xl font-libre font-medium mb-2 text-blue-900"
           >
             {approved ? (
               `${formatName(name)}'s Finalized Book`
@@ -1248,7 +1248,7 @@ const Preview: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-lg sm:text-xl font-medium text-[#454545] inline-block"
+            className="text-lg sm:text-xl font-poppins text-[#454545] inline-block"
           >
             {loading
               ? jobType === "comic"
@@ -1263,11 +1263,11 @@ const Preview: React.FC = () => {
             className="mt-10 text-base sm:text-lg text-gray-600 space-y-1 flex flex-col items-center"
           >
             <div className="flex items-center gap-2">
-              <BsImages size={20} className="text-indigo-600" />
+              <BsImages size={20} className="text-indigo-600 font-poppins" />
               <p>Watch the story come alive one page at a time!</p>
             </div>
             <div className="flex items-center gap-2">
-              <BsArrowLeftRight size={20} className="text-indigo-600" />
+              <BsArrowLeftRight size={20} className="text-indigo-600 font-poppins" />
               <p>Slide left or right to pick the best moment</p>
             </div>
           </motion.div>
@@ -1286,7 +1286,7 @@ const Preview: React.FC = () => {
                   {carousel.images.length === 0 || (carousel.images.length === 1 && carousel.images[0] === "loading-placeholder") ? (
                     <div className="flex flex-col justify-center items-center w-full h-full">
                       <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
-                      <p className="text-sm text-gray-700 mt-4">
+                      <p className="text-sm text-gray-700 mt-4 font-poppins">
                         Generating image {workflowIndex + 1} of {carousels.length}
                       </p>
                     </div>
@@ -1382,10 +1382,10 @@ const Preview: React.FC = () => {
                                     </div>
                                   ) : (
                                     <>
-                                      <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                      <h3 className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-6 text-center font-poppins">
                                         Not Happy with the Previously Generated Image?
                                       </h3>
-                                      <p className="text-sm sm:text-base font-semibold text-gray-800 mb-4 sm:mb-6 text-center">
+                                      <p className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-6 text-center font-poppins">
                                         Generate More Options
                                       </p>
                                       <button
@@ -1436,7 +1436,7 @@ const Preview: React.FC = () => {
 
                   {carousel.images.length === 0 ||
                     (carousel.images.length === 1 && carousel.images[0] === "loading-placeholder") ? (
-                    <p className="text-center text-sm text-gray-500 mt-8 italic">
+                    <p className="text-center text-sm text-gray-500 mt-8 italic font-poppins">
                       Waiting for page {workflowIndex + 1} to be generated...
                     </p>
                   ) : null}
@@ -1448,19 +1448,19 @@ const Preview: React.FC = () => {
             {carousels.length > visibleCarousels && (
               <div key="placeholder" className="w-full max-w-md mx-auto mb-12 relative">
                 <div className="w-full text-center mb-2 flex justify-end">
-                  <div className="inline-block px-3 py-1 text-sm font-medium text-gray-800 bg-gray-100 rounded-full">
+                  <div className="inline-block px-3 py-1 text-sm font-poppins text-gray-800 bg-gray-100 rounded-full">
                     Page {visibleCarousels + 1}
                   </div>
                 </div>
                 <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
                   <div className="flex flex-col justify-center items-center w-full h-full">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
-                    <p className="text-sm text-gray-700 mt-4">
+                    <p className="text-sm text-gray-700 mt-4 font-poppins">
                       Generating image {visibleCarousels + 1} of {carousels.length}
                     </p>
                   </div>
                 </div>
-                <p className="text-center text-sm text-gray-500 mt-8 italic">
+                <p className="text-center text-sm text-gray-500 mt-8 italic font-poppins">
                   Waiting for page {visibleCarousels + 1} to be generated...
                 </p>
               </div>
@@ -1475,7 +1475,7 @@ const Preview: React.FC = () => {
               boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <p className="text-gray-800 font-medium mb-4 text-lg sm:text-xl animate-fade-in">
+            <p className="text-gray-800 font-poppins mb-4 text-lg sm:text-xl animate-fade-in">
               Don&apos;t want to wait?
             </p>
 
@@ -1492,7 +1492,7 @@ const Preview: React.FC = () => {
                 });
                 router.push(`/user-details?${query.toString()}`);
               }}
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-medium border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-poppins border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               Email me the Preview Link
             </button>
@@ -1502,7 +1502,7 @@ const Preview: React.FC = () => {
         <footer className="w-full p-4 sm:p-6">
           <div className="max-w-xl mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
             {!paid && !approved && (
-              <p className="text-center text-sm sm:text-base text-gray-600 mb-2">
+              <p className="text-center text-sm sm:text-base text-gray-600 mb-2 font-poppins">
                 You can continue refining your book even after this step — regenerate images and finalize later at your convenience.
               </p>
             )}
