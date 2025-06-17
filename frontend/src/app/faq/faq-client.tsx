@@ -15,7 +15,7 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
 
   return (
     <main className="bg-white my-20">
-      <div className="mx-auto space-y-8">
+      <div className="mx-auto space-y-8 px-6">
         <div className="text-left pb-6">
           <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-800 font-libre">
             Frequently Asked Questions

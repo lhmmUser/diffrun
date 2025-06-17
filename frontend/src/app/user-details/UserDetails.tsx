@@ -119,8 +119,8 @@ const UserDetails: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-[90vh] bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white border border-gray-900 shadow-[8px_8px_0px_rgba(0,0,0,0.9)] rounded-none p-8 space-y-8">
+    <div className="flex flex-col items-center justify-center h-[90vh] p-4">
+      <div className="w-full max-w-md border border-gray-900 shadow-[8px_8px_0px_rgba(0,0,0,0.9)] rounded-none p-8 space-y-8">
         <h2 className="text-gray-900 text-2xl font-bold text-center">
           Get Your Book Preview & Price
         </h2>

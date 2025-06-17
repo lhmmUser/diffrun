@@ -36,6 +36,30 @@ from dotenv import load_dotenv
 from pathlib import Path
 import glob
 import time 
+import os
+import logging
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from paypalserversdk.http.auth.o_auth_2 import ClientCredentialsAuthCredentials
+from paypalserversdk.logging.configuration.api_logging_configuration import (
+    LoggingConfiguration,
+    RequestLoggingConfiguration,
+    ResponseLoggingConfiguration,
+)
+from paypalserversdk.paypal_serversdk_client import PaypalServersdkClient
+from paypalserversdk.controllers.orders_controller import OrdersController
+from paypalserversdk.controllers.payments_controller import PaymentsController
+from paypalserversdk.models.amount_breakdown import AmountBreakdown
+from paypalserversdk.models.amount_with_breakdown import AmountWithBreakdown
+from paypalserversdk.models.checkout_payment_intent import CheckoutPaymentIntent
+from paypalserversdk.models.order_request import OrderRequest
+from paypalserversdk.models.money import Money
+from paypalserversdk.models.purchase_unit_request import PurchaseUnitRequest
+from paypalserversdk.models.item import Item
+from paypalserversdk.models.item_category import ItemCategory
+from paypalserversdk.api_helper import ApiHelper
+from db import payment_collection
 
 load_dotenv(dotenv_path="./.env")
 
@@ -45,6 +69,22 @@ s3 = boto3.client(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
+
+paypal_client = PaypalServersdkClient(
+    client_credentials_auth_credentials=ClientCredentialsAuthCredentials(
+        o_auth_client_id=os.getenv("PAYPAL_CLIENT_ID"),
+        o_auth_client_secret=os.getenv("PAYPAL_CLIENT_SECRET"),
+    ),
+    logging_configuration=LoggingConfiguration(
+        log_level=logging.INFO,
+        mask_sensitive_headers=False,
+        request_logging_config=RequestLoggingConfiguration(log_headers=True, log_body=True),
+        response_logging_config=ResponseLoggingConfiguration(log_headers=True, log_body=True),
+    ),
+)
+
+orders_controller: OrdersController = paypal_client.orders
+payments_controller: PaymentsController = paypal_client.payments
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(message)s")
@@ -248,6 +288,84 @@ async def shopify_webhook(request: Request):
     except Exception as e:
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.post("/api/orders")
+async def create_order(request: Request):
+    body = await request.json()
+    cart = body.get("cart")
+
+    order = orders_controller.create_order(
+        {
+            "body": OrderRequest(
+                intent=CheckoutPaymentIntent.CAPTURE,
+                purchase_units=[
+                    PurchaseUnitRequest(
+                        amount=AmountWithBreakdown(
+                            currency_code="USD",
+                            value="125",
+                            breakdown=AmountBreakdown(
+                                item_total=Money(currency_code="USD", value="125")
+                            ),
+                        ),
+                        items=[
+                            Item(
+                                name="T-Shirt",
+                                unit_amount=Money(currency_code="USD", value="125"),
+                                quantity="1",
+                                description="Super Fresh Shirt",
+                                sku="sku01",
+                                category=ItemCategory.PHYSICAL_GOODS,
+                            )
+                        ],
+                    )
+                ],
+            )
+        }
+    )
+
+    return JSONResponse(content=ApiHelper.json_deserialize(ApiHelper.json_serialize(order.body)))
+
+@app.post("/api/orders/{order_id}/capture")
+async def capture_order(order_id: str):
+    order = orders_controller.capture_order({"id": order_id, "prefer": "return=representation"})
+    order_data = ApiHelper.json_deserialize(ApiHelper.json_serialize(order.body))
+
+    payer_info = order_data.get("payer", {})
+    payer_name_data = payer_info.get("name", {})
+    payer_full_name = f"{payer_name_data.get('given_name', '')} {payer_name_data.get('surname', '')}".strip()
+    country_code = payer_info.get("address", {}).get("country_code")
+
+    purchase_unit = order_data.get("purchase_units", [{}])[0]
+    shipping_address = purchase_unit.get("shipping", {}).get("address", {})
+    capture = purchase_unit.get("payments", {}).get("captures", [{}])[0]
+    amount = capture.get("amount", {})
+
+    capture_info = {
+        "order_id": order_id,
+        "transaction_id": capture.get("id"),
+        "status": capture.get("status"),
+        "amount": {
+            "value": amount.get("value"),
+            "currency_code": amount.get("currency_code")
+        },
+        "payer_email": payer_info.get("email_address"),
+        "payer_name": payer_full_name,
+        "country_code": country_code,
+        "create_time": capture.get("create_time"),
+        "update_time": capture.get("update_time"),
+        "shipping_address": {
+            "address_line_1": shipping_address.get("address_line_1"),
+            "address_line_2": shipping_address.get("address_line_2"),
+            "admin_area_1": shipping_address.get("admin_area_1"),
+            "admin_area_2": shipping_address.get("admin_area_2"),
+            "postal_code": shipping_address.get("postal_code"),
+            "country_code": shipping_address.get("country_code")
+        }
+    }
+
+    payment_collection.insert_one(capture_info)
+
+    return JSONResponse(content=order_data)
 
 def handle_after_payment(record: dict):
     name = record.get("child_name")

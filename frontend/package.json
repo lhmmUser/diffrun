@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
+    "@paypal/react-paypal-js": "^8.8.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.6.3",
     "heic2any": "^0.0.4",

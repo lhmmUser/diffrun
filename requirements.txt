@@ -12,3 +12,4 @@ PyMuPDF
 boto3
 httpx
 requests
+paypal-server-sdk

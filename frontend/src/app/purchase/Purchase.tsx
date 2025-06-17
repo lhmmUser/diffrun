@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data';
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 const Purchase = () => {
   const searchParams = useSearchParams();
@@ -13,7 +14,20 @@ const Purchase = () => {
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [message, setMessage] = useState("");
+  const [locale, setLocale] = useState<string>("");
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const initialOptions = {
+    clientId: "AQf86J_3Vmxd9fe9O62DwTyUhzqawY54ZR3zkcNKiV5SnRbn0YG_qPf2JOEa_I9vntx1UWE6oXNDSHxU",
+    currency: "USD",
+    components: "buttons",
+    enableFunding: "venmo",
+    disableFunding: "",
+    buyerCountry: "US",
+    dataPageType: "product-details",
+    dataSdkIntegrationSource: "developer-studio",
+  };
 
   useEffect(() => {
     const fetchPreviewUrl = async () => {
@@ -24,6 +38,7 @@ const Purchase = () => {
 
         const data = await response.json();
         setPreviewUrl(data.preview_url || "");
+        setLocale(data.locale || "");
       } catch (err: any) {
         console.error("❌ Error fetching preview URL:", err.message);
       }
@@ -84,69 +99,177 @@ const Purchase = () => {
   return (
     <div className="flex flex-col items-center min-h-screen mt-10">
 
-      <section className="w-full max-w-4xl mb-16">
-        <div className="border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <h1 className="text-2xl font-extrabold bg-black text-white py-4 px-6">
+      <section className="w-full max-w-4xl mb-16 px-4 md:px-0">
+        <div className="">
+          <h1 className="text-2xl md:text-3xl font-libre font-medium text-gray-800 py-4 px-1">
             {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
           </h1>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
 
             <div
               onClick={() => handleSelectOption("hardcover")}
-              className={`relative flex flex-col items-start p-4 border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "hardcover" ? "bg-yellow-200" : "hover:bg-gray-100"
+              className={`relative flex flex-col items-start p-4 shadow-lg cursor-pointer ${selectedOption === "hardcover" ? "bg-[#f7f6cf]" : "hover:bg-gray-100"
                 }`}
             >
-              <div className="absolute top-2 right-2 bg-black text-white text-xs px-4 py-2">
-                {selectedOption === "hardcover" ? "Selected" : "Popular Choice"}
+              <div className="absolute top-2 right-2 bg-[#5784ba] text-white text-xs px-4 py-2">
+                {selectedOption === "hardcover" ? "Selected" : ""}
               </div>
               <img
                 src={`/hardcover-${bookId}.jpg`}
                 alt="Diffrun personalized books - hardcover book"
-                className="w-full h-48 object-cover mb-4 rounded-md"
+                className="w-auto h-48 object-cover mb-4"
               />
-              <h2 className="text-xl font-bold text-black mb-2">Hardcover</h2>
-              <p className="text-sm text-gray-700 mb-4">
+              <h2 className="text-xl font-poppins font-medium text-black">Hardcover</h2>
+              <p className="text-sm text-gray-700 font-poppins mb-2">
                 Durable, premium binding with matte finish.
               </p>
-              <span className="text-lg font-extrabold">₹ 1950</span>
+              <span className="text-lg font-poppins font-bold">₹ 1950</span>
             </div>
 
             <div
               onClick={() => handleSelectOption("paperback")}
-              className={`relative flex flex-col items-start p-4 border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "paperback" ? "bg-yellow-200" : "hover:bg-gray-100"
+              className={`relative flex flex-col items-start p-4 shadow-lg cursor-pointer ${selectedOption === "paperback" ? "bg-[#f7f6cf]" : "hover:bg-gray-100"
                 }`}
             >
-              <div className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1">
+              <div className="absolute top-2 right-2 bg-[#5784ba] text-white text-xs px-2 py-1">
                 {selectedOption === "paperback" ? "Selected" : ""}
               </div>
               <img
                 src={`/softpaper-${bookId}.jpg`}
                 alt="Diffrun personalized books - paperback book"
-                className="w-full h-48 object-cover mb-4 rounded-md"
+                className="w-auto h-48 object-cover mb-4"
               />
-              <h2 className="text-xl font-bold text-black mb-2">Paperback</h2>
-              <p className="text-sm text-gray-700 mb-4">
+              <h2 className="text-xl font-poppins font-medium text-black">Paperback</h2>
+              <p className="text-sm text-gray-700 font-poppins mb-2">
                 Lightweight and portable softcover edition.
               </p>
-              <span className="text-lg font-extrabold">₹ 1450</span>
+              <span className="text-lg font-poppins font-bold">₹ 1450</span>
             </div>
           </div>
 
-          <div className="flex justify-center mt-10 px-6 py-8">
-            <button
-              onClick={handleCheckout}
-              disabled={!selectedOption}
-              className={`relative px-8 py-3 text-lg font-bold text-white bg-black border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,0.2)] transition-all duration-200 active:translate-y-1 active:shadow-none ${!selectedOption
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-gray-800 hover:border-gray-800"
-                }`}
-            >
-              Proceed to Checkout
-            </button>
+          <div className="flex flex-col gap-12 justify-center items-center px-6 py-10">
+            {locale === "IN" ? (
+              <>
+                <div className="w-full text-center bg-[#f4cfdf] text-gray-800 text-sm font-poppins font-medium py-2 mt-6">
+                  Free Shipping All Across India
+                </div>
+                <button
+                  onClick={handleCheckout}
+                  disabled={!selectedOption}
+                  className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"
+                    }`}
+                >
+                  Proceed to Checkout
+                </button>
+              </>
+            ) : (
+              <PayPalScriptProvider options={initialOptions}>
+                <PayPalButtons
+                  style={{
+                    shape: "pill",
+                    layout: "vertical",
+                    color: "gold",
+                    label: "paypal",
+                  }}
+                  createOrder={async () => {
+                    try {
+                      const response = await fetch("/api/orders", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        // use the "body" param to optionally pass additional order information
+                        // like product ids and quantities
+                        body: JSON.stringify({
+                          cart: [
+                            {
+                              id: selectedOption,
+                              quantity: 1,
+                            },
+                          ],
+                        }),
+                      });
+
+                      const orderData = await response.json();
+
+                      if (orderData.id) {
+                        return orderData.id;
+                      } else {
+                        const errorDetail = orderData?.details?.[0];
+                        const errorMessage = errorDetail
+                          ? `${errorDetail.issue} ${errorDetail.description} (${orderData.debug_id})`
+                          : JSON.stringify(orderData);
+
+                        throw new Error(errorMessage);
+                      }
+                    } catch (error) {
+                      console.error(error);
+                      setMessage(
+                        `Could not initiate PayPal Checkout...${error}`
+                      );
+                    }
+                  }}
+                  onApprove={async (data, actions) => {
+                    try {
+                      const response = await fetch(
+                        `/api/orders/${data.orderID}/capture`,
+                        {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                        }
+                      );
+
+                      const orderData = await response.json();
+                      // Three cases to handle:
+                      //   (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
+                      //   (2) Other non-recoverable errors -> Show a failure message
+                      //   (3) Successful transaction -> Show confirmation or thank you message
+
+                      const errorDetail = orderData?.details?.[0];
+
+                      if (errorDetail?.issue === "INSTRUMENT_DECLINED") {
+                        // (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
+                        // recoverable state, per https://developer.paypal.com/docs/checkout/standard/customize/handle-funding-failures/
+                        return actions.restart();
+                      } else if (errorDetail) {
+                        // (2) Other non-recoverable errors -> Show a failure message
+                        throw new Error(
+                          `${errorDetail.description} (${orderData.debug_id})`
+                        );
+                      } else {
+                        // (3) Successful transaction -> Show confirmation or thank you message
+                        // Or go to another URL:  actions.redirect('thank_you.html');
+                        const transaction =
+                          orderData.purchase_units[0].payments
+                            .captures[0];
+                        setMessage(
+                          `Transaction ${transaction.status}: ${transaction.id}. See console for all available details`
+                        );
+                        console.log(
+                          "Capture result",
+                          orderData,
+                          JSON.stringify(orderData, null, 2)
+                        );
+                      }
+                    } catch (error) {
+                      console.error(error);
+                      setMessage(
+                        `Sorry, your transaction could not be processed...${error}`
+                      );
+                    }
+                  }}
+                />
+              </PayPalScriptProvider>
+            )}
           </div>
 
-          <div className="p-6 border-t-4 border-black text-center">
+
+          <div className="p-6 text-center">
             <p className="text-sm font-semibold">
               You can still make edits within 12 hours after placing your order
             </p>
@@ -155,9 +278,6 @@ const Purchase = () => {
             </p>
           </div>
 
-          <div className="text-center bg-indigo-500 text-white text-sm font-bold py-2">
-            Free Shipping All Across India
-          </div>
         </div>
       </section>
 

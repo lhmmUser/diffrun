@@ -81,7 +81,8 @@ export default function TeamComponent() {
             transition={{ duration: 0.7, delay: 0.6 }}
             className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed"
           >
-            We lead with care — our core value — and a shared passion for connecting the world.
+            Diffrun is a personalized children’s book brand that transforms your child into the star of their own story.
+From thrilling space missions to inspiring future careers and alphabet adventures, every book is custom-made with your child’s name, personality, and dreams at the center. Designed to spark joy, boost confidence, and create lasting memories, Diffrun books are more than stories—they're keepsakes.
           </motion.p>
         </motion.div>
 
