@@ -15,9 +15,9 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
 
   return (
     <main className="bg-white my-20">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div className="text-center pb-6">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-800 font-libre">
+      <div className="mx-auto space-y-8">
+        <div className="text-left pb-6">
+          <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-800 font-libre">
             Frequently Asked Questions
           </h1>
         </div>
@@ -26,19 +26,18 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
           {items.map((item) => (
             <div
               key={item.id}
-              className="border border-black overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 bg-white"
+              className="overflow-hidden rounded-xl shadow-md transition-shadow duration-300 bg-white"
             >
               <button
-                className={`w-full text-left px-6 py-4 focus:outline-none ${activeId === item.id ? 'bg-gray-100' : ''
-                  }`}
+                className={`w-full text-left px-6 py-4 focus:outline-none`}
                 onClick={() => setActiveId(activeId === item.id ? null : item.id)}
                 aria-expanded={activeId === item.id}
                 aria-controls={`faq-answer-${item.id}`}
               >
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-lg text-gray-900">{item.question}</span>
+                  <span className="text-lg text-gray-900 font-poppins">{item.question}</span>
                   <motion.svg
-                    className="w-5 h-5 text-pastel-purple"
+                    className="w-5 h-5 text-gray-800"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                     animate={{ rotate: activeId === item.id ? 180 : 0 }}
@@ -78,13 +77,13 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
           ))}
         </div>
 
-        <div className="bg-gradient-to-r from-indigo-500 via-blue-500 to-violet-500 text-white p-6 text-center rounded-lg space-y-4 shadow-md border-2 border-black">
-          <h2 className="text-xl font-semibold">Still need help?</h2>
-          <p className="text-sm sm:text-base text-gray-200">
+        <div className="bg-[#f7f6cf] p-6 text-center rounded-lg space-y-4 shadow-md">
+          <h2 className="text-xl font-libre text-gray-800">Still need help?</h2>
+          <p className="text-sm sm:text-base text-gray-700 font-poppins">
             Have a question or need assistance with your order? Just respond to our emails{' '}
             <Link
               href="mailto:support@diffrun.com"
-              className="underline text-white transition-colors"
+              className="underline text-[#5784ba] transition-colors"
               rel="noopener noreferrer"
             >
               support@diffrun.com

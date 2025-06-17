@@ -33,7 +33,7 @@ export const Cards: CardProps[] = [
   },
   {
     imageSrc: "/dream-book.png",
-    title: "Many Dreams of Leo",
+    title: "Many Dreams of Zohaan",
     bookKey: "dream",
     age: "2 - 6",
     description:

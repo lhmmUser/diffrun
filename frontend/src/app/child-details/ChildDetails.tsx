@@ -339,7 +339,7 @@ const Form: React.FC = () => {
 
             <div className="w-full lg:w-[50%]">
               <div className="max-w-md mx-auto w-full md:max-w-3xl">
-                <h2 className="block lg:hidden text-center mr-20 text-gray-700 text-2xl md:text-3xl font-libre font-semibold mb-4">
+                <h2 className="block lg:hidden text-center mr-20 text-gray-700 text-2xl md:text-3xl font-libre font-medium mb-4">
                   {title}
                 </h2>
                 <Swiper
@@ -371,7 +371,7 @@ const Form: React.FC = () => {
                     <SwiperSlide key={num}>
                       <img
                         src={`/${bookId}-book-${num}.avif`}
-                        alt={`Book ${num}`}
+                        alt={`Diffrun personalized books - Book ${num}`}
                         className="w-full h-auto object-contain mx-auto aspect-square max-w-sm lg:max-w-md"
                       />
                     </SwiperSlide>
@@ -406,7 +406,7 @@ const Form: React.FC = () => {
                 onSubmit={handleSubmit}
                 className="max-w-md mx-auto w-full space-y-4"
               >
-                <h2 className="hidden lg:block text-left text-gray-700 text-2xl md:text-3xl font-libre font-semibold">
+                <h2 className="hidden lg:block text-left text-gray-700 text-2xl md:text-3xl font-libre font-medium">
                   {title}
                 </h2>
 
@@ -414,7 +414,7 @@ const Form: React.FC = () => {
                   {description}
                 </p>
 
-                <h2 className="text-left text-gray-700 text-lg md:text-xl font-libre font-semibold">
+                <h2 className="text-left text-gray-700 text-lg md:text-xl font-libre font-medium">
                   Personalize your Child's Book
                 </h2>
 
@@ -466,7 +466,7 @@ const Form: React.FC = () => {
                 <div className="space-y-2">
                   <div
                     {...getRootProps()}
-                    className={`py-3 text-center bg-indigo-800 text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
+                    className={`py-3 text-center bg-[#5784ba] text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
                       }`}
                   >
                     <input {...getInputProps()} disabled={imageToCrop !== null} />
@@ -502,7 +502,7 @@ const Form: React.FC = () => {
                         <div key={index} className="relative bg-white border border-gray-200 rounded-sm shadow-sm">
                           <img
                             src={img.preview}
-                            alt={`preview-${index}`}
+                            alt={`Diffrun personalized books - preview-${index}`}
                             className="w-full h-24 object-contain rounded-t-sm"
                           />
 
@@ -531,7 +531,7 @@ const Form: React.FC = () => {
                 <div className="relative inline-block">
                   <img
                     src="/instructions.jpg"
-                    alt="Instructions"
+                    alt="Diffrun personalized books - Instructions"
                     className="w-auto h-60 border border-gray-200"
                   />
                   <button
@@ -593,7 +593,7 @@ const Form: React.FC = () => {
           </div>
 
           <div className="w-full max-w-5xl mx-auto px-4 py-8">
-            <h2 className="text-3xl font-libre font-semibold mb-6 text-gray-800 text-left">
+            <h2 className="text-3xl font-libre font-medium mb-6 text-gray-800 text-left">
               Explore More Books
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -610,7 +610,7 @@ const Form: React.FC = () => {
                     className="w-full h-64 object-cover object-left"
                   />
                   <div className="space-y-2">
-                    <h3 className="text-xl font-semibold font-libre text-gray-800 my-2">{book.title}</h3>
+                    <h3 className="text-xl font-medium font-libre text-gray-800 my-2">{book.title}</h3>
                     <p className="text-sm text-gray-600 font-poppins my-2">Age : {book.age}</p>
                     <p className="text-gray-700 font-poppins my-2 text-sm">{book.description}</p>
                     <Link
@@ -633,7 +633,7 @@ const Form: React.FC = () => {
           animate="visible"
         >
           <motion.h1
-            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 font-montserrat"
+            className="text-2xl sm:text-4xl font-bold mb-2 text-blue-900 font-libre"
             variants={headingVariants}
           >
             {formatName(name)}'s Book Preview
@@ -681,7 +681,7 @@ const Form: React.FC = () => {
             </button>
             <img
               src="/instructions.jpg"
-              alt="Expanded Instructions"
+              alt="Diffrun personalized books - Expanded Instructions"
               className="w-full max-h-[80vh] object-contain rounded-lg"
             />
           </div>

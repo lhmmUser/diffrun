@@ -133,7 +133,7 @@ const UserDetails: React.FC = () => {
           <label htmlFor="email" className="block text-black font-bold tracking-wide">
             Email
           </label>
-          <p className="text-sm text-gray-600 font-mono">
+          <p className="text-sm text-gray-600 font-poppins">
             Preview link will be sent to this email
           </p>
           <input

@@ -27,7 +27,7 @@ const Carousel: React.FC<CarouselProps> = ({ images, interval = 3000 }) => {
         >
           <img
             src={src}
-            alt=""
+            alt="Diffrun personalized books - carousals"
             loading="eager"
             decoding="async"
             className="w-full h-full object-cover"

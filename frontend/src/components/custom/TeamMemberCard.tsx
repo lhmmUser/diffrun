@@ -27,7 +27,7 @@ export default function TeamMemberCard({ member, delay }: TeamMemberCardProps) {
       <div className="relative mx-auto mb-6 h-40 w-40 overflow-hidden rounded-full border-4 border-gray-900 bg-gray-100">
         <img
           src={member.image}
-          alt={member.name}
+          alt={`Diffrun personalized books - ${member.name}`}
           className="h-full w-full object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           srcSet={`
@@ -35,7 +35,6 @@ export default function TeamMemberCard({ member, delay }: TeamMemberCardProps) {
             ${member.image}?w=600 600w,
             ${member.image}?w=900 900w
           `}
-          loading="lazy"
         />
       </div>
       <h3 className="mb-1 text-xl font-bold text-gray-900">{member.name}</h3>

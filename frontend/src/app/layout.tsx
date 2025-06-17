@@ -52,6 +52,28 @@ export const metadata: Metadata = {
     "children's photo books",
     "personalized gifts for kids",
     "create your story",
+    "storybook gift with child as hero",
+    "photo storybooks for kids",
+    "personalized baby books with pictures",
+    "personalized toddler books with name and photo",
+    "personalized keepsake storybook",
+    "custom children's literature",
+    "magical adventure books",
+    "personalized children's books india",
+    "buy kids storybooks online india",
+    "best storybook printing india",
+    "7-day delivery kids books india",
+    "unique gift for children birthday india",
+    "magical storybook gift for kids",
+    "meaningful gifts for children",
+    "gift ideas for toddlers with photo",
+    "memory book for children",
+    "turn child photo into book",
+    "AI generated children's storybooks",
+    "storybooks using your child’s face",
+    "adventure books for kids with custom faces",
+    "creative story builder for kids",
+    "custom books for early learning",
     "storytelling platform",
     "creative writing",
     "digital storytelling",
@@ -59,8 +81,9 @@ export const metadata: Metadata = {
     "writing tools",
     "creative inspiration",
     "story builder",
-    "custom children's literature",
-    "magical adventure books",
+    "Diffrun personalized books",
+    "Diffrun story creator",
+    "Diffrun custom storybooks",
   ],
   authors: [{ name: "Husain Jafar", url: "https://diffrun.com" }],
   creator: "Husain Jafar",
@@ -179,13 +202,13 @@ export default function RootLayout({
 
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${DavidLibre.variable}  ${PlayfairDisplay.variable} ${montserrat.variable} antialiased`}
+        className={`${poppins.variable} ${DavidLibre.variable} antialiased`}
       >
-        <p className="bg-[#1a5fb4] text-base md:text-lg text-white flex items-center font-libre font-medium justify-center py-2 leading-tight">
+        <p className="bg-[#5784ba] text-base md:text-lg text-white flex items-center font-libre font-medium justify-center py-2 leading-tight">
           <span>Delivered anywhere in India</span>
           <img
             src="/india.png"
-            alt="India"
+            alt="Diffrun personalized books - Indian flag icon for delivery availability"
             className="h-4 w-auto align-middle mx-2 inline"
             width="27"
             height="18"

@@ -82,10 +82,10 @@ const Purchase = () => {
   };
 
   return (
-    <div className="flex flex-col items-center bg-gray-100 min-h-screen py-8 px-4">
+    <div className="flex flex-col items-center min-h-screen mt-10">
 
       <section className="w-full max-w-4xl mb-16">
-        <div className="border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] overflow-hidden">
+        <div className="border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] overflow-hidden">
           <h1 className="text-2xl font-extrabold bg-black text-white py-4 px-6">
             {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
           </h1>
@@ -94,7 +94,7 @@ const Purchase = () => {
 
             <div
               onClick={() => handleSelectOption("hardcover")}
-              className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "hardcover" ? "bg-yellow-200" : "hover:bg-gray-100"
+              className={`relative flex flex-col items-start p-4 border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "hardcover" ? "bg-yellow-200" : "hover:bg-gray-100"
                 }`}
             >
               <div className="absolute top-2 right-2 bg-black text-white text-xs px-4 py-2">
@@ -102,7 +102,7 @@ const Purchase = () => {
               </div>
               <img
                 src={`/hardcover-${bookId}.jpg`}
-                alt="Hardcover Book"
+                alt="Diffrun personalized books - hardcover book"
                 className="w-full h-48 object-cover mb-4 rounded-md"
               />
               <h2 className="text-xl font-bold text-black mb-2">Hardcover</h2>
@@ -114,7 +114,7 @@ const Purchase = () => {
 
             <div
               onClick={() => handleSelectOption("paperback")}
-              className={`relative flex flex-col items-start p-4 border-4 border-black bg-white shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "paperback" ? "bg-yellow-200" : "hover:bg-gray-100"
+              className={`relative flex flex-col items-start p-4 border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all cursor-pointer ${selectedOption === "paperback" ? "bg-yellow-200" : "hover:bg-gray-100"
                 }`}
             >
               <div className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1">
@@ -122,7 +122,7 @@ const Purchase = () => {
               </div>
               <img
                 src={`/softpaper-${bookId}.jpg`}
-                alt="Paperback Book"
+                alt="Diffrun personalized books - paperback book"
                 className="w-full h-48 object-cover mb-4 rounded-md"
               />
               <h2 className="text-xl font-bold text-black mb-2">Paperback</h2>
@@ -161,7 +161,7 @@ const Purchase = () => {
         </div>
       </section>
 
-      <section className="w-full max-w-4xl bg-gray-100">
+      <section className="w-full max-w-4xl">
         <div className="py-12">
           <FAQClient items={faqData} />
         </div>

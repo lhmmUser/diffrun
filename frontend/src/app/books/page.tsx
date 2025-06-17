@@ -10,17 +10,18 @@ export const metadata: Metadata = {
 export default function Books() {
   return (
     <main className="w-full min-h-screen bg-white py-12 px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-12 sm:mb-16">
-        <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-800">
+      
+
+      <div className="grid gap-8 max-w-4xl mx-auto">
+        <div className="text-left mb-3 sm:mb-6">
+        <p className="text-xl sm:text-2xl md:text-3xl font-libre font-medium text-gray-800">
           Start crafting your one-of-a-kind story ✨
         </p>
       </div>
-
-      <div className="grid gap-8 max-w-4xl mx-auto">
         {Cards.map((card, index) => (
           <div
             key={index}
-            className="bg-white border border-gray-900 shadow-[8px_8px_0px_rgba(0,0,0,0.9)] rounded-none transition-transform duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0px_rgba(0,0,0,1)]"
+            className="bg-white shadow-md"
           >
             <div className="flex flex-col md:flex-row">
               <div className="relative w-full h-0 pb-[100%] overflow-hidden md:w-64 md:h-auto md:pb-0 border-b md:border-b-0 md:border-r border-gray-300">
@@ -31,19 +32,19 @@ export default function Books() {
                 />
               </div>
 
-              <div className="flex flex-col justify-between flex-1 p-6 space-y-6">
+              <div className="flex flex-col justify-evenly flex-1 p-6 space-y-6">
                 <div>
-                  <h3 className="text-xl sm:text-2xl md:text-2xl lg:text-3xl font-semibold text-gray-900 mb-2">
+                  <h3 className="sm:text-lg md:text-xl lg:text-2xl font-medium font-libre text-gray-800 mb-2">
                     {card.title}
                   </h3>
-                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+                  <p className="text-gray-700 text-sm sm:text-base font-poppins leading-relaxed">
                     {card.description}
                   </p>
                 </div>
 
                 <div>
                   <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`}>
-                    <button className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-3 px-6 rounded-none font-medium border border-gray-900 shadow-[4px_4px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-950">
+                    <button className="flex items-center gap-2 bg-[#5784ba] text-white py-3 px-8 font-medium shadow-md transition-all duration-300 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer">
                       Personalize your book
                     </button>
                   </Link>

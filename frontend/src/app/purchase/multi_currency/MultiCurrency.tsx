@@ -106,7 +106,7 @@ const MultiCurrency = () => {
               </div>
               <img
                 src={`/hardcover-${bookId}.jpg`}
-                alt="Hardcover Book"
+                alt="Diffrun personalized books - hardcover book"
                 className="w-full h-48 object-cover mb-4 rounded-md"
               />
               <h2 className="text-xl font-bold text-black mb-2">Hardcover</h2>
@@ -131,7 +131,7 @@ const MultiCurrency = () => {
               </div>
               <img
                 src={`/softpaper-${bookId}.jpg`}
-                alt="Paperback Book"
+                alt="Diffrun personalized books - paperback book"
                 className="w-full h-48 object-cover mb-4 rounded-md"
               />
               <h2 className="text-xl font-bold text-black mb-2">Paperback</h2>

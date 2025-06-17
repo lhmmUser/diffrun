@@ -109,7 +109,7 @@ export default function TeamComponent() {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
                 <img
                   src={member.image || "/placeholder.svg"}
-                  alt={member.name}
+                  alt={`Diffrun personalized books - ${member.name}`}
                   className="w-full h-full rounded-full object-cover border-4 border-gray-100 group-hover:border-gray-200 transition-all duration-300 shadow-md"
                 />
               </motion.div>

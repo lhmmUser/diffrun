@@ -1324,7 +1324,7 @@ const Preview: React.FC = () => {
                                 if (isRegenerate && !approved) {
                                   return '';
                                 }
-                                return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
+                                return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" alt="Diffrun personalized books - circlular pagination" />`;
                               }
                             }}
                             initialSlide={initialSlideIndex}
@@ -1362,7 +1362,7 @@ const Preview: React.FC = () => {
                                 ) : (
                                   <img
                                     src={typeof image === "string" ? image : image.url}
-                                    alt={`Story Page ${imgIndex + 1}`}
+                                    alt={`Diffrun personalized books - story page ${imgIndex + 1}`}
                                     className="w-full h-full object-cover"
                                   />
                                 )}
