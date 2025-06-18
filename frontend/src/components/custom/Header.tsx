@@ -23,15 +23,15 @@ const Header = () => {
       <header className="w-full z-20">
         <div className="py-4 px-4 md:px-30 lg:px-50 flex justify-between items-center">
           <Link href="/" className="flex justify-center items-center" aria-label="Go to Diffrun homepage">
-            <img src="/logo.png" alt="Diffrun personalized books - logo" width="160" height="40" className="w-32 h-auto object-contain ml-2 md:ml-10" />
+            <img src="/Diffrun_logo.png" alt="Diffrun personalized books - logo" width="160" height="40" className="w-32 h-auto object-contain ml-2 md:ml-10" />
           </Link>
 
-          <nav className="hidden md:flex gap-8 text-lg font-poppins mr-2 md:mr-10" role="navigation" aria-label="Main navigation">
+          <nav className="hidden md:flex gap-2 text-lg font-poppins mr-2 lg:mr-8" role="navigation" aria-label="Main navigation">
             {menuItems.map((item, index) => (
               <Link
                 key={index}
                 href={item.href}
-                className="relative group text-gray-700 hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200"
+                className="relative group text-gray-700 hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200 "
               >
                 {item.label}
                 <span
@@ -56,10 +56,10 @@ const Header = () => {
         className={`fixed top-0 right-0 z-50 w-64 h-screen bg-white shadow-lg transform ${isSidebarOpen ? "translate-x-0" : "translate-x-full"
           } transition-transform duration-300 ease-in-out border-l border-gray-200`}
       >
-        <div className="flex justify-end p-4">
+        <div className="flex justify-end p-2">
           <button
             onClick={toggleSidebar}
-            className="text-gray-800 focus:outline-none p-2 rounded-lg hover:bg-gray-200"
+            className="text-gray-800 focus:outline-none rounded-lg hover:bg-gray-200"
             aria-label="Close main menu"
           >
             <svg
@@ -79,10 +79,10 @@ const Header = () => {
           </button>
         </div>
 
-        <nav className="mt-6 flex flex-col space-y-4 px-6 text-center">
+        <nav className="mt-6 flex flex-col px-6 text-center">
           {menuItems.map((item, index) => (
             <div key={index} className="flex flex-col items-center">
-              {index > 0 && <hr className="w-full border-t border-gray-300 my-2" />}
+              {index > 0 && <hr className="w-full border-t border-gray-300" />}
               <Link
                 href={item.href}
                 onClick={toggleSidebar}

@@ -292,36 +292,53 @@ async def shopify_webhook(request: Request):
 @app.post("/api/orders")
 async def create_order(request: Request):
     body = await request.json()
-    cart = body.get("cart")
+    cart = body.get("cart", [])
+    shipping_value = body.get("shipping", "0")
+    currency_code = body.get("currency", "USD")  
+    request_id = body.get("request_id")  # <- coming from frontend jobId
 
-    order = orders_controller.create_order(
-        {
-            "body": OrderRequest(
-                intent=CheckoutPaymentIntent.CAPTURE,
-                purchase_units=[
-                    PurchaseUnitRequest(
-                        amount=AmountWithBreakdown(
-                            currency_code="USD",
-                            value="125",
-                            breakdown=AmountBreakdown(
-                                item_total=Money(currency_code="USD", value="125")
-                            ),
+    if not cart:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    item = cart[0]
+    item_price = item.get("price", "25")
+    total_amount = str(round(float(item_price) + float(shipping_value), 2))
+
+    order = orders_controller.create_order({
+        "body": OrderRequest(
+            intent=CheckoutPaymentIntent.CAPTURE,
+            purchase_units=[
+                PurchaseUnitRequest(
+                    amount=AmountWithBreakdown(
+                        currency_code=currency_code,
+                        value=total_amount,
+                        breakdown=AmountBreakdown(
+                            item_total=Money(currency_code=currency_code, value=item_price),
+                            shipping=Money(currency_code=currency_code, value=shipping_value)
                         ),
-                        items=[
-                            Item(
-                                name="T-Shirt",
-                                unit_amount=Money(currency_code="USD", value="125"),
-                                quantity="1",
-                                description="Super Fresh Shirt",
-                                sku="sku01",
-                                category=ItemCategory.PHYSICAL_GOODS,
-                            )
-                        ],
-                    )
-                ],
-            )
-        }
-    )
+                    ),
+                    items=[
+                        Item(
+                            name=item.get("name", "Storybook"),
+                            unit_amount=Money(currency_code=currency_code, value=item_price),
+                            quantity=str(item.get("quantity", 1)),
+                            description=item.get("description", ""),
+                            sku=item.get("id", "sku_default"),
+                            category=ItemCategory.PHYSICAL_GOODS,
+                        )
+                    ],
+                )
+            ],
+        )
+    })
+
+    # insert mapping into payment_collection immediately
+    paypal_order_id = order.body.id
+    payment_collection.insert_one({
+        "paypal_order_id": paypal_order_id,
+        "job_id": request_id,
+        "status": "CREATED"
+    })
 
     return JSONResponse(content=ApiHelper.json_deserialize(ApiHelper.json_serialize(order.body)))
 
@@ -333,24 +350,23 @@ async def capture_order(order_id: str):
     payer_info = order_data.get("payer", {})
     payer_name_data = payer_info.get("name", {})
     payer_full_name = f"{payer_name_data.get('given_name', '')} {payer_name_data.get('surname', '')}".strip()
-    country_code = payer_info.get("address", {}).get("country_code")
+    payer_email = payer_info.get("email_address")
+    payer_country_code = payer_info.get("address", {}).get("country_code")
 
     purchase_unit = order_data.get("purchase_units", [{}])[0]
     shipping_address = purchase_unit.get("shipping", {}).get("address", {})
     capture = purchase_unit.get("payments", {}).get("captures", [{}])[0]
     amount = capture.get("amount", {})
 
-    capture_info = {
-        "order_id": order_id,
+    capture_record = {
+        "paypal_order_id": order_id,
         "transaction_id": capture.get("id"),
-        "status": capture.get("status"),
-        "amount": {
-            "value": amount.get("value"),
-            "currency_code": amount.get("currency_code")
-        },
-        "payer_email": payer_info.get("email_address"),
+        "transaction_status": capture.get("status"),
+        "amount_value": amount.get("value"),
+        "currency_code": amount.get("currency_code"),
+        "payer_email": payer_email,
         "payer_name": payer_full_name,
-        "country_code": country_code,
+        "payer_country": payer_country_code,
         "create_time": capture.get("create_time"),
         "update_time": capture.get("update_time"),
         "shipping_address": {
@@ -360,40 +376,68 @@ async def capture_order(order_id: str):
             "admin_area_2": shipping_address.get("admin_area_2"),
             "postal_code": shipping_address.get("postal_code"),
             "country_code": shipping_address.get("country_code")
-        }
+        },
+        "status": "COMPLETED"
     }
 
-    payment_collection.insert_one(capture_info)
+    # update payment_collection with full capture info but preserve job_id
+    existing_record = payment_collection.find_one({"paypal_order_id": order_id})
+    job_id = existing_record.get("job_id")
 
-    return JSONResponse(content=order_data)
+    payment_collection.update_one(
+        {"paypal_order_id": order_id},
+        {"$set": {**capture_record, "job_id": job_id}}
+    )
 
-def handle_after_payment(record: dict):
-    name = record.get("child_name")
-    username = record.get("username")
-    customer_email = record.get("email")
-    preview_url = record.get("preview_url")
-    book_name = record.get("book_name", "")
-    job_id = record.get("job_id")
-
-    if all([name, username, customer_email, preview_url]):
-        payment_done_email(
-            username=username,
-            child_name=name,
-            email=customer_email,
-            preview_url=preview_url
+    # ✅ Now safely update user_details_collection using job_id
+    if job_id:
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"paid": True}}
         )
 
-        # Store in cache for frontend access
-        after_payment_cache[job_id] = {
-            "job_id": job_id,
-            "user_name": username,
-            "child_name": name,
-            "preview_url": preview_url,
-            "book_name": book_name,
-            "email": customer_email,
-        }
+        user_record = user_details_collection.find_one({"job_id": job_id})
+        if user_record:
+            payment_done_email(
+                child_name=user_record.get("name", ""),
+                username=user_record.get("user_name", ""),
+                email=user_record.get("email", ""),
+                preview_url=user_record.get("preview_url", "")
+            )
+            print("✅ Payment email sent.")
     else:
-        print("⚠️ Missing data for email, skipping send")
+        print("⚠️ No job_id mapping found!")
+
+    print("✅ Payment captured and stored:", capture_record)
+    return JSONResponse(content=order_data)
+
+# def handle_after_payment(record: dict):
+#     name = record.get("child_name")
+#     username = record.get("username")
+#     customer_email = record.get("email")
+#     preview_url = record.get("preview_url")
+#     book_name = record.get("book_name", "")
+#     job_id = record.get("job_id")
+
+#     if all([name, username, customer_email, preview_url]):
+#         payment_done_email(
+#             username=username,
+#             child_name=name,
+#             email=customer_email,
+#             preview_url=preview_url
+#         )
+
+#         # Store in cache for frontend access
+#         after_payment_cache[job_id] = {
+#             "job_id": job_id,
+#             "user_name": username,
+#             "child_name": name,
+#             "preview_url": preview_url,
+#             "book_name": book_name,
+#             "email": customer_email,
+#         }
+#     else:
+#         print("⚠️ Missing data for email, skipping send")
 
 @app.post("/update-preview-url")
 async def update_preview_url(

@@ -22,8 +22,8 @@ export const fixedPrices: {
     hardcover: { price: "€44.99", shipping: "€6.99" },
   },
   IN: {
-    paperback: { price: "₹1,450", shipping: "Free Pan India" },
-    hardcover: { price: "₹1,950", shipping: "Free Pan India" },
+    paperback: { price: "₹1,450", shipping: "0" },
+    hardcover: { price: "₹1,950", shipping: "0" },
   },
 };
 

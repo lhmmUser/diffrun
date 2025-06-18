@@ -463,10 +463,10 @@ const Form: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div
                     {...getRootProps()}
-                    className={`py-3 text-center bg-[#5784ba] text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
+                    className={`py-3 text-center bg-[#9ac8eb] text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
                       }`}
                   >
                     <input {...getInputProps()} disabled={imageToCrop !== null} />
@@ -571,7 +571,7 @@ const Form: React.FC = () => {
                   }
                   className={`w-full py-3 text-lg font-bold rounded-sm shadow-sm transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-purple-400 text-white hover:bg-purple-300"
+                    : "bg-[#9ac8eb] text-white cursor-pointer"
                     }`}
                 >
                   {loading ? "Processing..." : "Preview your book"}
