@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { getFixedPriceByCountry, countryCurrencyMap } from "@/data/fixedPrices";
+import { getFixedPriceByCountry } from "@/data/fixedPrices";
 
 const Purchase = () => {
   const searchParams = useSearchParams();
@@ -19,16 +19,9 @@ const Purchase = () => {
   const [locale, setLocale] = useState<string>("");
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  const paypalCurrency = (() => {
-    const currency = countryCurrencyMap[locale] || "USD";
-    return currency;
-  })();
-
-  const currency = countryCurrencyMap[locale] || "USD";
-
   const initialOptions = {
     clientId: "AQf86J_3Vmxd9fe9O62DwTyUhzqawY54ZR3zkcNKiV5SnRbn0YG_qPf2JOEa_I9vntx1UWE6oXNDSHxU",
-    currency: paypalCurrency,
+    currency: "USD",
     components: "buttons",
     enableFunding: "venmo",
     disableFunding: "",
@@ -36,11 +29,6 @@ const Purchase = () => {
     dataPageType: "product-details",
     dataSdkIntegrationSource: "developer-studio",
   };
-
-  // helper to derive currency code from locale
-  const getCurrencyByLocale = (countryCode: string) => {
-    return countryCurrencyMap[countryCode] || "USD";
-  }
 
   useEffect(() => {
     const fetchPreviewUrl = async () => {
@@ -110,90 +98,91 @@ const Purchase = () => {
   return (
     <div className="flex flex-col items-center min-h-screen mt-10">
       <section className="w-full max-w-4xl mb-16 px-4 md:px-0">
-        <h1 className="text-2xl md:text-3xl font-libre font-medium text-gray-800 py-4 px-1">
-          {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
-        </h1>
+        <div className="">
+          <h1 className="text-2xl md:text-3xl font-libre font-medium text-gray-800 py-4 px-1">
+            {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
+          </h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-          {(["hardcover", "paperback"] as const).map((format) => {
-            const { price } = getFixedPriceByCountry(locale, format);
-            return (
-              <div
-                key={format}
-                onClick={() => handleSelectOption(format)}
-                className={`relative flex flex-col items-start p-4 shadow-lg cursor-pointer ${selectedOption === format ? "bg-[#f7f6cf]" : "hover:bg-gray-100"}`}
-              >
-                <div className="absolute top-2 right-2 bg-[#5784ba] text-white text-xs px-4 py-2">
-                  {selectedOption === format ? "Selected" : ""}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+            {(["hardcover", "paperback"] as const).map((format) => {
+              const { price } = getFixedPriceByCountry(locale, format);
+              return (
+                <div
+                  key={format}
+                  onClick={() => handleSelectOption(format)}
+                  className={`relative flex flex-col items-start p-4 shadow-lg cursor-pointer ${selectedOption === format ? "bg-[#f7f6cf]" : "hover:bg-gray-100"}`}
+                >
+                  <div className="absolute top-2 right-2 bg-[#5784ba] text-white text-xs px-4 py-2">
+                    {selectedOption === format ? "Selected" : format === "hardcover" ? "" : ""}
+                  </div>
+                  <img
+                    src={`/${format === "hardcover" ? "hardcover" : "softpaper"}-${bookId}.jpg`}
+                    alt={`Diffrun personalized books - ${format} book`}
+                    className="w-auto h-48 object-cover mb-4"
+                  />
+                  <h2 className="text-xl font-poppins font-medium text-black capitalize">{format}</h2>
+                  <p className="text-sm text-gray-700 font-poppins mb-2">
+                    {format === "hardcover"
+                      ? "Durable, premium binding with matte finish."
+                      : "Lightweight and portable softcover edition."}
+                  </p>
+                  <span className="text-lg font-poppins font-bold">{price}</span>
                 </div>
-                <img
-                  src={`/${format === "hardcover" ? "hardcover" : "softpaper"}-${bookId}.jpg`}
-                  alt={`Diffrun personalized books - ${format} book`}
-                  className="w-auto h-48 object-cover mb-4"
-                />
-                <h2 className="text-xl font-poppins font-medium text-black capitalize">{format}</h2>
-                <p className="text-sm text-gray-700 font-poppins mb-2">
-                  {format === "hardcover"
-                    ? "Durable, premium binding with matte finish."
-                    : "Lightweight and portable softcover edition."}
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-12 justify-center items-center px-6 py-10">
+            {locale === "IN" ? (
+              <>
+                <div className="w-full text-center bg-[#f4cfdf] text-gray-800 text-sm font-poppins font-medium py-2 mt-6">
+                  Free Shipping All Across India
+                </div>
+                <button
+                  onClick={handleCheckout}
+                  disabled={!selectedOption}
+                  className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
+                >
+                  Proceed to Checkout
+                </button>
+              </>
+            ) : (
+              <>
+              {(() => {
+            const { shipping } = getFixedPriceByCountry(locale, selectedOption || "hardcover");
+            return (
+              <div className="text-center mt-4">
+                <p className="text-sm font-poppins font-medium text-gray-800">
+                  Shipping: {shipping}
                 </p>
-                <span className="text-lg font-poppins font-bold">{price}</span>
               </div>
             );
-          })}
-        </div>
-
-        <div className="flex flex-col gap-12 justify-center items-center px-6 py-10">
-          {locale === "IN" ? (
-            <>
-              <div className="w-full text-center bg-[#f4cfdf] text-gray-800 text-sm font-poppins font-medium py-2 mt-6">
-                Free Shipping All Across India
-              </div>
-              <button
-                onClick={handleCheckout}
-                disabled={!selectedOption}
-                className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
-              >
-                Proceed to Checkout
-              </button>
-            </>
-          ) : (
-            <>
-              {(() => {
-                const { shipping } = getFixedPriceByCountry(locale, selectedOption || "hardcover");
-                return (
-                  <div className="text-center mt-4">
-                    <p className="text-sm font-poppins font-medium text-gray-800">
-                      Shipping: {shipping}
-                    </p>
-                  </div>
-                );
-              })()}
+          })()}
               <PayPalScriptProvider options={initialOptions}>
                 <PayPalButtons
                   style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
                   createOrder={async () => {
-                    const { price, shipping } = getFixedPriceByCountry(locale, selectedOption || "hardcover");
-                    const currency = getCurrencyByLocale(locale);
-                    const numericPrice = price.replace(/[^\d.]/g, "");
-                    const numericShipping = shipping.replace(/[^\d.]/g, "");
+                    const { price } = getFixedPriceByCountry(locale, selectedOption || "hardcover");
+                    const numericPriceUSD = price.replace(/[^\d.]/g, "");
                     try {
                       const response = await fetch(`${apiBaseUrl}/api/orders`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          cart: [{
-                            id: `${bookId}_${selectedOption}`,
-                            name: `${bookId} - ${selectedOption}`,
-                            description: "Personalized storybook",
-                            quantity: 1,
-                            price: numericPrice,
-                          }],
-                          shipping: numericShipping,
-                          currency: currency,
+                          cart: [
+                            {
+                              id: `${bookId}_${selectedOption}`,
+                              name: `${bookId} - ${selectedOption}`,
+                              description: "Personalized storybook",
+                              quantity: 1,
+                              price: numericPriceUSD,
+                            },
+                          ],
                           locale,
+                          selected_option: selectedOption,
                           preview_url: previewUrl,
-                          request_id: jobId
                         }),
                       });
 
@@ -215,12 +204,6 @@ const Purchase = () => {
                       const transaction = orderData.purchase_units[0].payments.captures[0];
                       setMessage(`Transaction ${transaction.status}: ${transaction.id}`);
                       console.log("Capture result", orderData);
-
-                      const currentParams = new URLSearchParams(window.location.search);
-                      setTimeout(() => {
-                        window.location.href = `/thankyou?${currentParams.toString()}`;
-                      }, 2000);
-
                     } catch (error) {
                       console.error(error);
                       setMessage(`Transaction failed...${error}`);
@@ -228,17 +211,18 @@ const Purchase = () => {
                   }}
                 />
               </PayPalScriptProvider>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
 
-        <div className="p-6 text-center">
-          <p className="text-sm font-semibold">
-            You can still make edits within 12 hours after placing your order
-          </p>
-          <p className="text-sm mt-2">
-            Printing and shipping may take up to 10 days
-          </p>
+          <div className="p-6 text-center">
+            <p className="text-sm font-semibold">
+              You can still make edits within 12 hours after placing your order
+            </p>
+            <p className="text-sm mt-2">
+              Printing and shipping may take up to 10 days
+            </p>
+          </div>
         </div>
       </section>
 
