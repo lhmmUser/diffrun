@@ -1,7 +1,7 @@
 
 export default function Approved() {
   return (
-    <div className="w-full h-[80vh] bg-gray-100 flex items-center justify-center">
+    <div className="w-full h-[80vh] bg-white flex items-center justify-center">
       <div className="p-6 text-center text-gray-800 font-sans leading-relaxed">
         <h1 className="text-2xl font-bold mb-6">
           Storybook is now being printed! ✨
@@ -15,13 +15,13 @@ export default function Approved() {
         <p className="mb-6">
         </p>
 
-    {/* <p className="mb-4">
+    <p className="mb-4">
       In case the approval wasn't submitted manually, our system automatically finalizes the book 12 hours after payment to avoid any delays in printing.
     </p>
 
-    <p className=" text-gray-600">
+    <p className=" text-gray-700">
       Our system will automatically finalize the book 12 hours after payment to avoid delays in printing.
-    </p> */}
+    </p>
 
       </div>
     </div>

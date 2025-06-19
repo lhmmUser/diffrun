@@ -1,6 +1,14 @@
 import os
 import shutil
-from config import INPUT_FOLDER, OUTPUT_FOLDER
+from dotenv import load_dotenv
+from pathlib import Path
+
+dotenv_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=dotenv_path)
+
+
+INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
+OUTPUT_FOLDER = os.path.normpath(os.getenv("OUTPUT_FOLDER"))
 
 def prepare_cover_inputs_from_selected_indices(job_id: str, selected_indices: list[int]):
     source_dir = os.path.join(OUTPUT_FOLDER, job_id, "exterior")

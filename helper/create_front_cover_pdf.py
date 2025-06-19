@@ -1,7 +1,11 @@
 import os
-import fitz                       # PyMuPDF
+import fitz                       
 from PIL import Image
-from config import OUTPUT_FOLDER   # already points at ...\ComfyUI\output
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="./.env")
+
+OUTPUT_FOLDER = os.path.normpath(os.getenv("OUTPUT_FOLDER"))
 
 TEMP_JPEG = "cover_temp_image.jpg"
 

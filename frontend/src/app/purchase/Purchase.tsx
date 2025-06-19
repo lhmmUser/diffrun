@@ -5,45 +5,42 @@ import { useSearchParams } from "next/navigation";
 import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { getFixedPriceByCountry } from "@/data/fixedPrices";
+import { getFixedPriceByCountry, countryCurrencyMap } from "@/data/fixedPrices";
 
 const Purchase = () => {
   const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<"hardcover" | "paperback" | null>(null);
-
   const jobId = searchParams.get("job_id") || "";
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [message, setMessage] = useState("");
-  const [locale, setLocale] = useState<string>("");
+  const [locale, setLocale] = useState<string>("IN");
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const currency = countryCurrencyMap[locale] || "USD";
 
   const initialOptions = {
     clientId: "AQf86J_3Vmxd9fe9O62DwTyUhzqawY54ZR3zkcNKiV5SnRbn0YG_qPf2JOEa_I9vntx1UWE6oXNDSHxU",
-    currency: "USD",
+    currency: currency,
     components: "buttons",
     enableFunding: "venmo",
     disableFunding: "",
     buyerCountry: "US",
-    dataPageType: "product-details",
-    dataSdkIntegrationSource: "developer-studio",
   };
 
   useEffect(() => {
-    const fetchPreviewUrl = async () => {
+    const fetchData = async () => {
       if (!jobId) return;
       try {
         const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-        if (!response.ok) throw new Error("Failed to fetch preview URL");
         const data = await response.json();
         setPreviewUrl(data.preview_url || "");
-        setLocale(data.locale || "");
-      } catch (err: any) {
-        console.error("❌ Error fetching preview URL:", err.message);
+        setLocale(data.locale || "IN");
+      } catch (err) {
+        console.error("Error fetching preview:", err);
       }
     };
-    fetchPreviewUrl();
+    fetchData();
   }, [jobId]);
 
   const handleSelectOption = async (option: "hardcover" | "paperback") => {
@@ -55,7 +52,7 @@ const Purchase = () => {
         body: JSON.stringify({ job_id: jobId, book_style: option }),
       });
     } catch (err) {
-      console.error("❌ Failed to save book style:", err);
+      console.error("Error saving book style:", err);
     }
   };
 
@@ -73,6 +70,7 @@ const Purchase = () => {
       shipping,
       locale,
     };
+
     try {
       const response = await fetch(`${apiBaseUrl}/create_checkout`, {
         method: "POST",
@@ -127,20 +125,61 @@ const Purchase = () => {
             Shipping: {(getFixedPriceByCountry(locale, selectedOption || "hardcover")).shipping}
           </div>
 
-          <button
-            onClick={handleCheckout}
-            disabled={!selectedOption}
-            className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
-          >
-            Proceed to Checkout
-          </button>
-
-          {/* Keeping PayPal code for future */}
-          <div style={{ display: "none" }}>
+          {locale === "IN" ? (
+            <button
+              onClick={handleCheckout}
+              disabled={!selectedOption}
+              className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
+            >
+              Proceed to Checkout
+            </button>
+          ) : (
             <PayPalScriptProvider options={initialOptions}>
-              <PayPalButtons />
+              <PayPalButtons
+                style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
+                createOrder={async () => {
+                  if (!selectedOption) return;
+
+                  const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
+                  const numericPrice = price.replace(/[^\d.]/g, "");
+                  const numericShipping = shipping.replace(/[^\d.]/g, "");
+
+                  const response = await fetch(`${apiBaseUrl}/api/orders`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      cart: [{
+                        id: `${bookId}_${selectedOption}`,
+                        name: `${bookId} - ${selectedOption}`,
+                        description: "Personalized storybook",
+                        quantity: 1,
+                        price: numericPrice,
+                      }],
+                      shipping: numericShipping,
+                      currency: currency,
+                      locale,
+                      preview_url: previewUrl,
+                      request_id: jobId
+                    }),
+                  });
+
+                  const orderData = await response.json();
+                  if (orderData.id) return orderData.id;
+                  throw new Error(orderData?.details?.[0]?.description || "Order creation failed");
+                }}
+                onApprove={async (data) => {
+                  await fetch(`${apiBaseUrl}/api/orders/${data.orderID}/capture`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  setTimeout(() => {
+                    const currentParams = new URLSearchParams(window.location.search);
+                    window.location.href = `/thankyou?${currentParams.toString()}`;
+                  }, 2000);
+                }}
+              />
             </PayPalScriptProvider>
-          </div>
+          )}
         </div>
 
         <div className="p-6 text-center">

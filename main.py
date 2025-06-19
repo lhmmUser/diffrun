@@ -31,8 +31,6 @@ from threading import Thread
 from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
 from models import PreviewEmailRequest, BookStylePayload
-from config import SERVER_ADDRESS, INPUT_FOLDER, STORIES_FOLDER, OUTPUT_FOLDER, JPG_OUTPUT, WATERMARK_PATH
-from dotenv import load_dotenv
 from pathlib import Path
 import glob
 import time 
@@ -61,7 +59,14 @@ from paypalserversdk.models.item_category import ItemCategory
 from paypalserversdk.api_helper import ApiHelper
 from db import payment_collection
 
-load_dotenv(dotenv_path="./.env")
+load_dotenv(dotenv_path="/.env")
+
+SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
+INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
+OUTPUT_FOLDER = os.path.normpath(os.getenv("OUTPUT_FOLDER"))
+JPG_OUTPUT = os.path.normpath(os.getenv("JPG_OUTPUT"))
+WATERMARK_PATH = os.path.normpath(os.getenv("WATERMARK_PATH"))
+STORIES_FOLDER = os.path.normpath(os.getenv("STORIES_FOLDER"))
 
 s3 = boto3.client(
     "s3",
@@ -295,7 +300,7 @@ async def create_order(request: Request):
     cart = body.get("cart", [])
     shipping_value = body.get("shipping", "0")
     currency_code = body.get("currency", "USD")  
-    request_id = body.get("request_id")  # <- coming from frontend jobId
+    request_id = body.get("request_id")
 
     if not cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
@@ -332,7 +337,6 @@ async def create_order(request: Request):
         )
     })
 
-    # insert mapping into payment_collection immediately
     paypal_order_id = order.body.id
     payment_collection.insert_one({
         "paypal_order_id": paypal_order_id,
@@ -380,7 +384,6 @@ async def capture_order(order_id: str):
         "status": "COMPLETED"
     }
 
-    # update payment_collection with full capture info but preserve job_id
     existing_record = payment_collection.find_one({"paypal_order_id": order_id})
     job_id = existing_record.get("job_id")
 
@@ -389,7 +392,6 @@ async def capture_order(order_id: str):
         {"$set": {**capture_record, "job_id": job_id}}
     )
 
-    # ✅ Now safely update user_details_collection using job_id
     if job_id:
         user_details_collection.update_one(
             {"job_id": job_id},

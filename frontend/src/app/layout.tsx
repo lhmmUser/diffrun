@@ -1,32 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Montserrat, Playfair_Display, David_Libre, Poppins } from "next/font/google";
+import { David_Libre, Poppins } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/custom/Header";
 import Footer from "@/components/custom/Footer";
 import Script from "next/script";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const PlayfairDisplay = Playfair_Display({
-  variable: "--font-play",
-  weight: ["500", "400"],
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const poppins = Poppins({
   variable: "--font-play",
