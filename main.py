@@ -133,7 +133,6 @@ async def add_no_cache_headers(request: Request, call_next):
     response.headers["Expires"] = "0"
     return response
 
-
 class ApproveRequest(BaseModel):
     job_id: str
     selectedSlides: List[int]
@@ -294,7 +293,7 @@ async def create_order(request: Request):
     body = await request.json()
     cart = body.get("cart", [])
     shipping_value = body.get("shipping", "0")
-    currency_code = body.get("currency", "USD")  
+    currency_code = body.get("currency", "USD")
     request_id = body.get("request_id")
 
     if not cart:
@@ -302,7 +301,13 @@ async def create_order(request: Request):
 
     item = cart[0]
     item_price = item.get("price", "25")
-    total_amount = str(round(float(item_price) + float(shipping_value), 2))
+
+    def extract_numeric(val):
+        return float(''.join(c for c in val if c.isdigit() or c == '.' or c == ',' or c == '-').replace(",", ""))
+
+    item_price_value = extract_numeric(item_price)
+    shipping_value_value = extract_numeric(shipping_value)
+    total_amount = str(round(item_price_value + shipping_value_value, 2))
 
     order = orders_controller.create_order({
         "body": OrderRequest(
@@ -313,14 +318,14 @@ async def create_order(request: Request):
                         currency_code=currency_code,
                         value=total_amount,
                         breakdown=AmountBreakdown(
-                            item_total=Money(currency_code=currency_code, value=item_price),
-                            shipping=Money(currency_code=currency_code, value=shipping_value)
+                            item_total=Money(currency_code=currency_code, value=str(item_price_value)),
+                            shipping=Money(currency_code=currency_code, value=str(shipping_value_value))
                         ),
                     ),
                     items=[
                         Item(
                             name=item.get("name", "Storybook"),
-                            unit_amount=Money(currency_code=currency_code, value=item_price),
+                            unit_amount=Money(currency_code=currency_code, value=str(item_price_value)),
                             quantity=str(item.get("quantity", 1)),
                             description=item.get("description", ""),
                             sku=item.get("id", "sku_default"),
@@ -332,12 +337,12 @@ async def create_order(request: Request):
         )
     })
 
-    paypal_order_id = order.body.id
-    payment_collection.insert_one({
-        "paypal_order_id": paypal_order_id,
-        "job_id": request_id,
-        "status": "CREATED"
-    })
+    order_id = order.body.id
+
+    user_details_collection.update_one(
+        {"job_id": request_id},
+        {"$set": {"order_id": order_id, "payment_status": "CREATED"}}
+    )
 
     return JSONResponse(content=ApiHelper.json_deserialize(ApiHelper.json_serialize(order.body)))
 
@@ -358,7 +363,6 @@ async def capture_order(order_id: str):
     amount = capture.get("amount", {})
 
     capture_record = {
-        "paypal_order_id": order_id,
         "transaction_id": capture.get("id"),
         "transaction_status": capture.get("status"),
         "amount_value": amount.get("value"),
@@ -376,36 +380,31 @@ async def capture_order(order_id: str):
             "postal_code": shipping_address.get("postal_code"),
             "country_code": shipping_address.get("country_code")
         },
-        "status": "COMPLETED"
+        "payment_status": "COMPLETED"
     }
 
-    existing_record = payment_collection.find_one({"paypal_order_id": order_id})
-    job_id = existing_record.get("job_id")
+    user_record = user_details_collection.find_one({"order_id": order_id})
+    if not user_record:
+        print("⚠️ No matching user found for order_id:", order_id)
+        raise HTTPException(status_code=404, detail="User not found for order_id")
 
-    payment_collection.update_one(
-        {"paypal_order_id": order_id},
-        {"$set": {**capture_record, "job_id": job_id}}
+    job_id = user_record.get("job_id")
+
+    user_details_collection.update_one(
+        {"job_id": job_id},
+        {"$set": {**capture_record, "paid": True}}
     )
 
-    if job_id:
-        user_details_collection.update_one(
-            {"job_id": job_id},
-            {"$set": {"paid": True}}
+    if user_record:
+        payment_done_email(
+            child_name=user_record.get("name", ""),
+            username=user_record.get("user_name", ""),
+            email=user_record.get("email", ""),
+            preview_url=user_record.get("preview_url", "")
         )
+        print("✅ Payment email sent.")
 
-        user_record = user_details_collection.find_one({"job_id": job_id})
-        if user_record:
-            payment_done_email(
-                child_name=user_record.get("name", ""),
-                username=user_record.get("user_name", ""),
-                email=user_record.get("email", ""),
-                preview_url=user_record.get("preview_url", "")
-            )
-            print("✅ Payment email sent.")
-    else:
-        print("⚠️ No job_id mapping found!")
-
-    print("✅ Payment captured and stored:", capture_record)
+    print("✅ Payment captured and stored successfully")
     return JSONResponse(content=order_data)
 
 # def handle_after_payment(record: dict):

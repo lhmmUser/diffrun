@@ -5,7 +5,18 @@ import { useSearchParams } from "next/navigation";
 import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { getFixedPriceByCountry, countryCurrencyMap } from "@/data/fixedPrices";
+import { getFixedPriceByCountry } from "@/data/fixedPrices";
+
+const currencyMap: { [countryCode: string]: string } = {
+  US: "USD",
+  UK: "GBP",
+  IN: "INR",
+  CA: "CAD",
+  AU: "AUD",
+  NZ: "NZD",
+};
+
+const DEFAULT_COUNTRY = "IN";
 
 const Purchase = () => {
   const searchParams = useSearchParams();
@@ -14,18 +25,15 @@ const Purchase = () => {
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [locale, setLocale] = useState<string>("IN");
+  const [locale, setLocale] = useState<string>(DEFAULT_COUNTRY);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  const currency = countryCurrencyMap[locale] || "USD";
+  const currency = currencyMap[locale] || currencyMap[DEFAULT_COUNTRY];
 
   const initialOptions = {
     clientId: "AQf86J_3Vmxd9fe9O62DwTyUhzqawY54ZR3zkcNKiV5SnRbn0YG_qPf2JOEa_I9vntx1UWE6oXNDSHxU",
     currency: currency,
     components: "buttons",
-    enableFunding: "venmo",
-    disableFunding: "",
-    buyerCountry: "US",
   };
 
   useEffect(() => {
@@ -35,7 +43,7 @@ const Purchase = () => {
         const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
         const data = await response.json();
         setPreviewUrl(data.preview_url || "");
-        setLocale(data.locale || "IN");
+        setLocale(data.locale || DEFAULT_COUNTRY);
       } catch (err) {
         console.error("Error fetching preview:", err);
       }
