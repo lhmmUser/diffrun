@@ -33,11 +33,6 @@ from datetime import datetime, timezone
 from models import PreviewEmailRequest, BookStylePayload
 from pathlib import Path
 import glob
-import time 
-import os
-import logging
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from paypalserversdk.http.auth.o_auth_2 import ClientCredentialsAuthCredentials
 from paypalserversdk.logging.configuration.api_logging_configuration import (
@@ -59,7 +54,7 @@ from paypalserversdk.models.item_category import ItemCategory
 from paypalserversdk.api_helper import ApiHelper
 from db import payment_collection
 
-load_dotenv(dotenv_path="/.env")
+load_dotenv(dotenv_path="./.env")
 
 SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
 INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
@@ -67,6 +62,15 @@ OUTPUT_FOLDER = os.path.normpath(os.getenv("OUTPUT_FOLDER"))
 JPG_OUTPUT = os.path.normpath(os.getenv("JPG_OUTPUT"))
 WATERMARK_PATH = os.path.normpath(os.getenv("WATERMARK_PATH"))
 STORIES_FOLDER = os.path.normpath(os.getenv("STORIES_FOLDER"))
+IP_ADAPTER = os.getenv("IP_ADAPTER")
+PYTORCH_MODEL = os.getenv("PYTORCH_MODEL")
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASS = os.getenv("EMAIL_PASS")
+S3_DIFFRUN_GENERATIONS = os.getenv("S3_DIFFRUN_GENERATIONS")
+S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
+APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
+APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
+GEO = os.getenv("GEO")
 
 s3 = boto3.client(
     "s3",
@@ -115,15 +119,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
-S3_DIFFRUN_GENERATIONS = os.getenv("S3_DIFFRUN_GENERATIONS")
-S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
-APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
-APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
-IP_ADAPTER = os.getenv("IP_ADAPTER")
-GEO = os.getenv("GEO")
 
 if not EMAIL_USER or not EMAIL_PASS:
     raise RuntimeError(
@@ -652,7 +647,6 @@ def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
 
     return approved_dir
 
-# Helper function to copy interior images to approved_images folder
 def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"🧲 get_images() started for workflow {workflow_number}")
 
@@ -935,12 +929,11 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
             else:
                 logger.warning(f"❌ No match for {pattern} in {source_dir}")
 
-        # ✅ Generate PDF & upload
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
             raise Exception("User record not found for PDF step")
 
-        interior_pdf_path = f"{job_id}_interior.pdf"
+        interior_pdf_path = str(approved_dir / f"{job_id}_interior.pdf")
         create_interior_pdf(
             source_folder=str(approved_dir),
             output_pdf=interior_pdf_path,
@@ -954,7 +947,6 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         logger.info(f"📤 Uploaded interior PDF to s3://storyprints/{s3_key}")
         interior_url = f"https://storyprints.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
 
-        # ✅ Copy cover image
         exterior_index = selected[0]
         variant_str = str(exterior_index + 1).zfill(5)
 
@@ -975,7 +967,6 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         cover_input_filename = cover_matches[0].name
         logger.info(f"✅ Copied cover image: {cover_matches[0]} → {cover_dest}")
 
-        # ✅ Run cover workflow
         run_coverpage_workflow_in_background(
             job_id=job_id,
             book_id=book_id,
@@ -983,7 +974,6 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
             cover_input_filename=cover_input_filename
         )
 
-        # ✅ Mark as approved in DB
         approved_at = datetime.now(timezone.utc)
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -996,7 +986,6 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         )
         logger.info(f"✅ Marked job_id={job_id} as approved in database")
 
-        # ✅ Send email
         try:
             username = user.get("user_name") or user.get("name", "").capitalize()
             child_name = user.get("name", "").capitalize()
@@ -1075,17 +1064,18 @@ def run_workflow_in_background(
 
         allowed_values = workflow_data["4"].get("inputs", {}).get("instantid_file", [])
         logger.info(f"📋 Allowed instantid_file values: {allowed_values}")
+        print(IP_ADAPTER,"IP_ADApTER",PYTORCH_MODEL,"pytorchmodel")
 
         if "4" in workflow_data and "inputs" in workflow_data["4"]:
-            instantid_file_path = os.getenv("IP_ADAPTER")
+            instantid_file_path = IP_ADAPTER
+            print(IP_ADAPTER,"IP_ADAPTER", instantid_file_path,"instantid_file_path")
             workflow_data["4"]["inputs"]["instantid_file"] = instantid_file_path
             logger.info(f"🧠 Injected instantid_file into node 4: {instantid_file_path}")
 
         if "6" in workflow_data and "inputs" in workflow_data["4"]:
-            control_net_file_path = os.getenv("PYTORCH_MODEL")
+            control_net_file_path = PYTORCH_MODEL
             workflow_data["6"]["inputs"]["control_net_name"] = control_net_file_path
             logger.info(f"🧠 Injected control_net_name into node 6: {control_net_file_path}")
-
 
         # 🖼️ Inject images into nodes 12, 13, 14
         for i, node_id in enumerate(["12", "13", "14"][:len(saved_filenames)]):
@@ -1919,7 +1909,6 @@ async def after_payment():
 @app.get("/healthcheck")
 def healthcheck():
     return {"status": "ok"}
-
 
 app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 

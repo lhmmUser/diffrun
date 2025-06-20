@@ -335,11 +335,11 @@ const Form: React.FC = () => {
     >
       {showContent ? (
         <>
-          <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto justify-between items-start px-4 lg:px-0 py-8">
+          <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto justify-between items-start px-4 lg:px-0 py-2 md:py-8">
 
             <div className="w-full lg:w-[50%]">
               <div className="max-w-md mx-auto w-full md:max-w-3xl">
-                <h2 className="block lg:hidden text-center mr-20 text-gray-700 text-2xl md:text-3xl font-libre font-medium mb-4">
+                <h2 className="block lg:hidden text-left md:text-center text-gray-700 text-2xl md:text-3xl font-libre font-medium mb-4">
                   {title}
                 </h2>
                 <Swiper
@@ -372,12 +372,12 @@ const Form: React.FC = () => {
                       <img
                         src={`/${bookId}-book-${num}.avif`}
                         alt={`Diffrun personalized books - Book ${num}`}
-                        className="w-full h-auto object-contain mx-auto aspect-square max-w-sm lg:max-w-md"
+                        className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
                       />
                     </SwiperSlide>
                   ))}
                 </Swiper>
-                <div className="flex lg:justify-start justify-center mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
+                <div className="flex lg:justify-start mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
 
                   <ul className="text-left text-sm text-gray-700 md:text-base font-poppins">
                     <li className="flex items-center space-x-2">
@@ -466,7 +466,7 @@ const Form: React.FC = () => {
                 <div className="space-y-3">
                   <div
                     {...getRootProps()}
-                    className={`py-3 text-center bg-[#9ac8eb] text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
+                    className={`py-3 text-center bg-[#5784ba] text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
                       }`}
                   >
                     <input {...getInputProps()} disabled={imageToCrop !== null} />
@@ -571,7 +571,7 @@ const Form: React.FC = () => {
                   }
                   className={`w-full py-3 text-lg font-bold rounded-sm shadow-sm transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-[#9ac8eb] text-white cursor-pointer"
+                    : "bg-[#5784ba] text-white cursor-pointer"
                     }`}
                 >
                   {loading ? "Processing..." : "Preview your book"}

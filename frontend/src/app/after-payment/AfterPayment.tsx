@@ -14,7 +14,7 @@ interface AfterPaymentDetails {
 
 function Content() {
   const [details, setDetails] = useState<AfterPaymentDetails | null>(null);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
     const jobId = new URLSearchParams(window.location.search).get("job_id");

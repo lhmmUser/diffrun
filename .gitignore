@@ -3,3 +3,7 @@
 __pycache__
 
 venv
+
+.gitignore
+
+test.py
