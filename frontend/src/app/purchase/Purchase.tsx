@@ -182,8 +182,8 @@ const Purchase = () => {
                   });
                   setTimeout(() => {
                     const currentParams = new URLSearchParams(window.location.search);
-                    window.location.href = `/thankyou?${currentParams.toString()}`;
-                  }, 2000);
+                    window.location.href = `/confirmation?${currentParams.toString()}`;
+                  }, 3000);
                 }}
               />
             </PayPalScriptProvider>

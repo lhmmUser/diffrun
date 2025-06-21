@@ -11,7 +11,7 @@ interface JobData {
   paid: boolean;
 }
 
-export default function Thankyou() {
+export default function Confirmation() {
   const searchParams = useSearchParams();
   const jobId = searchParams.get("job_id") || "";
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
