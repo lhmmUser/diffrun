@@ -52,9 +52,8 @@ from paypalserversdk.models.purchase_unit_request import PurchaseUnitRequest
 from paypalserversdk.models.item import Item
 from paypalserversdk.models.item_category import ItemCategory
 from paypalserversdk.api_helper import ApiHelper
-from db import payment_collection
 
-load_dotenv(dotenv_path="./.env")
+load_dotenv(dotenv_path="/.env")
 
 SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
 INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
