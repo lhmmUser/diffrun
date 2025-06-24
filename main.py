@@ -64,7 +64,8 @@ PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
 PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox")
 
-environment = LiveEnvironment(client_id=PAYPAL_CLIENT_ID, client_secret=PAYPAL_CLIENT_SECRET)
+environment = LiveEnvironment(
+    client_id=PAYPAL_CLIENT_ID, client_secret=PAYPAL_CLIENT_SECRET)
 paypal_client = PayPalHttpClient(environment)
 
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
@@ -114,21 +115,25 @@ async def add_no_cache_headers(request: Request, call_next):
     response.headers["Expires"] = "0"
     return response
 
+
 class ApproveRequest(BaseModel):
     job_id: str
     selectedSlides: List[int]
-
 
 class SaveUserDetailsRequest(BaseModel):
     job_id: str
     name: str
     gender: str
     preview_url: str
-    
+
     user_name: str | None = None
     phone_number: str | None = None
     email: str | None = None
 
+class CheckoutRequest(BaseModel):
+    book_name: str
+    request_id: str
+    variant_id: str
 
 class EmailRequest(BaseModel):
     username: str
@@ -149,16 +154,12 @@ async def create_order(request: Request):
     province = data.get("province")
     zip_code = data.get("zip")
     discount_code = data.get("discount_code", "").upper()
-    final_amount = data.get("final_amount")
     job_id = data.get("job_id")
 
-    if final_amount is None:
-        return {"error": "Final amount missing."}
-
-    amount_in_paise = int(final_amount * 100)
-
+    # Price calculations will be sent in verify stage, so we don't store them here
+    # Only send limited fields to notes (max 15)
     order_data = {
-        "amount": amount_in_paise,
+        "amount": 100,  # temporary, Razorpay needs amount (will override below)
         "currency": "INR",
         "notes": {
             "name": name,
@@ -174,6 +175,15 @@ async def create_order(request: Request):
         }
     }
 
+    # Frontend should still pass final amount to calculate paise:
+    # fallback for safety
+    final_amount = data.get("final_amount")
+    if final_amount is None:
+        return {"error": "Final amount missing."}
+    
+    amount_in_paise = int(final_amount * 100)
+    order_data["amount"] = amount_in_paise
+
     razorpay_order = razorpay_client.order.create(data=order_data)
 
     return {
@@ -182,6 +192,7 @@ async def create_order(request: Request):
         "currency": "INR",
         "razorpay_key": RAZORPAY_KEY_ID
     }
+
 
 @app.post("/verify-razorpay")
 async def verify_signature(request: Request):
@@ -192,6 +203,15 @@ async def verify_signature(request: Request):
     razorpay_signature = data.get("razorpay_signature")
     job_id = data.get("job_id")
 
+    # Pricing fields sent directly from frontend (safe)
+    actual_price = data.get("actual_price")
+    discount_percentage = data.get("discount_percentage")
+    discount_amount = data.get("discount_amount")
+    shipping_price = data.get("shipping_price")
+    taxes = data.get("taxes")
+    final_amount = data.get("final_amount")
+
+    # Verify signature
     body = razorpay_order_id + "|" + razorpay_payment_id
     generated_signature = hmac.new(
         bytes(RAZORPAY_KEY_SECRET, 'utf-8'),
@@ -203,30 +223,27 @@ async def verify_signature(request: Request):
         return {"success": False, "error": "Signature verification failed"}
 
     payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
-
-    payer_name = payment_details.get("notes", {}).get("name", "")
-    payer_email = payment_details.get("notes", {}).get("email", "")
-    payer_contact = payment_details.get("notes", {}).get("contact", "")
-    discount_code = payment_details.get("notes", {}).get("discount_code", "")
-
-    amount_value = payment_details.get("amount") / 100
+    notes = payment_details.get("notes", {})
+    payer_name = notes.get("name", "")
+    payer_email = notes.get("email", "")
+    payer_contact = notes.get("contact", "")
+    discount_code = notes.get("discount_code", "")
     currency_code = payment_details.get("currency")
     processed_at = payment_details.get("created_at")
 
     shipping_info = {
         "name": payer_name,
-        "address1": payment_details.get("notes", {}).get("address1", ""),
-        "address2": payment_details.get("notes", {}).get("address2", ""),
-        "city": payment_details.get("notes", {}).get("city", ""),
-        "province": payment_details.get("notes", {}).get("province", ""),
-        "zip": payment_details.get("notes", {}).get("zip", ""),
-        "country": payment_details.get("notes", {}).get("country", "India"),
+        "address1": notes.get("address1", ""),
+        "address2": notes.get("address2", ""),
+        "city": notes.get("city", ""),
+        "province": notes.get("province", ""),
+        "zip": notes.get("zip", ""),
+        "country": notes.get("country", "India"),
         "phone": payer_contact
     }
 
     latest_order = user_details_collection.find_one(
-        {"order_id": {"$regex": "^#\\d+"}},
-        sort=[("order_id", -1)]
+        {"order_id": {"$regex": "^#\\d+"}}, sort=[("order_id", -1)]
     )
     if latest_order and latest_order.get("order_id"):
         latest_number = int(latest_order["order_id"].replace("#", ""))
@@ -242,17 +259,39 @@ async def verify_signature(request: Request):
         {"job_id": job_id},
         {"$set": {
             "paid": True,
-            "order_id": new_order_id,   
+            "order_id": new_order_id,
             "customer_email": payer_email,
             "discount_code": discount_code,
             "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
-            "total_price": amount_value,
             "currency_code": currency_code,
+            "total_price": final_amount,
             "shipping_address": shipping_info,
+            "actual_price": actual_price,
+            "discount_percentage": discount_percentage,
+            "discount_amount": discount_amount,
+            "shipping_price": shipping_price,
+            "taxes": taxes,
             "updated_at": datetime.now(timezone.utc)
         }}
     )
 
+    payment_done_email(
+        username=user_record.get("user_name", ""),
+        child_name=user_record.get("name", ""),
+        email=user_record.get("email", ""),
+        preview_url=user_record.get("preview_url", ""),
+        order_id=new_order_id,
+        total_price=final_amount,
+        currency_code=currency_code,
+        discount_code=discount_code,
+        payment_id=razorpay_payment_id,
+        shipping_info=shipping_info,
+        discount_amount=discount_amount,
+        shipping_price=shipping_price,
+        taxes=taxes
+    )
+
+    logger.info(f"✅ Razorpay payment captured successfully for job_id={job_id}")
     return {"success": True}
 
 @app.post("/save-user-details")
@@ -276,10 +315,8 @@ async def save_user_details_endpoint(request: SaveUserDetailsRequest):
         raise HTTPException(
             status_code=500, detail=f"Failed to save user details: {str(e)}")
 
-class CheckoutRequest(BaseModel):
-    book_name: str
-    request_id: str
-    variant_id: str
+
+
 
 @app.post("/create_checkout")
 def create_checkout(payload: CheckoutRequest):
@@ -299,6 +336,7 @@ def create_checkout(payload: CheckoutRequest):
     full_url = f"{shopify_cart_url}?{encoded_attributes}"
 
     return {"checkout_url": full_url}
+
 
 @app.post("/webhooks/shopify")
 async def shopify_webhook(request: Request):
@@ -362,7 +400,8 @@ async def shopify_webhook(request: Request):
                     "updated_at": datetime.now(timezone.utc)
                 }}
             )
-            print(f"💰 Updated paid status for {request_id}: matched={result.matched_count}, modified={result.modified_count}")
+            print(
+                f"💰 Updated paid status for {request_id}: matched={result.matched_count}, modified={result.modified_count}")
             print(f"✅ Shopify Email stored: {customer_email}")
 
             record = user_details_collection.find_one({"job_id": request_id})
@@ -387,6 +426,7 @@ async def shopify_webhook(request: Request):
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+
 @app.post("/api/orders")
 async def create_order(request: Request):
     try:
@@ -401,8 +441,10 @@ async def create_order(request: Request):
 
         item = cart[0]
         item_price = item.get("price", "25")
-        item_price_value = float(''.join(c for c in item_price if c.isdigit() or c == '.'))
-        shipping_value_value = float(''.join(c for c in shipping_value if c.isdigit() or c == '.'))
+        item_price_value = float(
+            ''.join(c for c in item_price if c.isdigit() or c == '.'))
+        shipping_value_value = float(
+            ''.join(c for c in shipping_value if c.isdigit() or c == '.'))
         total_amount = str(round(item_price_value + shipping_value_value, 2))
 
         order_request = OrdersCreateRequest()
@@ -509,33 +551,6 @@ async def capture_order(order_id: str):
         logger.exception("Error capturing PayPal order")
         raise HTTPException(status_code=500, detail=str(e))
 
-# def handle_after_payment(record: dict):
-#     name = record.get("child_name")
-#     username = record.get("username")
-#     customer_email = record.get("email")
-#     preview_url = record.get("preview_url")
-#     book_name = record.get("book_name", "")
-#     job_id = record.get("job_id")
-
-#     if all([name, username, customer_email, preview_url]):
-#         payment_done_email(
-#             username=username,
-#             child_name=name,
-#             email=customer_email,
-#             preview_url=preview_url
-#         )
-
-#         # Store in cache for frontend access
-#         after_payment_cache[job_id] = {
-#             "job_id": job_id,
-#             "user_name": username,
-#             "child_name": name,
-#             "preview_url": preview_url,
-#             "book_name": book_name,
-#             "email": customer_email,
-#         }
-#     else:
-#         print("⚠️ Missing data for email, skipping send")
 
 @app.post("/update-preview-url")
 async def update_preview_url(
@@ -564,9 +579,11 @@ async def update_preview_url(
 
     if (not existing_job.get("preview_country")) and preview_country:
         update_fields["preview_country"] = preview_country
-        print(f"🌍 Setting initial preview_country for job_id={job_id}: {preview_country}")
+        print(
+            f"🌍 Setting initial preview_country for job_id={job_id}: {preview_country}")
     else:
-        print(f"ℹ️ preview_country already set: {existing_job.get('preview_country', '')}, not updating.")
+        print(
+            f"ℹ️ preview_country already set: {existing_job.get('preview_country', '')}, not updating.")
 
     result = user_details_collection.update_one(
         {"job_id": job_id},
@@ -575,6 +592,7 @@ async def update_preview_url(
 
     print(f"✅ Updated preview_url for job_id={job_id}")
     return {"message": "Preview URL updated successfully"}
+
 
 @app.get("/get-job-status/{job_id}")
 async def get_job_status(job_id: str):
@@ -600,6 +618,7 @@ async def get_job_status(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve job status: {str(e)}")
 
+
 @app.get("/get-user-details/{job_id}")
 async def get_user_details(job_id: str):
 
@@ -613,6 +632,7 @@ async def get_user_details(job_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve user details: {str(e)}")
+
 
 @app.post("/update-book-style")
 async def update_book_style(payload: BookStylePayload):
@@ -635,9 +655,12 @@ async def update_book_style(payload: BookStylePayload):
 
     except Exception as e:
         print("❌ Failed to update book style:", str(e))
-        raise HTTPException(status_code=500, detail="Failed to update book style")
+        raise HTTPException(
+            status_code=500, detail="Failed to update book style")
 
 # Helper function to validate workflow files
+
+
 def load_workflow(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Workflow file not found: {file_path}")
@@ -657,6 +680,8 @@ def load_workflow(file_path):
             f"Invalid JSON in workflow file: {file_path}. Error: {str(e)}")
 
 # Function to queue a prompt
+
+
 def queue_prompt(prompt, client_id):
     payload = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(payload).encode('utf-8')
@@ -672,6 +697,8 @@ def queue_prompt(prompt, client_id):
             status_code=400, detail=f"ComfyUI API Error: {str(e)}")
 
 # Function to get an image from the server
+
+
 def get_image(filename, subfolder, folder_type):
     params = {"filename": filename,
               "subfolder": subfolder, "type": folder_type}
@@ -680,11 +707,15 @@ def get_image(filename, subfolder, folder_type):
         return response.read()
 
 # Function to get history of a prompt execution
+
+
 def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{SERVER_ADDRESS}/history/{prompt_id}") as response:
         return json.loads(response.read())
 
 # Function to convert PNG to JPG
+
+
 def convert_png_to_jpg(png_data, output_path, watermark_path):
     try:
         img = Image.open(io.BytesIO(png_data))
@@ -719,11 +750,14 @@ def convert_png_to_jpg(png_data, output_path, watermark_path):
         raise ValueError(f"Error converting PNG to JPG: {str(e)}")
 
 # Function to get images after execution
+
+
 def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
     logger.info("🔧 Copying selected interior PNGs...")
 
     source_dir = os.path.join("output", job_id, "interior")
-    approved_dir = os.path.join("output", job_id, "approved_output", "interior_approved")
+    approved_dir = os.path.join(
+        "output", job_id, "approved_output", "interior_approved")
     os.makedirs(approved_dir, exist_ok=True)
 
     interior_selected = selected[1:]
@@ -742,11 +776,14 @@ def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
             src_path = matches[0]  # take first match
             dst_path = os.path.join(approved_dir, os.path.basename(src_path))
             shutil.copy(src_path, dst_path)
-            logger.info(f"✅ Copied page {page_num} variant {variant_num} to interior_approved")
+            logger.info(
+                f"✅ Copied page {page_num} variant {variant_num} to interior_approved")
         else:
-            logger.warning(f"⚠️ Interior image not found using pattern: {pattern}")
+            logger.warning(
+                f"⚠️ Interior image not found using pattern: {pattern}")
 
     return approved_dir
+
 
 def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"🧲 get_images() started for workflow {workflow_number}")
@@ -817,7 +854,8 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
 
             try:
                 # Step 1 → Save PNG to output/{job_id}/interior
-                local_interior_dir = os.path.join(OUTPUT_FOLDER, job_id, "interior")
+                local_interior_dir = os.path.join(
+                    OUTPUT_FOLDER, job_id, "interior")
                 os.makedirs(local_interior_dir, exist_ok=True)
 
                 # Use original filename → do NOT add timestamp
@@ -865,6 +903,7 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(
         f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
     return output_images
+
 
 @app.post("/store-user-details")
 async def store_user_details(
@@ -935,7 +974,7 @@ async def store_user_details(
         "approved": False,
         "status": "initiated"
     }
-    print(response,"response")
+    print(response, "response")
     try:
         save_user_details(response)
     except Exception as e:
@@ -945,6 +984,7 @@ async def store_user_details(
 
     logger.info("🚀 Returning response: %s", response)
     return response
+
 
 def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]]:
     base_dir = os.path.join(
@@ -993,7 +1033,8 @@ def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]
 
     logger.info(f"✅ Total valid workflows detected: {len(workflow_files)}")
     return workflow_files
-  
+
+
 @app.post("/approve")
 async def approve_for_printing(
     background_tasks: BackgroundTasks,
@@ -1001,12 +1042,14 @@ async def approve_for_printing(
     selectedSlides: str = Form(...)
 ):
     logger.info(f"🧪 Approve for printing triggered for job_id={job_id}")
-    background_tasks.add_task(process_approval_workflow, job_id, selectedSlides)
+    background_tasks.add_task(
+        process_approval_workflow, job_id, selectedSlides)
 
     return {
         "status": "processing_started",
         "message": "Approval started. Backend is finalizing the book in background."
     }
+
 
 def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
@@ -1014,7 +1057,8 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         logger.info(f"🧪 Selected slides: {selected}")
         interior_selected = selected[1:]
         source_dir = Path(OUTPUT_FOLDER) / job_id / "interior"
-        approved_dir = Path(OUTPUT_FOLDER) / job_id / "approved_output" / "interior_approved"
+        approved_dir = Path(OUTPUT_FOLDER) / job_id / \
+            "approved_output" / "interior_approved"
         approved_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"📁 Created approved_output folder: {approved_dir}")
 
@@ -1061,7 +1105,8 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
 
         cover_matches = list(cover_exterior_dir.glob(cover_src_pattern))
         if not cover_matches:
-            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
+            raise Exception(
+                f"Cover image not found for pattern: {cover_src_pattern}")
 
         cover_dest = cover_input_dir / cover_matches[0].name
         shutil.copy(cover_matches[0], cover_dest)
@@ -1088,20 +1133,24 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         logger.info(f"✅ Marked job_id={job_id} as approved in database")
 
         try:
-            username = user.get("user_name") or user.get("name", "").capitalize()
+            username = user.get("user_name") or user.get(
+                "name", "").capitalize()
             child_name = user.get("name", "").capitalize()
             email = user.get("email") or user.get("shopify_email")
 
             if username and child_name and email:
-                send_approval_confirmation_email(username=username, child_name=child_name, email=email)
+                send_approval_confirmation_email(
+                    username=username, child_name=child_name, email=email)
                 logger.info(f"📧 Approval email sent to {email}")
             else:
-                logger.warning("⚠️ Missing data for approval email — skipping send")
+                logger.warning(
+                    "⚠️ Missing data for approval email — skipping send")
         except Exception as e:
             logger.error(f"❌ Error while sending approval email: {e}")
 
     except Exception as e:
         logger.exception("❌ Approval background task failed")
+
 
 @app.get("/get-workflow-status/{job_id}")
 async def get_workflow_status(job_id: str):
@@ -1117,6 +1166,7 @@ async def get_workflow_status(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve workflow status: {str(e)}")
 
+
 def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
     for node_id, node_data in workflow_data.items():
         if isinstance(node_data, dict):
@@ -1126,6 +1176,7 @@ def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
                 return node_id
     logger.warning("⚠️ No job_id node found matching known_job_id")
     return None
+
 
 def run_workflow_in_background(
     job_id: str,
@@ -1138,14 +1189,16 @@ def run_workflow_in_background(
 ):
     name = name.capitalize()
     try:
-        logger.info(f"🚀 Running workflow {workflow_filename} for job_id={job_id}")
+        logger.info(
+            f"🚀 Running workflow {workflow_filename} for job_id={job_id}")
 
         gender_folder = gender.lower()
 
         # 🔢 Extract pg number from filename like 'pg1.json' or '1.json'
         match = re.match(r'^(?:pg)?(\d+)', workflow_filename)
         if not match:
-            raise HTTPException(status_code=400, detail="Invalid workflow filename format")
+            raise HTTPException(
+                status_code=400, detail="Invalid workflow filename format")
 
         page_num = int(match.group(1))
         expected_filename = f"{page_num:02d}_{book_id}_{gender}.json"
@@ -1156,38 +1209,44 @@ def run_workflow_in_background(
 
         if not os.path.exists(workflow_path):
             logger.error(f"❌ Workflow file not found: {workflow_path}")
-            raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_filename}")
+            raise HTTPException(
+                status_code=404, detail=f"Workflow not found: {workflow_filename}")
 
         # 🧠 Load and parse workflow
         workflow_data = load_workflow(workflow_path)
         if isinstance(workflow_data, list):
             workflow_data = workflow_data[0] if workflow_data else {}
 
-        allowed_values = workflow_data["4"].get("inputs", {}).get("instantid_file", [])
+        allowed_values = workflow_data["4"].get(
+            "inputs", {}).get("instantid_file", [])
         logger.info(f"📋 Allowed instantid_file values: {allowed_values}")
-        print(IP_ADAPTER,"IP_ADApTER",PYTORCH_MODEL,"pytorchmodel")
+        print(IP_ADAPTER, "IP_ADApTER", PYTORCH_MODEL, "pytorchmodel")
 
         if "4" in workflow_data and "inputs" in workflow_data["4"]:
             instantid_file_path = IP_ADAPTER
-            print(IP_ADAPTER,"IP_ADAPTER", instantid_file_path,"instantid_file_path")
+            print(IP_ADAPTER, "IP_ADAPTER",
+                  instantid_file_path, "instantid_file_path")
             workflow_data["4"]["inputs"]["instantid_file"] = instantid_file_path
-            logger.info(f"🧠 Injected instantid_file into node 4: {instantid_file_path}")
+            logger.info(
+                f"🧠 Injected instantid_file into node 4: {instantid_file_path}")
 
         if "6" in workflow_data and "inputs" in workflow_data["4"]:
             control_net_file_path = PYTORCH_MODEL
             workflow_data["6"]["inputs"]["control_net_name"] = control_net_file_path
-            logger.info(f"🧠 Injected control_net_name into node 6: {control_net_file_path}")
+            logger.info(
+                f"🧠 Injected control_net_name into node 6: {control_net_file_path}")
 
         # 🖼️ Inject images into nodes 12, 13, 14
         for i, node_id in enumerate(["12", "13", "14"][:len(saved_filenames)]):
             if node_id in workflow_data and "inputs" in workflow_data[node_id]:
-                workflow_data[node_id]["inputs"]["image"] = os.path.join(INPUT_FOLDER, saved_filenames[i])
+                workflow_data[node_id]["inputs"]["image"] = os.path.join(
+                    INPUT_FOLDER, saved_filenames[i])
                 logger.info(f"🖼️ Injected image into node {node_id}")
 
         # ✍️ Inject name into node 46
         if "46" in workflow_data and "inputs" in workflow_data["46"]:
             workflow_data["46"]["inputs"]["value"] = name
-            logger.info("📝 Injected name into node 46")        
+            logger.info("📝 Injected name into node 46")
 
         # 🆔 Inject job_id into string node
         known_job_id = "e44054af-f0ce-4413-8b37-853e1cc680aa"
@@ -1208,7 +1267,8 @@ def run_workflow_in_background(
         ws = websocket.WebSocket()
         try:
             ws.connect(f"ws://{SERVER_ADDRESS}/ws?clientId={client_id}")
-            get_images(ws, workflow_data, job_id, workflow_filename.replace(".json", ""), client_id)
+            get_images(ws, workflow_data, job_id,
+                       workflow_filename.replace(".json", ""), client_id)
         finally:
             ws.close()
 
@@ -1220,13 +1280,16 @@ def run_workflow_in_background(
         )
 
     except Exception as e:
-        logger.exception(f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
+        logger.exception(
+            f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
         workflow_key = f"workflow_{workflow_filename.replace('.json', '')}"
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {f"workflows.{workflow_key}.status": "failed"}}
         )
-        raise HTTPException(status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
+
 
 @app.get("/get-country")
 def get_country(request: Request):
@@ -1235,21 +1298,23 @@ def get_country(request: Request):
     print(f"Client IP: {client_ip}")
 
     try:
-        response = requests.get(f"https://ipinfo.io/{client_ip}/json?token={GEO}")
+        response = requests.get(
+            f"https://ipinfo.io/{client_ip}/json?token={GEO}")
         response.raise_for_status()
         data = response.json()
-        locale = data.get("country") 
+        locale = data.get("country")
         print(f"Geo detection result: {locale}")
     except Exception as e:
         print(f"Geo detection failed: {e}")
-        locale = ""  
-        
-    return {"locale": locale} 
+        locale = ""
+
+    return {"locale": locale}
+
 
 @app.post("/update-country")
 async def update_country(data: dict):
     job_id = data.get("job_id")
-    locale = data.get("locale") 
+    locale = data.get("locale")
 
     job = user_details_collection.find_one({"job_id": job_id})
     if not job:
@@ -1265,6 +1330,7 @@ async def update_country(data: dict):
         print(f"ℹ️ Locale already set ({job['locale']}), not updating.")
 
     return {"status": "ok"}
+
 
 @app.post("/execute-workflow")
 async def execute_workflow(
@@ -1383,6 +1449,7 @@ async def execute_workflow(
         logger.exception("❌ Error during workflow execution")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 @app.post("/regenerate-workflow")
 def regenerate_workflow(
     job_id: str = Form(...),
@@ -1433,6 +1500,7 @@ def regenerate_workflow(
     except Exception as e:
         logger.exception("🔥 Error during workflow regeneration")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/poll-images")
 async def poll_images(job_id: str = Query(...)):
@@ -1528,6 +1596,7 @@ async def poll_images(job_id: str = Query(...)):
         raise HTTPException(
             status_code=500, detail=f"An error occurred: {str(e)}")
 
+
 @app.post("/run-combined-workflow")
 async def run_combined_workflow(job_id: str = Form(...)):
     try:
@@ -1613,6 +1682,7 @@ async def run_combined_workflow(job_id: str = Form(...)):
         logger.exception("🔥 Error running combined workflow")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 def run_coverpage_workflow_in_background(
     job_id: str,
     book_id: str,
@@ -1623,10 +1693,12 @@ def run_coverpage_workflow_in_background(
         logger.info("🚀 Running coverpage workflow for job_id=%s", job_id)
 
         workflow_filename = f"{book_style}_{book_id}.json"
-        workflow_path = os.path.join(INPUT_FOLDER, "stories", "coverpage_wide", workflow_filename)
+        workflow_path = os.path.join(
+            INPUT_FOLDER, "stories", "coverpage_wide", workflow_filename)
 
         if not os.path.exists(workflow_path):
-            raise HTTPException(status_code=404, detail=f"Workflow not found: {workflow_path}")
+            raise HTTPException(
+                status_code=404, detail=f"Workflow not found: {workflow_path}")
 
         workflow_data = load_workflow(workflow_path)
         if isinstance(workflow_data, list):
@@ -1635,7 +1707,8 @@ def run_coverpage_workflow_in_background(
         # ✅ Fetch user's name from DB
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
-            raise HTTPException(status_code=404, detail="User record not found")
+            raise HTTPException(
+                status_code=404, detail="User record not found")
         name = user.get("name", "").capitalize()
 
         # ✅ Step 1: Inject user-uploaded images into nodes 91, 92, 93
@@ -1644,18 +1717,22 @@ def run_coverpage_workflow_in_background(
             if f.startswith(job_id) and f.lower().endswith(".jpg")
         ])
         if not user_images:
-            raise HTTPException(status_code=400, detail="User images not found")
+            raise HTTPException(
+                status_code=400, detail="User images not found")
 
         for idx, node_id in enumerate(["91", "92", "93"][:len(user_images)]):
             full_path = os.path.join(INPUT_FOLDER, user_images[idx])
             if node_id in workflow_data and "inputs" in workflow_data[node_id]:
                 workflow_data[node_id]["inputs"]["image"] = full_path
-                logger.info(f"🖼️ Injected {user_images[idx]} into node {node_id}")
+                logger.info(
+                    f"🖼️ Injected {user_images[idx]} into node {node_id}")
 
         # ✅ Step 2: Inject cover image into node 6
-        cover_path = Path(INPUT_FOLDER) / "cover_inputs" / job_id / cover_input_filename
+        cover_path = Path(INPUT_FOLDER) / "cover_inputs" / \
+            job_id / cover_input_filename
         if not cover_path.exists():
-            raise FileNotFoundError(f"No matching cover image found at: {cover_path}")
+            raise FileNotFoundError(
+                f"No matching cover image found at: {cover_path}")
 
         if "6" in workflow_data and "inputs" in workflow_data["6"]:
             workflow_data["6"]["inputs"]["image"] = str(cover_path)
@@ -1691,21 +1768,26 @@ def run_coverpage_workflow_in_background(
         try:
             s3_key = f"{APPROVED_OUTPUT_PREFIX}/{job_id}_coverpage.pdf"
             s3.upload_file(pdf_path, APPROVED_OUTPUT_BUCKET, s3_key)
-            logger.info(f"📤 Uploaded cover PDF to S3: s3://{APPROVED_OUTPUT_BUCKET}/{s3_key}")
+            logger.info(
+                f"📤 Uploaded cover PDF to S3: s3://{APPROVED_OUTPUT_BUCKET}/{s3_key}")
             cover_url = f"https://{APPROVED_OUTPUT_BUCKET}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
 
             user_details_collection.update_one(
                 {"job_id": job_id},
-                {"$set": {"cover_url": cover_url, "updated_at": datetime.now(timezone.utc)}}
+                {"$set": {"cover_url": cover_url,
+                          "updated_at": datetime.now(timezone.utc)}}
             )
         except Exception as e:
             logger.error(f"❌ Failed to upload cover PDF to S3: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to upload cover PDF: {str(e)}")
-
+            raise HTTPException(
+                status_code=500, detail=f"Failed to upload cover PDF: {str(e)}")
 
     except Exception as e:
-        logger.exception("🔥 Coverpage workflow failed for job_id=%s: %s", job_id, str(e))
-        raise HTTPException(status_code=500, detail=f"Coverpage workflow failed: {str(e)}")
+        logger.exception(
+            "🔥 Coverpage workflow failed for job_id=%s: %s", job_id, str(e))
+        raise HTTPException(
+            status_code=500, detail=f"Coverpage workflow failed: {str(e)}")
+
 
 @app.get("/get-combined-image")
 async def get_combined_image(job_id: str = Query(...)):
@@ -1723,6 +1805,7 @@ async def get_combined_image(job_id: str = Query(...)):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error reading collage image: {e}")
+
 
 @app.get("/generate-comic-pdf")
 async def generate_pdf(job_id: str = Query(...)):
@@ -1814,6 +1897,7 @@ async def generate_pdf(job_id: str = Query(...)):
         print("Email send error:", e)
         raise HTTPException(status_code=500, detail="Failed to send email.")
 
+
 @app.post("/preview-email")
 async def preview_email(payload: PreviewEmailRequest):
     try:
@@ -1822,7 +1906,6 @@ async def preview_email(payload: PreviewEmailRequest):
         preview_url = payload.preview_url
         email = payload.email
 
-        
         # ✅ Log all the critical values
         print("📩 Sending Preview Email:")
         print(f" - To: {email}")
@@ -1830,7 +1913,8 @@ async def preview_email(payload: PreviewEmailRequest):
         print(f" - Name: {name}")
         print(f" - Preview URL: {preview_url}")
 
-        print("🔗 Email Link Block:\n", f'<a href="{preview_url}">Refine {name}’s Book</a>')
+        print("🔗 Email Link Block:\n",
+              f'<a href="{preview_url}">Refine {name}’s Book</a>')
 
         html_content = f"""
         <html>
@@ -1877,38 +1961,94 @@ async def preview_email(payload: PreviewEmailRequest):
 
     except Exception as e:
         print("❌ Email sending error:", str(e))
-        raise HTTPException(status_code=500, detail="Failed to send preview email.")
+        raise HTTPException(
+            status_code=500, detail="Failed to send preview email.")
 
-def payment_done_email(username: str, child_name: str, email: str, preview_url: str):
+def payment_done_email(username: str, child_name: str, email: str, preview_url: str,
+                       order_id: str, total_price: float, currency_code: str,
+                       discount_code: str, payment_id: str,
+                       shipping_price: float, taxes: float,
+                       discount_amount: float, shipping_info: dict):
     try:
         html_content = f"""
         <html>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <body style="font-family: Arial, sans-serif; color: #333; max-width: 700px; margin: auto;">
+            <h2 style="color: #333;">Order {order_id}</h2>
             <p>Hi <strong>{username}</strong>,</p>
 
             <p>Thank you for your order! <strong>{child_name}</strong>'s magical storybook is now ready for your review. ✨</p>
 
             <p>You still have 12 hours to make refinements before the book is sent for printing. If there are any pages you'd like to adjust, you can regenerate specific images directly within the preview.</p>
 
-            <p>Once you're happy with the final result, please click the "Approve for printing" button on the preview page. This step is essential to finalize your book and prepare it for printing.</p>
+            <a href="{preview_url}" style="display:inline-block;padding:12px 24px;background-color:#28a745;color:white;text-decoration:none;border-radius:5px;margin-top:15px;">View & Refine Storybook</a>
 
-            <h3>📖 Preview & Refine Your Book:</h3>
+            <hr style="margin: 30px 0;">
 
-            <a href="{preview_url}" style="display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; font-weight: bold; border-radius: 6px;">
-              View & Refine Storybook
-            </a>
+            <h3>Order Summary</h3>
+                <table width="50%" cellpadding="8" cellspacing="0" style="border-collapse: collapse; max-width: 600px;">
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td width="30%">Product</td>
+                    <td width="30%" align="right">Personalised Storybook × 1</td>
+                </tr>
+                <tr>
+                    <td>Original Price</td>
+                    <td align="right"><del>{currency_code} 1450.00</del></td>
+                </tr>
+                <tr>
+                    <td>Discount {f"({discount_code})" if discount_code else ""}</td>
+                    <td align="right">-{currency_code} {discount_amount:.2f}</td>
+                </tr>
+                <tr>
+                    <td>Subtotal</td>
+                    <td align="right">{currency_code} {(total_price + shipping_price + taxes):.2f}</td>
+                </tr>
+                <tr>
+                    <td>Shipping</td>
+                    <td align="right">{currency_code} {shipping_price:.2f}</td>
+                </tr>
+                <tr>
+                    <td>Taxes</td>
+                    <td align="right">{currency_code} {taxes:.2f}</td>
+                </tr>
+                <tr style="border-top: 1px solid #ddd; font-weight: bold;">
+                    <td>Total</td>
+                    <td align="right">{currency_code} {total_price:.2f}</td>
+                </tr>
+                </table>
 
-            <p>Our system automatically finalizes the book <strong>12 hours after payment</strong> to avoid any delays in printing.</p>
+            <p style="margin-top:10px; color: #555;">You saved {currency_code} {discount_amount:.2f} on this order.</p>
 
-            <p>If you need any assistance, feel free to reply to this email. We're here to help!</p>
+            <h3>Customer Information</h3>
+            <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+              <tr>
+                <td valign="top">
+                  <strong>Shipping Address</strong><br>
+                  {shipping_info.get('name', '')}<br>
+                  {shipping_info.get('address1', '')} {shipping_info.get('address2', '')}<br>
+                  {shipping_info.get('city', '')}, {shipping_info.get('province', '')} {shipping_info.get('zip', '')}<br>
+                  {shipping_info.get('country', '')}
+                </td>
+                <td valign="top">
+                  <strong>Billing Address</strong><br>
+                  {shipping_info.get('name', '')}<br>
+                  {shipping_info.get('address1', '')} {shipping_info.get('address2', '')}<br>
+                  {shipping_info.get('city', '')}, {shipping_info.get('province', '')} {shipping_info.get('zip', '')}<br>
+                  {shipping_info.get('country', '')}
+                </td>
+              </tr>
+            </table>
 
-            <p>Warmest wishes,<br><strong>The Diffrun Team</strong></p>
+            <p><strong>Payment Method:</strong> {payment_id}</p>
+            <p><strong>Shipping Method:</strong> Standard</p>
+
+            <hr style="margin: 30px 0;">
+            <p style="font-size: 12px; color: #777;">If you have any questions, reply to this email or contact us at <a href="mailto:support@diffrun.com">support@diffrun.com</a>.</p>
           </body>
         </html>
         """
 
         msg = EmailMessage()
-        msg["Subject"] = f"{child_name}'s Storybook is Ready to Refine ✨"
+        msg["Subject"] = f"{child_name}'s Storybook Order Confirmation ✨"
         msg["From"] = EMAIL_USER
         msg["To"] = email
         msg.set_content("This email contains HTML content.")
@@ -1918,9 +2058,9 @@ def payment_done_email(username: str, child_name: str, email: str, preview_url: 
             smtp.login(EMAIL_USER, EMAIL_PASS)
             smtp.send_message(msg)
 
-        logger.info(f"📧 Refinement email sent to {email}")
+        logger.info(f"📧 Order confirmation email sent to {email}")
     except Exception as e:
-        logger.error(f"❌ Failed to send refinement email: {e}")
+        logger.error(f"❌ Failed to send order confirmation email: {e}")
 
 def send_approval_confirmation_email(username: str, child_name: str, email: str):
     try:
@@ -1958,57 +2098,71 @@ def send_approval_confirmation_email(username: str, child_name: str, email: str)
     except Exception as e:
         logger.error(f"❌ Failed to send delivery email: {e}")
 
+
 @app.get("/about")
 async def serve_about():
     return FileResponse("frontend/out/about.html")
+
 
 @app.get("/books")
 async def serve_about():
     return FileResponse("frontend/out/books.html")
 
+
 @app.get("/child-details")
 async def serve_child_details():
     return FileResponse("frontend/out/child-details.html")
+
 
 @app.get("/contact")
 async def serve_contact():
     return FileResponse("frontend/out/contact.html")
 
+
 @app.get("/preview")
 async def serve_preview():
     return FileResponse("frontend/out/preview.html")
+
 
 @app.get("/purchase")
 async def serve_purchase():
     return FileResponse("frontend/out/purchase.html")
 
+
 @app.get("/user-details")
 async def serve_user_details():
     return FileResponse("frontend/out/user-details.html")
+
 
 @app.get("/faq")
 async def serve_user_details():
     return FileResponse("frontend/out/faq.html")
 
+
 @app.get("/email-preview-request")
 async def serve_email_preview_request():
     return FileResponse("frontend/out/email-preview-request.html")
+
 
 @app.get("/thankyou")
 def thankyou():
     return FileResponse("frontend/out/thankyou.html")
 
+
 @app.get("/approved")
 async def serve_about():
     return FileResponse("frontend/out/approved.html")
+
 
 @app.get("/after-payment")
 async def after_payment():
     return FileResponse("frontend/out/after-payment.html")
 
+
 @app.get("/healthcheck")
 def healthcheck():
     return {"status": "ok"}
+
 
 app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 

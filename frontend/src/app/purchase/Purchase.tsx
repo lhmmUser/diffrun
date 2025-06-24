@@ -16,6 +16,11 @@ const currencyMap: { [countryCode: string]: string } = {
   NZ: "NZD",
 };
 
+const extractNumericValue = (priceStr: string): number => {
+  const numeric = priceStr.replace(/[^\d.]/g, "");
+  return parseFloat(numeric);
+};
+
 const DEFAULT_COUNTRY = "IN";
 
 const Purchase = () => {
@@ -157,7 +162,7 @@ const Purchase = () => {
               bg-[#5784BA] text-white opacity-10 
               hidden md:block`}
               >
-                Razorpay Test
+                Proceed to Checkout
               </button>
             </>
           ) : (
@@ -196,15 +201,30 @@ const Purchase = () => {
                   throw new Error(orderData?.details?.[0]?.description || "Order creation failed");
                 }}
                 onApprove={async (data) => {
+                  if (!selectedOption) return;
+
+                  const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
+                  const numericPrice = parseFloat(price.replace(/[^\d.]/g, ""));
+                  const numericShipping = parseFloat(shipping.replace(/[^\d.]/g, ""));
+                  const discountValue = 1450.00 - numericPrice;  
+
                   await fetch(`${apiBaseUrl}/api/orders/${data.orderID}/capture`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      original_price: 1450.00,
+                      discount_value: discountValue,
+                      shipping_price: numericShipping,
+                      tax_price: 0.00
+                    })
                   });
+
                   setTimeout(() => {
                     const currentParams = new URLSearchParams(window.location.search);
                     window.location.href = `/confirmation?${currentParams.toString()}`;
                   }, 3000);
                 }}
+
               />
             </PayPalScriptProvider>
           )}

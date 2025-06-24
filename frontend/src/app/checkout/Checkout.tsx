@@ -4,6 +4,7 @@ import { useState, ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Select, { SingleValue } from 'react-select';
 import Script from 'next/script';
+import { getFixedPriceByCountry } from "@/data/fixedPrices";
 
 interface StateOption {
   value: string;
@@ -26,8 +27,11 @@ interface FormData {
   state: string;
   pincode: string;
   contact: string;
-  discount_code: string;
 }
+
+const extractNumericValue = (value: string): number => {
+  return parseFloat(value.replace(/[^\d.]/g, ''));
+};
 
 const VALID_COUPONS: Record<string, number> = {
   LHMM: 99.91,
@@ -51,7 +55,6 @@ const INDIAN_STATES = [
 const stateOptions: StateOption[] = INDIAN_STATES.map((state) => ({ value: state, label: state }));
 
 export default function Checkout() {
-
   const searchParams = useSearchParams();
   const jobId = searchParams.get("job_id") || "";
 
@@ -65,16 +68,27 @@ export default function Checkout() {
     state: "",
     pincode: "",
     contact: "",
-    discount_code: "",
   });
 
   const [appliedCoupon, setAppliedCoupon] = useState<string>("");
-  const [finalAmount, setFinalAmount] = useState<number>(1450);
   const [message, setMessage] = useState<string>("");
   const [discountCode, setDiscountCode] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Default book style (hardcoded for now; later you can make this dynamic)
+  const bookStyle: "paperback" | "hardcover" = "paperback";
+
+  // Pricing pulled from fixedPrices file
+  const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle);
+  const numericPrice = extractNumericValue(price);
+  const numericShipping = extractNumericValue(shipping);
+  const numericTaxes = extractNumericValue(taxes);
+
+  const discountPercentage = VALID_COUPONS[appliedCoupon] || 0;
+  const discountAmount = numericPrice * (discountPercentage / 100);
+  const finalAmount = numericPrice - discountAmount;
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -86,9 +100,6 @@ export default function Checkout() {
   const applyDiscount = () => {
     const code = discountCode.trim().toUpperCase();
     if (VALID_COUPONS[code]) {
-      const discount = VALID_COUPONS[code];
-      const discountedPrice = 1450 - 1450 * (discount / 100);
-      setFinalAmount(discountedPrice);
       setAppliedCoupon(code);
       setDiscountCode("");
       setMessage("");
@@ -98,7 +109,6 @@ export default function Checkout() {
   };
 
   const removeDiscount = () => {
-    setFinalAmount(1450);
     setAppliedCoupon("");
     setMessage("");
   };
@@ -130,6 +140,7 @@ export default function Checkout() {
 
   const handlePayment = async () => {
     if (!validateForm()) return;
+
     const payload = {
       name: `${formData.firstName} ${formData.lastName}`,
       email: formData.email,
@@ -140,8 +151,13 @@ export default function Checkout() {
       province: formData.state,
       zip: formData.pincode,
       discount_code: appliedCoupon,
-      final_amount: finalAmount,
-      job_id: jobId
+      job_id: jobId,
+      actual_price: numericPrice,
+      discount_percentage: discountPercentage,
+      discount_amount: discountAmount,
+      shipping_price: numericShipping,
+      taxes: numericTaxes,
+      final_amount: finalAmount
     };
 
     const res = await fetch(`${apiBaseUrl}/create-order-razorpay`, {
@@ -164,7 +180,6 @@ export default function Checkout() {
         contact: formData.contact,
       },
       handler: async function (response: any) {
-
         await fetch(`${apiBaseUrl}/verify-razorpay`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -172,7 +187,13 @@ export default function Checkout() {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
-            job_id: jobId
+            job_id: jobId,
+            actual_price: numericPrice,
+            discount_percentage: discountPercentage,
+            discount_amount: discountAmount,
+            shipping_price: numericShipping,
+            taxes: numericTaxes,
+            final_amount: finalAmount
           }),
         });
 
@@ -187,49 +208,25 @@ export default function Checkout() {
     rzp.open();
   };
 
-  const inputStyle = "border border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-1 focus:outline-none focus:ring-offset-0 p-2 rounded w-full transition duration-150";
-
-
-  function renderInput(name: keyof FormData, label: string) {
-    return (
-      <div className="mb-6">
-        <label className="block mb-1 font-medium font-poppins capitalize" htmlFor={name}>
-          {label}
-        </label>
-        <input
-          id={name}
-          name={name}
-          type={name === "email" ? "email" : name === "pincode" || name === "contact" ? "tel" : "text"}
-          value={formData[name]}
-          onChange={handleChange}
-          className={inputStyle}
-          autoComplete="off"
-        />
-      </div>
-    );
-  }
-
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-      <div className="h-full flex flex-col md:flex-row bg-gray-100 py-10 text-gray-800 px-10">
-        <div className="w-full md:w-2/3 bg-white p-6 rounded-md shadow-md mr-4">
+      <div className="h-full flex flex-col md:flex-row bg-gray-100 py-4 text-gray-800 px-4 sm:px-10 md:px-30 lg:px-40">
 
+        <div className="w-full lg:w-2/3 bg-white p-6 rounded-md shadow-md mr-4">
           <h2 className="text-lg font-semibold mb-1">Contact</h2>
           {renderInput("email", "Email")}
-
           <h2 className="text-lg font-semibold mb-1">Delivery</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderInput("firstName", "First Name")}
             {renderInput("lastName", "Last Name")}
           </div>
-          {renderInput("address", "Address")}
-          {renderInput("apartment", "Apartment, suite, etc.")}
-          <div className="grid grid-cols-3 gap-4">
+          {renderInput("address", "Address Line 1")}
+          {renderInput("apartment", "Address Line 2")}
+          <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
             {renderInput("city", "City")}
-
             <div className="my-1">
-              <label htmlFor="">State</label>
+              <label>State</label>
               <Select<StateOption>
                 instanceId="state-select"
                 options={stateOptions}
@@ -239,15 +236,11 @@ export default function Checkout() {
                 }
                 placeholder="Select State"
                 isSearchable
-                className="react-select-container"
-                classNamePrefix="react-select"
               />
-
             </div>
             {renderInput("pincode", "PIN Code")}
           </div>
           {renderInput("contact", "Phone")}
-
           {error && <p className="text-red-500 mb-4">{error}</p>}
 
           <h2 className="text-lg font-semibold mt-6 mb-1">Shipping Method</h2>
@@ -256,60 +249,88 @@ export default function Checkout() {
           <h2 className="text-lg font-semibold mb-1">Payment</h2>
           <div className="border p-4 rounded bg-gray-50 mb-6">
             <p>All transactions are secure and encrypted.</p>
-            <button
-              onClick={handlePayment}
-              className="bg-[#5784ba] text-white px-8 py-3 rounded-full mt-4 cursor-pointer">
+            <button onClick={handlePayment} className="bg-[#5784ba] text-white px-8 py-3 rounded-full mt-4 cursor-pointer">
               Pay Now
             </button>
           </div>
         </div>
 
-        <div className="w-full md:w-1/3 bg-white p-8 rounded-md shadow-md">
-          <div className="flex items-center mb-4">
-            <img src="/all-books.jpg" alt="Book" width={120} height={120} className="rounded mr-4 object-cover" />
-            <div>
-              <h3 className="font-semibold">Personalised Storybook</h3>
-              <p>Paperback</p>
-              <p className="line-through text-gray-800 text-sm">₹1450</p>
-              <p className="text-xl font-bold">₹{finalAmount}</p>
+        <div className="w-full lg:w-1/3 bg-white p-4 sm:p-6 lg:p-8 rounded-md shadow-md">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start mb-6">
+            <img src="/all-books.jpg" alt="Book" className="w-32 h-auto rounded mb-4 sm:mb-0 sm:mr-6 object-cover" />
+            <div className="text-center sm:text-left">
+              <h3 className="font-semibold text-lg sm:text-xl">Personalised Storybook</h3>
+              <p className="text-sm text-gray-700 mb-1">Paperback</p>
+              <p className="line-through text-gray-800 text-sm">{price}</p>
+              <p className="text-xl font-bold text-black">₹{finalAmount.toFixed(2)}</p>
             </div>
           </div>
 
-          <div className="mb-4 flex items-center space-x-2">
-            <input value={discountCode} placeholder="Discount Code" onChange={handleCouponChange} className={inputStyle + " mb-0"} />
+          <div className="mb-4 flex flex-col sm:flex-row items-center gap-2">
+            <input
+              value={discountCode}
+              placeholder="Discount Code"
+              onChange={handleCouponChange}
+              className="border border-gray-300 p-2 rounded w-full"
+            />
             <button
               onClick={applyDiscount}
-              className={`py-2 px-6 rounded-full transition duration-150 ${discountCode ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-700'}`}
+              className="w-full sm:w-auto py-2 px-6 rounded-full bg-blue-500 text-white"
             >
               Apply
             </button>
           </div>
 
-          {message && <p className="text-red-500 mb-2">{message}</p>}
+          {message && <p className="text-red-500 mb-2 text-sm">{message}</p>}
 
           {appliedCoupon && (
-            <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded mb-4 w-fit">
+            <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded mb-4 w-fit mx-auto sm:mx-0">
               {appliedCoupon}
               <button onClick={removeDiscount} className="ml-2 text-red-500 font-bold">×</button>
             </div>
           )}
 
-          <div className="flex justify-between mb-2">
-            <span>Subtotal</span>
-            <span>₹{finalAmount}</span>
+          <div className="space-y-2 text-sm sm:text-base">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>₹{numericPrice}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Discount</span>
+              <span>- ₹{discountAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping</span>
+              <span>₹{numericShipping}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Taxes</span>
+              <span>₹{numericTaxes}</span>
+            </div>
+            <div className="flex justify-between font-bold text-lg">
+              <span>Total</span>
+              <span>₹{finalAmount.toFixed(2)}</span>
+            </div>
           </div>
-          <div className="flex justify-between mb-2">
-            <span>Shipping</span>
-            <span>FREE</span>
-          </div>
-          <div className="flex justify-between font-bold text-lg">
-            <span>Total</span>
-            <span>₹{finalAmount}</span>
-          </div>
-
-          <div className="text-sm text-green-600 mt-2">TOTAL SAVINGS ₹{1450 - finalAmount}</div>
         </div>
+
       </div>
     </>
   );
+
+  function renderInput(name: keyof FormData, label: string) {
+    return (
+      <div className="mb-6">
+        <label className="block mb-1 font-medium">{label}</label>
+        <input
+          id={name}
+          name={name}
+          type={name === "email" ? "email" : name === "pincode" || name === "contact" ? "tel" : "text"}
+          value={formData[name]}
+          onChange={handleChange}
+          className="border border-gray-300 p-2 rounded w-full"
+        />
+      </div>
+    );
+  }
 }
