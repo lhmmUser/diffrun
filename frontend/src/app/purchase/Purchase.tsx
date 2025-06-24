@@ -31,7 +31,7 @@ const Purchase = () => {
   const currency = currencyMap[locale] || currencyMap[DEFAULT_COUNTRY];
 
   const initialOptions = {
-    clientId: "AQf86J_3Vmxd9fe9O62DwTyUhzqawY54ZR3zkcNKiV5SnRbn0YG_qPf2JOEa_I9vntx1UWE6oXNDSHxU",
+    clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID as string,
     currency: currency,
     components: "buttons",
   };
@@ -94,6 +94,14 @@ const Purchase = () => {
     }
   };
 
+  const handleCheckoutRZP = () => {
+    if (!selectedOption) return;
+
+    const currentParams = new URLSearchParams(window.location.search);
+    window.location.href = `/checkout?${currentParams.toString()}`;
+
+  };
+
   return (
     <div className="flex flex-col items-center min-h-screen mt-10">
       <section className="w-full max-w-4xl mb-16 px-4 md:px-0">
@@ -134,14 +142,26 @@ const Purchase = () => {
           </div>
 
           {locale === "IN" ? (
-            <button
-              onClick={handleCheckout}
-              disabled={!selectedOption}
-              className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
-            >
-              Proceed to Checkout
-            </button>
+            <>
+              <button
+                onClick={handleCheckout}
+                disabled={!selectedOption}
+                className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
+              >
+                Proceed to Checkout
+              </button>
+              <button
+                onClick={handleCheckoutRZP}
+                disabled={!selectedOption}
+                className={`absolute right-10 px-4 py-1 text-xs font-poppins font-medium 
+              bg-[#5784BA] text-white opacity-10 
+              hidden md:block`}
+              >
+                Razorpay Test
+              </button>
+            </>
           ) : (
+
             <PayPalScriptProvider options={initialOptions}>
               <PayPalButtons
                 style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
@@ -158,7 +178,7 @@ const Purchase = () => {
                     body: JSON.stringify({
                       cart: [{
                         id: `${bookId}_${selectedOption}`,
-                        name: `${bookId} - ${selectedOption}`,
+                        name: `${bookId}_${selectedOption}`,
                         description: "Personalized storybook",
                         quantity: 1,
                         price: numericPrice,

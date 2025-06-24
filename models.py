@@ -30,3 +30,4 @@ class PreviewEmailRequest(BaseModel):
 class BookStylePayload(BaseModel):
     job_id: str
     book_style: str
+

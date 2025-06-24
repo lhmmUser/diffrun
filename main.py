@@ -34,24 +34,11 @@ from models import PreviewEmailRequest, BookStylePayload
 from pathlib import Path
 import glob
 from dotenv import load_dotenv
-from paypalserversdk.http.auth.o_auth_2 import ClientCredentialsAuthCredentials
-from paypalserversdk.logging.configuration.api_logging_configuration import (
-    LoggingConfiguration,
-    RequestLoggingConfiguration,
-    ResponseLoggingConfiguration,
-)
-from paypalserversdk.paypal_serversdk_client import PaypalServersdkClient
-from paypalserversdk.controllers.orders_controller import OrdersController
-from paypalserversdk.controllers.payments_controller import PaymentsController
-from paypalserversdk.models.amount_breakdown import AmountBreakdown
-from paypalserversdk.models.amount_with_breakdown import AmountWithBreakdown
-from paypalserversdk.models.checkout_payment_intent import CheckoutPaymentIntent
-from paypalserversdk.models.order_request import OrderRequest
-from paypalserversdk.models.money import Money
-from paypalserversdk.models.purchase_unit_request import PurchaseUnitRequest
-from paypalserversdk.models.item import Item
-from paypalserversdk.models.item_category import ItemCategory
-from paypalserversdk.api_helper import ApiHelper
+import hmac
+import hashlib
+import razorpay
+from paypalcheckoutsdk.core import LiveEnvironment, PayPalHttpClient
+from paypalcheckoutsdk.orders import OrdersCreateRequest, OrdersCaptureRequest
 
 load_dotenv(dotenv_path="/.env")
 
@@ -70,6 +57,17 @@ S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
 APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
 APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
 GEO = os.getenv("GEO")
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
+PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox")
+
+environment = LiveEnvironment(client_id=PAYPAL_CLIENT_ID, client_secret=PAYPAL_CLIENT_SECRET)
+paypal_client = PayPalHttpClient(environment)
+
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 s3 = boto3.client(
     "s3",
@@ -77,22 +75,6 @@ s3 = boto3.client(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
-
-paypal_client = PaypalServersdkClient(
-    client_credentials_auth_credentials=ClientCredentialsAuthCredentials(
-        o_auth_client_id=os.getenv("PAYPAL_CLIENT_ID"),
-        o_auth_client_secret=os.getenv("PAYPAL_CLIENT_SECRET"),
-    ),
-    logging_configuration=LoggingConfiguration(
-        log_level=logging.INFO,
-        mask_sensitive_headers=False,
-        request_logging_config=RequestLoggingConfiguration(log_headers=True, log_body=True),
-        response_logging_config=ResponseLoggingConfiguration(log_headers=True, log_body=True),
-    ),
-)
-
-orders_controller: OrdersController = paypal_client.orders
-payments_controller: PaymentsController = paypal_client.payments
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(message)s")
@@ -154,6 +136,124 @@ class EmailRequest(BaseModel):
     email: EmailStr
     preview_url: str
 
+@app.post("/create-order-razorpay")
+async def create_order(request: Request):
+    data = await request.json()
+
+    name = data.get("name")
+    email = data.get("email")
+    contact = data.get("contact")
+    address1 = data.get("address1")
+    address2 = data.get("address2")
+    city = data.get("city")
+    province = data.get("province")
+    zip_code = data.get("zip")
+    discount_code = data.get("discount_code", "").upper()
+    final_amount = data.get("final_amount")
+    job_id = data.get("job_id")
+
+    if final_amount is None:
+        return {"error": "Final amount missing."}
+
+    amount_in_paise = int(final_amount * 100)
+
+    order_data = {
+        "amount": amount_in_paise,
+        "currency": "INR",
+        "notes": {
+            "name": name,
+            "email": email,
+            "contact": contact,
+            "address1": address1,
+            "address2": address2,
+            "city": city,
+            "province": province,
+            "zip": zip_code,
+            "discount_code": discount_code,
+            "job_id": job_id
+        }
+    }
+
+    razorpay_order = razorpay_client.order.create(data=order_data)
+
+    return {
+        "order_id": razorpay_order['id'],
+        "amount": amount_in_paise,
+        "currency": "INR",
+        "razorpay_key": RAZORPAY_KEY_ID
+    }
+
+@app.post("/verify-razorpay")
+async def verify_signature(request: Request):
+    data = await request.json()
+
+    razorpay_order_id = data.get("razorpay_order_id")
+    razorpay_payment_id = data.get("razorpay_payment_id")
+    razorpay_signature = data.get("razorpay_signature")
+    job_id = data.get("job_id")
+
+    body = razorpay_order_id + "|" + razorpay_payment_id
+    generated_signature = hmac.new(
+        bytes(RAZORPAY_KEY_SECRET, 'utf-8'),
+        bytes(body, 'utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    if generated_signature != razorpay_signature:
+        return {"success": False, "error": "Signature verification failed"}
+
+    payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
+
+    payer_name = payment_details.get("notes", {}).get("name", "")
+    payer_email = payment_details.get("notes", {}).get("email", "")
+    payer_contact = payment_details.get("notes", {}).get("contact", "")
+    discount_code = payment_details.get("notes", {}).get("discount_code", "")
+
+    amount_value = payment_details.get("amount") / 100
+    currency_code = payment_details.get("currency")
+    processed_at = payment_details.get("created_at")
+
+    shipping_info = {
+        "name": payer_name,
+        "address1": payment_details.get("notes", {}).get("address1", ""),
+        "address2": payment_details.get("notes", {}).get("address2", ""),
+        "city": payment_details.get("notes", {}).get("city", ""),
+        "province": payment_details.get("notes", {}).get("province", ""),
+        "zip": payment_details.get("notes", {}).get("zip", ""),
+        "country": payment_details.get("notes", {}).get("country", "India"),
+        "phone": payer_contact
+    }
+
+    latest_order = user_details_collection.find_one(
+        {"order_id": {"$regex": "^#\\d+"}},
+        sort=[("order_id", -1)]
+    )
+    if latest_order and latest_order.get("order_id"):
+        latest_number = int(latest_order["order_id"].replace("#", ""))
+        new_order_id = f"#{latest_number + 1}"
+    else:
+        new_order_id = "#1200"
+
+    user_record = user_details_collection.find_one({"job_id": job_id})
+    if not user_record:
+        return {"success": False, "error": "Job ID not found in database"}
+
+    user_details_collection.update_one(
+        {"job_id": job_id},
+        {"$set": {
+            "paid": True,
+            "order_id": new_order_id,   
+            "customer_email": payer_email,
+            "discount_code": discount_code,
+            "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
+            "total_price": amount_value,
+            "currency_code": currency_code,
+            "shipping_address": shipping_info,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+
+    return {"success": True}
 
 @app.post("/save-user-details")
 async def save_user_details_endpoint(request: SaveUserDetailsRequest):
@@ -289,122 +389,125 @@ async def shopify_webhook(request: Request):
 
 @app.post("/api/orders")
 async def create_order(request: Request):
-    body = await request.json()
-    cart = body.get("cart", [])
-    shipping_value = body.get("shipping", "0")
-    currency_code = body.get("currency", "USD")
-    request_id = body.get("request_id")
+    try:
+        body = await request.json()
+        cart = body.get("cart", [])
+        shipping_value = body.get("shipping", "0")
+        currency_code = body.get("currency", "USD")
+        request_id = body.get("request_id")
 
-    if not cart:
-        raise HTTPException(status_code=400, detail="Cart is empty")
+        if not cart:
+            raise HTTPException(status_code=400, detail="Cart is empty")
 
-    item = cart[0]
-    item_price = item.get("price", "25")
+        item = cart[0]
+        item_price = item.get("price", "25")
+        item_price_value = float(''.join(c for c in item_price if c.isdigit() or c == '.'))
+        shipping_value_value = float(''.join(c for c in shipping_value if c.isdigit() or c == '.'))
+        total_amount = str(round(item_price_value + shipping_value_value, 2))
 
-    def extract_numeric(val):
-        return float(''.join(c for c in val if c.isdigit() or c == '.' or c == ',' or c == '-').replace(",", ""))
+        order_request = OrdersCreateRequest()
+        order_request.prefer('return=representation')
+        order_request.request_body({
+            "intent": "CAPTURE",
+            "purchase_units": [{
+                "amount": {
+                    "currency_code": currency_code,
+                    "value": total_amount,
+                    "breakdown": {
+                        "item_total": {"currency_code": currency_code, "value": str(item_price_value)},
+                        "shipping": {"currency_code": currency_code, "value": str(shipping_value_value)}
+                    }
+                },
+                "items": [{
+                    "name": item.get("name", "Storybook"),
+                    "unit_amount": {"currency_code": currency_code, "value": str(item_price_value)},
+                    "quantity": str(item.get("quantity", 1)),
+                    "description": item.get("description", ""),
+                    "category": "PHYSICAL_GOODS"
+                }]
+            }]
+        })
 
-    item_price_value = extract_numeric(item_price)
-    shipping_value_value = extract_numeric(shipping_value)
-    total_amount = str(round(item_price_value + shipping_value_value, 2))
+        response = paypal_client.execute(order_request)
+        order = response.result
 
-    order = orders_controller.create_order({
-        "body": OrderRequest(
-            intent=CheckoutPaymentIntent.CAPTURE,
-            purchase_units=[
-                PurchaseUnitRequest(
-                    amount=AmountWithBreakdown(
-                        currency_code=currency_code,
-                        value=total_amount,
-                        breakdown=AmountBreakdown(
-                            item_total=Money(currency_code=currency_code, value=str(item_price_value)),
-                            shipping=Money(currency_code=currency_code, value=str(shipping_value_value))
-                        ),
-                    ),
-                    items=[
-                        Item(
-                            name=item.get("name", "Storybook"),
-                            unit_amount=Money(currency_code=currency_code, value=str(item_price_value)),
-                            quantity=str(item.get("quantity", 1)),
-                            description=item.get("description", ""),
-                            sku=item.get("id", "sku_default"),
-                            category=ItemCategory.PHYSICAL_GOODS,
-                        )
-                    ],
-                )
-            ],
+        user_details_collection.update_one(
+            {"job_id": request_id},
+            {"$set": {"order_id": order.id, "payment_status": "CREATED"}}
         )
-    })
 
-    order_id = order.body.id
+        return JSONResponse(content={"id": order.id, "status": order.status, "links": [l.__dict__ for l in order.links]})
 
-    user_details_collection.update_one(
-        {"job_id": request_id},
-        {"$set": {"order_id": order_id, "payment_status": "CREATED"}}
-    )
-
-    return JSONResponse(content=ApiHelper.json_deserialize(ApiHelper.json_serialize(order.body)))
+    except Exception as e:
+        logger.exception("Error creating PayPal order")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/orders/{order_id}/capture")
 async def capture_order(order_id: str):
-    order = orders_controller.capture_order({"id": order_id, "prefer": "return=representation"})
-    order_data = ApiHelper.json_deserialize(ApiHelper.json_serialize(order.body))
+    try:
+        capture_request = OrdersCaptureRequest(order_id)
+        capture_request.prefer('return=representation')
+        response = paypal_client.execute(capture_request)
+        order = response.result
 
-    payer_info = order_data.get("payer", {})
-    payer_name_data = payer_info.get("name", {})
-    payer_full_name = f"{payer_name_data.get('given_name', '')} {payer_name_data.get('surname', '')}".strip()
-    payer_email = payer_info.get("email_address")
-    payer_country_code = payer_info.get("address", {}).get("country_code")
+        purchase_unit = order.purchase_units[0]
+        capture = purchase_unit.payments.captures[0]
 
-    purchase_unit = order_data.get("purchase_units", [{}])[0]
-    shipping_address = purchase_unit.get("shipping", {}).get("address", {})
-    capture = purchase_unit.get("payments", {}).get("captures", [{}])[0]
-    amount = capture.get("amount", {})
+        payer = order.payer
+        payer_name = payer.name.given_name + " " + payer.name.surname
+        payer_email = payer.email_address
 
-    capture_record = {
-        "transaction_id": capture.get("id"),
-        "transaction_status": capture.get("status"),
-        "amount_value": amount.get("value"),
-        "currency_code": amount.get("currency_code"),
-        "payer_email": payer_email,
-        "payer_name": payer_full_name,
-        "payer_country": payer_country_code,
-        "create_time": capture.get("create_time"),
-        "update_time": capture.get("update_time"),
-        "shipping_address": {
-            "address_line_1": shipping_address.get("address_line_1"),
-            "address_line_2": shipping_address.get("address_line_2"),
-            "admin_area_1": shipping_address.get("admin_area_1"),
-            "admin_area_2": shipping_address.get("admin_area_2"),
-            "postal_code": shipping_address.get("postal_code"),
-            "country_code": shipping_address.get("country_code")
-        },
-        "payment_status": "COMPLETED"
-    }
+        processed_at = capture.create_time
+        total_price = capture.amount.value
+        currency_code = capture.amount.currency_code
 
-    user_record = user_details_collection.find_one({"order_id": order_id})
-    if not user_record:
-        print("⚠️ No matching user found for order_id:", order_id)
-        raise HTTPException(status_code=404, detail="User not found for order_id")
+        shipping_address_obj = purchase_unit.shipping.address
+        shipping_info = {
+            "name": purchase_unit.shipping.name.full_name,
+            "address1": shipping_address_obj.address_line_1,
+            "address2": shipping_address_obj.address_line_2,
+            "city": shipping_address_obj.admin_area_2,
+            "province": shipping_address_obj.admin_area_1,
+            "zip": shipping_address_obj.postal_code,
+            "country": shipping_address_obj.country_code,
+            "phone": "",  # PayPal API doesn’t usually return phone here
+        }
 
-    job_id = user_record.get("job_id")
+        # Find user by order_id
+        user_record = user_details_collection.find_one({"order_id": order_id})
+        if not user_record:
+            logger.warning("No matching user found for order_id=%s", order_id)
+            raise HTTPException(status_code=404, detail="User not found")
 
-    user_details_collection.update_one(
-        {"job_id": job_id},
-        {"$set": {**capture_record, "paid": True}}
-    )
+        job_id = user_record.get("job_id")
 
-    if user_record:
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {
+                "paid": True,
+                "order_id": order_id,
+                "customer_email": payer_email,
+                "processed_at": processed_at,
+                "total_price": total_price,
+                "currency_code": currency_code,
+                "shipping_address": shipping_info,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+
         payment_done_email(
             child_name=user_record.get("name", ""),
             username=user_record.get("user_name", ""),
             email=user_record.get("email", ""),
             preview_url=user_record.get("preview_url", "")
         )
-        print("✅ Payment email sent.")
 
-    print("✅ Payment captured and stored successfully")
-    return JSONResponse(content=order_data)
+        logger.info("✅ PayPal payment captured and stored successfully")
+        return {"status": "success"}
+
+    except Exception as e:
+        logger.exception("Error capturing PayPal order")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # def handle_after_payment(record: dict):
 #     name = record.get("child_name")
@@ -1898,7 +2001,6 @@ def thankyou():
 @app.get("/approved")
 async def serve_about():
     return FileResponse("frontend/out/approved.html")
-
 
 @app.get("/after-payment")
 async def after_payment():
