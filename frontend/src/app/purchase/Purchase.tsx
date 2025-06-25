@@ -149,18 +149,9 @@ const Purchase = () => {
           {locale === "IN" ? (
             <>
               <button
-                onClick={handleCheckout}
-                disabled={!selectedOption}
-                className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
-              >
-                Proceed to Checkout
-              </button>
-              <button
                 onClick={handleCheckoutRZP}
                 disabled={!selectedOption}
-                className={`absolute right-10 px-4 py-1 text-xs font-poppins font-medium 
-              bg-[#5784BA] text-white opacity-10 
-              hidden md:block`}
+                className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
               >
                 Proceed to Checkout
               </button>

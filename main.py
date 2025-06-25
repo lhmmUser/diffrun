@@ -607,6 +607,7 @@ async def get_job_status(job_id: str):
                 "email": 1,
                 "user_name": 1,
                 "name": 1,
+                "book_style": 1,
                 "workflow_status": 1,
                 "locale": 1,
             }
@@ -2015,8 +2016,6 @@ def payment_done_email(username: str, child_name: str, email: str, preview_url: 
                     <td align="right">{currency_code} {total_price:.2f}</td>
                 </tr>
                 </table>
-
-            <p style="margin-top:10px; color: #555;">You saved {currency_code} {discount_amount:.2f} on this order.</p>
 
             <h3>Customer Information</h3>
             <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">

@@ -181,16 +181,8 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${DavidLibre.variable} antialiased`}
       >
-        <p className="bg-[#5784ba] text-base md:text-lg text-white flex items-center font-libre font-medium justify-center py-2 leading-tight">
-          <span>Delivered anywhere in India</span>
-          <img
-            src="/india.png"
-            alt="Diffrun personalized books - Indian flag icon for delivery availability"
-            className="h-4 w-auto align-middle mx-2 inline"
-            width="27"
-            height="18"
-          />
-          <span>in 7 days</span>
+        <p className="bg-[#5784ba] text-base md:text-lg text-white flex items-center font-libre font-thin justify-center py-2">
+         Printing and Delivery across Canada, India, UK and US
         </p>
         <Header />
         {children}

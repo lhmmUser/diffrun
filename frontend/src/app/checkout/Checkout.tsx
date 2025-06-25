@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, ChangeEvent } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Select, { SingleValue } from 'react-select';
 import Script from 'next/script';
 import { getFixedPriceByCountry } from "@/data/fixedPrices";
+import { AiOutlineDelete } from 'react-icons/ai';
 
 interface StateOption {
   value: string;
@@ -12,9 +13,7 @@ interface StateOption {
 }
 
 declare global {
-  interface Window {
-    Razorpay: any;
-  }
+  interface Window { Razorpay: any; }
 }
 
 interface FormData {
@@ -42,14 +41,11 @@ const VALID_COUPONS: Record<string, number> = {
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const INDIAN_STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
-  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
-  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
-  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
-  "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands",
-  "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi",
-  "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh",
+  "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
+  "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir",
+  "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
 const stateOptions: StateOption[] = INDIAN_STATES.map((state) => ({ value: state, label: state }));
@@ -59,31 +55,43 @@ export default function Checkout() {
   const jobId = searchParams.get("job_id") || "";
 
   const [formData, setFormData] = useState<FormData>({
-    email: "",
-    firstName: "",
-    lastName: "",
-    address: "",
-    apartment: "",
-    city: "",
-    state: "",
-    pincode: "",
-    contact: "",
+    email: "", firstName: "", lastName: "", address: "", apartment: "", city: "",
+    state: "", pincode: "", contact: ""
   });
 
+  const [bookStyle, setBookStyle] = useState<"hardcover" | "paperback" | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<string>("");
-  const [message, setMessage] = useState<string>("");
   const [discountCode, setDiscountCode] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  // Default book style (hardcoded for now; later you can make this dynamic)
-  const bookStyle: "paperback" | "hardcover" = "paperback";
+  useEffect(() => {
+    const fetchJobDetails = async () => {
+      if (!jobId) return;
+      try {
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+        const data = await response.json();
+        if (data.book_style === "hardcover" || data.book_style === "paperback") {
+          setBookStyle(data.book_style);
+        } else {
+          setBookStyle("paperback");
+        }
+      } catch (err) {
+        console.error("Error fetching job status:", err);
+        setBookStyle("paperback");
+      }
+    };
+    fetchJobDetails();
+  }, [jobId]);
 
-  // Pricing pulled from fixedPrices file
+  if (!bookStyle) {
+    return <div className="flex justify-center items-center min-h-screen"><p className="text-lg font-semibold">Loading checkout...</p></div>;
+  }
+
   const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle);
   const numericPrice = extractNumericValue(price);
   const numericShipping = extractNumericValue(shipping);
   const numericTaxes = extractNumericValue(taxes);
-
   const discountPercentage = VALID_COUPONS[appliedCoupon] || 0;
   const discountAmount = numericPrice * (discountPercentage / 100);
   const finalAmount = numericPrice - discountAmount;
@@ -93,8 +101,18 @@ export default function Checkout() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCouponChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setDiscountCode(e.target.value);
+  const validateForm = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const pincodeRegex = /^\d{6}$/;
+    if (!formData.email || !formData.firstName || !formData.lastName || !formData.address
+      || !formData.city || !formData.state || !formData.pincode || !formData.contact) {
+      setError("Please fill all mandatory fields."); return false;
+    }
+    if (!emailRegex.test(formData.email)) { setError("Please enter valid email."); return false; }
+    if (!phoneRegex.test(formData.contact)) { setError("Please enter valid 10-digit phone."); return false; }
+    if (!pincodeRegex.test(formData.pincode)) { setError("Please enter valid 6-digit PIN code."); return false; }
+    setError(""); return true;
   };
 
   const applyDiscount = () => {
@@ -106,36 +124,6 @@ export default function Checkout() {
     } else {
       setMessage("No coupon code found");
     }
-  };
-
-  const removeDiscount = () => {
-    setAppliedCoupon("");
-    setMessage("");
-  };
-
-  const validateForm = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[6-9]\d{9}$/;
-    const pincodeRegex = /^\d{6}$/;
-
-    if (!formData.email || !formData.firstName || !formData.lastName || !formData.address || !formData.city || !formData.state || !formData.pincode || !formData.contact) {
-      setError("Please fill all mandatory fields.");
-      return false;
-    }
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address.");
-      return false;
-    }
-    if (!phoneRegex.test(formData.contact)) {
-      setError("Please enter a valid 10-digit phone number.");
-      return false;
-    }
-    if (!pincodeRegex.test(formData.pincode)) {
-      setError("Please enter a valid 6-digit Indian PIN code.");
-      return false;
-    }
-    setError("");
-    return true;
   };
 
   const handlePayment = async () => {
@@ -161,9 +149,7 @@ export default function Checkout() {
     };
 
     const res = await fetch(`${apiBaseUrl}/create-order-razorpay`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
     });
     const data = await res.json();
 
@@ -174,15 +160,10 @@ export default function Checkout() {
       name: "Diffrun",
       description: "Personalised Storybook",
       order_id: data.order_id,
-      prefill: {
-        name: `${formData.firstName} ${formData.lastName}`,
-        email: formData.email,
-        contact: formData.contact,
-      },
+      prefill: { name: `${formData.firstName} ${formData.lastName}`, email: formData.email, contact: formData.contact },
       handler: async function (response: any) {
         await fetch(`${apiBaseUrl}/verify-razorpay`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -194,9 +175,8 @@ export default function Checkout() {
             shipping_price: numericShipping,
             taxes: numericTaxes,
             final_amount: finalAmount
-          }),
+          })
         });
-
         setTimeout(() => {
           const currentParams = new URLSearchParams(window.location.search);
           window.location.href = `/confirmation?${currentParams.toString()}`;
@@ -211,126 +191,146 @@ export default function Checkout() {
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-      <div className="h-full flex flex-col md:flex-row bg-gray-100 py-4 text-gray-800 px-4 sm:px-10 md:px-30 lg:px-40">
+      <div className="h-full flex flex-col lg:flex-row bg-gray-100 py-6 px-4 sm:px-10 md:px-30 lg:px-60">
 
-        <div className="w-full lg:w-2/3 bg-white p-6 rounded-md shadow-md mr-4">
-          <h2 className="text-lg font-semibold mb-1">Contact</h2>
-          {renderInput("email", "Email")}
-          <h2 className="text-lg font-semibold mb-1">Delivery</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {renderInput("firstName", "First Name")}
-            {renderInput("lastName", "Last Name")}
+        <div className="w-full lg:w-2/3 bg-white p-6 rounded-md shadow-md mr-0 lg:mr-6">
+
+          <h2 className="text-lg font-libre font-medium mb-2">Contact Information</h2>
+          <div className="mb-4">
+
+            <input name="email" type="email" value={formData.email} onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full" placeholder="Email" />
           </div>
-          {renderInput("address", "Address Line 1")}
-          {renderInput("apartment", "Address Line 2")}
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
-            {renderInput("city", "City")}
-            <div className="my-1">
-              <label>State</label>
+
+          <h2 className="text-lg font-libre font-medium mb-2">Shipping Address</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <input name="firstName" value={formData.firstName} onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full" placeholder="First Name" />
+            </div>
+            <div>
+              <input name="lastName" value={formData.lastName} onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full" placeholder="Last Name" />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <input name="address" value={formData.address} onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full" placeholder="Address Line 1" />
+          </div>
+
+          <div className="mb-4">
+            <input name="apartment" value={formData.apartment} onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full" placeholder="Address Line 2" />
+          </div>
+
+          <div className="flex flex-col md:grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <input name="city" value={formData.city} onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full" placeholder="City" />
+            </div>
+
+            <div>
               <Select<StateOption>
                 instanceId="state-select"
                 options={stateOptions}
                 value={stateOptions.find(opt => opt.value === formData.state)}
-                onChange={(selectedOption: SingleValue<StateOption>) =>
-                  setFormData((prev) => ({ ...prev, state: selectedOption?.value || "" }))
-                }
-                placeholder="Select State"
+                onChange={(selected: SingleValue<StateOption>) => {
+                  setFormData((prev) => ({ ...prev, state: selected?.value || "" }));
+                }}
                 isSearchable
+                placeholder="Select State"
               />
             </div>
-            {renderInput("pincode", "PIN Code")}
-          </div>
-          {renderInput("contact", "Phone")}
-          {error && <p className="text-red-500 mb-4">{error}</p>}
 
-          <h2 className="text-lg font-semibold mt-6 mb-1">Shipping Method</h2>
-          <div className="border p-3 rounded mb-6 bg-gray-50">Standard - FREE</div>
-
-          <h2 className="text-lg font-semibold mb-1">Payment</h2>
-          <div className="border p-4 rounded bg-gray-50 mb-6">
-            <p>All transactions are secure and encrypted.</p>
-            <button onClick={handlePayment} className="bg-[#5784ba] text-white px-8 py-3 rounded-full mt-4 cursor-pointer">
-              Pay Now
-            </button>
-          </div>
-        </div>
-
-        <div className="w-full lg:w-1/3 bg-white p-4 sm:p-6 lg:p-8 rounded-md shadow-md">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start mb-6">
-            <img src="/all-books.jpg" alt="Book" className="w-32 h-auto rounded mb-4 sm:mb-0 sm:mr-6 object-cover" />
-            <div className="text-center sm:text-left">
-              <h3 className="font-semibold text-lg sm:text-xl">Personalised Storybook</h3>
-              <p className="text-sm text-gray-700 mb-1">Paperback</p>
-              <p className="line-through text-gray-800 text-sm">{price}</p>
-              <p className="text-xl font-bold text-black">₹{finalAmount.toFixed(2)}</p>
+            <div>
+              <input name="pincode" value={formData.pincode} onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full" placeholder="PIN Code" />
             </div>
           </div>
 
-          <div className="mb-4 flex flex-col sm:flex-row items-center gap-2">
-            <input
-              value={discountCode}
-              placeholder="Discount Code"
-              onChange={handleCouponChange}
-              className="border border-gray-300 p-2 rounded w-full"
-            />
-            <button
-              onClick={applyDiscount}
-              className="w-full sm:w-auto py-2 px-6 rounded-full bg-blue-500 text-white"
-            >
-              Apply
-            </button>
+          <div className="mb-4">
+            <div className="flex">
+              <div className="flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50">
+                <img
+                  src="/india.png"
+                  alt="India Flag"
+                  className="w-5 h-4 object-cover mr-1"
+                />
+                <span className="ml-1 font-medium text-sm mr-2">+91</span>
+              </div>
+              <input
+                name="contact"
+                value={formData.contact}
+                onChange={(e) => {
+                  const numeric = e.target.value.replace(/\D/g, '');
+                  setFormData((prev) => ({ ...prev, contact: numeric }));
+                }}
+                className="border border-gray-300 p-2 rounded-r w-full"
+                placeholder="Enter 10-digit mobile number"
+                maxLength={10}
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
+
+          <h2 className="text-lg font-libre font-medium mb-2 mt-8">Shipping Method</h2>
+          <div className="p-3 rounded mb-6 shadow-md">Standard - FREE</div>
+
+          <div className="hidden lg:block">
+            <h2 className="text-xl font-libre font-medium">Payment</h2>
+            <div className="">
+              <p className="font-poppins text-gray-600 text-sm">All transactions are secure and encrypted.</p>
+              <button onClick={handlePayment} className="bg-[#5784ba] text-white px-8 py-3 rounded-lg mt-4">Pay Now</button>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="w-full lg:w-1/3 bg-white p-6 rounded-md shadow-md">
+          <div className="flex flex-col items-start justify-center space-y-6 mb-4">
+
+            <img src="/all-books.jpg" alt="Book" className="w-32 h-auto rounded object-cover" />
+            <div className="text-left">
+              <h3 className="font-libre font-medium text-xl">{bookStyle.charAt(0).toUpperCase() + bookStyle.slice(1)} Storybook</h3>
+              {/* <p className="line-through text-gray-600 font-libre text-sm">{price}</p> */}
+              <p className="text-lg font-poppins">₹{finalAmount.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="flex mb-4">
+            <input value={discountCode} placeholder="Discount Code" onChange={(e) => setDiscountCode(e.target.value)}
+              className="border border-gray-300 p-2 rounded w-full mr-2" />
+            <button disabled={!discountCode} onClick={applyDiscount} className="py-2 px-4 rounded-lg bg-[#5784ba] text-white">Apply</button>
           </div>
 
           {message && <p className="text-red-500 mb-2 text-sm">{message}</p>}
 
           {appliedCoupon && (
-            <div className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded mb-4 w-fit mx-auto sm:mx-0">
+            <div className="flex items-center bg-green-100 font-poppins font-medium text-green-700 px-3 py-2 rounded mb-4">
               {appliedCoupon}
-              <button onClick={removeDiscount} className="ml-2 text-red-500 font-bold">×</button>
+              <button onClick={() => setAppliedCoupon("")} className="ml-4 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors">
+                <AiOutlineDelete size={12} />
+              </button>
             </div>
           )}
 
-          <div className="space-y-2 text-sm sm:text-base">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>₹{numericPrice}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Discount</span>
-              <span>- ₹{discountAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Shipping</span>
-              <span>₹{numericShipping}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Taxes</span>
-              <span>₹{numericTaxes}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total</span>
-              <span>₹{finalAmount.toFixed(2)}</span>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between"><span>Subtotal</span><span>₹{numericPrice}</span></div>
+            <div className="flex justify-between"><span>Discount</span><span>- ₹{discountAmount.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Shipping</span><span>₹{numericShipping}</span></div>
+            <div className="flex justify-between"><span>Taxes</span><span>₹{numericTaxes}</span></div>
+            <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>₹{finalAmount.toFixed(2)}</span></div>
+
+          </div>
+
+          <div className="block lg:hidden mt-6">
+              <button onClick={handlePayment} className="bg-[#5784ba] text-white w-full py-3 rounded-sm mt-4">Pay Now</button>
             </div>
           </div>
-        </div>
 
-      </div>
+        </div>
     </>
   );
-
-  function renderInput(name: keyof FormData, label: string) {
-    return (
-      <div className="mb-6">
-        <label className="block mb-1 font-medium">{label}</label>
-        <input
-          id={name}
-          name={name}
-          type={name === "email" ? "email" : name === "pincode" || name === "contact" ? "tel" : "text"}
-          value={formData[name]}
-          onChange={handleChange}
-          className="border border-gray-300 p-2 rounded w-full"
-        />
-      </div>
-    );
-  }
 }
