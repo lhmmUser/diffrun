@@ -181,7 +181,7 @@ export default function Checkout() {
         });
 
         const currentParams = new URLSearchParams(window.location.search);
-        const frontendUrl = window.location.origin;
+        const frontendUrl = "https://diffrun.com";
         window.location.href = `${frontendUrl}/confirmation?${currentParams.toString()}`;
       }
     };

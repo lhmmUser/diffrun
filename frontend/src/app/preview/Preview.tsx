@@ -1494,7 +1494,7 @@ const Preview: React.FC = () => {
               }}
               className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-poppins border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 text-xs md:text-sm"
             >
-              Email me the Preview Link
+              Email Preview Link
             </button>
           </div>
         )}
