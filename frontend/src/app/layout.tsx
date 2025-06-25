@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     "memory book for children",
     "turn child photo into book",
     "AI generated children's storybooks",
-    "storybooks using your child’s face",
+    "storybooks using your child's face",
     "adventure books for kids with custom faces",
     "creative story builder for kids",
     "custom books for early learning",
@@ -117,23 +117,20 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google Tag Manager */}
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PKBNXSM5');`
+        }} />
+        {/* End Google Tag Manager */}
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
         <link rel="icon" href="/favicon.ico" />
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-H85K60DDFD"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-H85K60DDFD');
-          `}
-        </Script>
         <Script
           id="structured-data"
           type="application/ld+json"
@@ -181,8 +178,18 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${DavidLibre.variable} antialiased`}
       >
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-PKBNXSM5"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
+        {/* End Google Tag Manager (noscript) */}
         <p className="bg-[#5784ba] text-base md:text-lg text-white flex items-center font-libre font-thin justify-center py-2">
-         Printing and Delivery across Canada, India, UK and US
+          Printing and Delivery across Canada, India, UK and US
         </p>
         <Header />
         {children}
