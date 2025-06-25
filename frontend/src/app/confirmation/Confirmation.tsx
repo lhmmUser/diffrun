@@ -18,6 +18,7 @@ export default function Confirmation() {
 
   const [jobData, setJobData] = useState<JobData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchJobData = async () => {
@@ -27,26 +28,42 @@ export default function Confirmation() {
 
         const data = await response.json();
 
-        setJobData({
-          username: data.user_name || "",
-          child_name: data.name || "",
-          email: data.email || "",
-          preview_url: data.preview_url || "",
-          paid: data.paid || false,
-        });
-        setLoading(false);
+        if (!data.paid) {
+          setError(true);
+        } else {
+          setJobData({
+            username: data.user_name || "",
+            child_name: data.name || "",
+            email: data.email || "",
+            preview_url: data.preview_url || "",
+            paid: true,
+          });
+        }
       } catch (err) {
         console.error("Error fetching job data:", err);
+        setError(true);
+      } finally {
         setLoading(false);
       }
     };
 
     if (jobId) {
       fetchJobData();
+    } else {
+      setError(true);
+      setLoading(false);
     }
   }, [jobId]);
 
-  if (!jobData || !jobData.paid) {
+  if (loading) {
+    return (
+      <div className="w-full h-[80vh] bg-white flex justify-center items-center">
+        <p className="text-lg font-poppins text-gray-500">Loading your order details...</p>
+      </div>
+    );
+  }
+
+  if (error || !jobData) {
     return (
       <div className="w-full h-[80vh] bg-white flex justify-center items-center">
         <p className="text-lg font-poppins text-red-500">Order not found or payment not completed.</p>
@@ -57,7 +74,6 @@ export default function Confirmation() {
   return (
     <div className="w-full min-h-[80vh] bg-white flex flex-col text-center items-center py-20">
       <div className="max-w-3xl bg-gray-100 shadow-md rounded-md p-8 overflow-hidden px-2">
-
 
         <p className="mb-6 font-poppins">
           Thank you for your order! <strong>{jobData.child_name}</strong>'s magical storybook is now ready for your review. ✨

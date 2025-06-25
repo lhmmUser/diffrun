@@ -85,7 +85,9 @@ export default function Checkout() {
   }, [jobId]);
 
   if (!bookStyle) {
-    return <div className="flex justify-center items-center min-h-screen"><p className="text-lg font-semibold">Loading checkout...</p></div>;
+    return <div className="flex justify-center items-center min-h-screen">
+      <p className="text-lg font-semibold">Loading checkout...</p>
+    </div>;
   }
 
   const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle);
@@ -177,10 +179,10 @@ export default function Checkout() {
             final_amount: finalAmount
           })
         });
-        setTimeout(() => {
-          const currentParams = new URLSearchParams(window.location.search);
-          window.location.href = `/confirmation?${currentParams.toString()}`;
-        }, 3000);
+
+        const currentParams = new URLSearchParams(window.location.search);
+        const frontendUrl = window.location.origin;
+        window.location.href = `${frontendUrl}/confirmation?${currentParams.toString()}`;
       }
     };
 
@@ -326,11 +328,11 @@ export default function Checkout() {
           </div>
 
           <div className="block lg:hidden mt-6">
-              <button onClick={handlePayment} className="bg-[#5784ba] text-white w-full py-3 rounded-sm mt-4">Pay Now</button>
-            </div>
+            <button onClick={handlePayment} className="bg-[#5784ba] text-white w-full py-3 rounded-sm mt-4">Pay Now</button>
           </div>
-
         </div>
+
+      </div>
     </>
   );
 }
