@@ -627,7 +627,7 @@ const Form: React.FC = () => {
         </>
       ) : (
         <motion.div
-          className="w-full min-h-screen flex flex-col items-center gap-10"
+          className="w-full min-h-screen flex flex-col items-center gap-4 px-4"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -640,7 +640,7 @@ const Form: React.FC = () => {
           </motion.h1>
 
           <motion.p
-            className="text-lg sm:text-xl font-medium text-[#454545] inline-block mt-2 font-poppins"
+            className="text-lg sm:text-xl font-medium text-[#454545] inline-block font-poppins"
             variants={subHeadingVariants}
           >
             Creating storybook magic...

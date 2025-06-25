@@ -1,5 +1,6 @@
 "use client";
 
+import { label } from "framer-motion/client";
 import Link from "next/link";
 import { useState } from "react";
 import { RxHamburgerMenu } from "react-icons/rx";
@@ -15,7 +16,7 @@ const Header = () => {
     { label: "Home", href: "/" },
     { label: "All Books", href: "/books" },
     { label: "FAQ", href: "/faq" },
-    { label: "About Us", href: "/about-us" }
+    { label: "About Us", href: "/about-us" },
   ];
 
   return (
