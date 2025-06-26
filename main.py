@@ -315,7 +315,38 @@ async def save_user_details_endpoint(request: SaveUserDetailsRequest):
         raise HTTPException(
             status_code=500, detail=f"Failed to save user details: {str(e)}")
 
+@app.get("/api/order-status/{job_id}")
+async def get_order_status(job_id: str):
+    order = user_details_collection.find_one({"job_id": job_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
 
+    shipping = order.get("shipping_address", {})
+
+    return {
+        "job_id": job_id,
+        "dlv_purchase_event_fired": order.get("dlv_purchase_event_fired", False),
+        "value": order.get("total_price") or order.get("final_amount"),
+        "currency": order.get("currency_code", "INR"),
+        "gender": order.get("gender"),
+        "city": shipping.get("city"),
+        "country": shipping.get("country"),
+        "postal_code": shipping.get("zip")
+    }
+
+@app.post("/api/mark-dlv-purchase-event-fired")
+async def mark_purchase_fired(data: dict):
+    job_id = data.get("job_id")
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Missing job_id")
+
+    result = user_details_collection.update_one(
+        {"job_id": job_id},
+        {"$set": {"dlv_purchase_event_fired": True}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Job ID not found")
 
 
 @app.post("/create_checkout")

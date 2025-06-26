@@ -13,3 +13,5 @@ boto3
 httpx
 requests
 paypal-server-sdk
+razorpay
+paypal-checkout-serversdk

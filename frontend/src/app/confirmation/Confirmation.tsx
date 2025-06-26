@@ -3,12 +3,26 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+declare global {
+  interface Window {
+    dataLayer: any[];
+  }
+}
+
 interface JobData {
   username: string;
   child_name: string;
   email: string;
   preview_url: string;
   paid: boolean;
+  job_id: string;
+  dlv_purchase_event_fired?: boolean;
+  value?: number;
+  currency?: string;
+  city?: string;
+  country?: string;
+  postal_code?: string;
+  gender?: string;
 }
 
 export default function Confirmation() {
@@ -21,26 +35,70 @@ export default function Confirmation() {
 
   useEffect(() => {
     const fetchJobData = async () => {
+      console.log("🔍 Fetching job data for jobId:", jobId);
+
       if (!jobId) {
+        console.error("❌ jobId missing in URL.");
         setStatus("error");
         return;
       }
 
       try {
-        const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+        const res = await fetch(`${apiBaseUrl}/api/order-status/${jobId}`);
         const data = await res.json();
 
-        if (!res.ok || !data.paid) {
+        console.log("📦 Response from /api/order-status:", data);
+
+        if (!res.ok || !data.value || !data.job_id) {
+          console.warn("⚠️ Invalid response structure or unpaid order.");
           setStatus("error");
         } else {
           setJobData({
-            username: data.user_name,
-            child_name: data.name,
-            email: data.email,
-            preview_url: data.preview_url,
+            username: data.username || "",
+            child_name: data.name || "",
+            email: data.email || "",
+            preview_url: data.preview_url || "",
             paid: true,
+            job_id: data.job_id,
+            dlv_purchase_event_fired: data.dlv_purchase_event_fired,
+            value: data.value,
+            currency: data.currency,
+            city: data.city,
+            country: data.country,
+            postal_code: data.postal_code,
+            gender: data.gender
           });
+
           setStatus("success");
+          console.log("✅ Job data loaded and set to state");
+
+          if (!data.dlv_purchase_event_fired && data.job_id) {
+            console.log("📤 Firing GTM 'purchase_ready' event");
+
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+              event: "purchase_ready",
+              transaction_id: data.job_id,
+              value: data.value,
+              currency: data.currency,
+              city: data.city,
+              country: data.country,
+              postal_code: data.postal_code,
+              gender: data.gender
+            });
+
+            console.log("✅ GTM push complete. Sending POST to mark event fired...");
+
+            await fetch(`${apiBaseUrl}/api/mark-dlv-purchase-event-fired`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ job_id: data.job_id })
+            });
+
+            console.log("✅ Purchase event marked as fired in backend.");
+          } else {
+            console.log("⚠️ GTM event already fired or jobId missing");
+          }
         }
       } catch (err) {
         console.error("❌ Error fetching job data:", err);
@@ -52,6 +110,7 @@ export default function Confirmation() {
   }, [jobId, apiBaseUrl]);
 
   if (status === "loading") {
+    console.log("⌛ Still loading...");
     return (
       <div className="w-full h-[80vh] bg-white flex justify-center items-center">
         <p className="text-lg font-poppins text-gray-500">Loading your order details...</p>
@@ -60,12 +119,15 @@ export default function Confirmation() {
   }
 
   if (status === "error" || !jobData) {
+    console.log("❌ Order not found or invalid");
     return (
       <div className="w-full h-[80vh] bg-white flex justify-center items-center">
         <p className="text-lg font-poppins text-red-500">Order not found or payment not completed.</p>
       </div>
     );
   }
+
+  console.log("🎉 Rendering confirmation UI for job:", jobData.job_id);
 
   return (
     <div className="w-full min-h-[80vh] bg-white flex flex-col text-center items-center py-20">
