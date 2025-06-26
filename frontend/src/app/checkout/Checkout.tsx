@@ -226,12 +226,17 @@ export default function Checkout() {
               className="border border-gray-300 p-2 rounded w-full" placeholder="Address Line 2" />
           </div>
 
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <input name="city" value={formData.city} onChange={handleChange}
-                className="border border-gray-300 p-2 rounded w-full" placeholder="City" />
-            </div>
+          <div className="mb-4">
+            <input
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full"
+              placeholder="City"
+            />
+          </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <div>
               <Select<StateOption>
                 instanceId="state-select"
@@ -244,10 +249,14 @@ export default function Checkout() {
                 placeholder="Select State"
               />
             </div>
-
             <div>
-              <input name="pincode" value={formData.pincode} onChange={handleChange}
-                className="border border-gray-300 p-2 rounded w-full" placeholder="PIN Code" />
+              <input
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full"
+                placeholder="PIN Code"
+              />
             </div>
           </div>
 
@@ -293,7 +302,7 @@ export default function Checkout() {
         <div className="w-full lg:w-1/3 bg-white p-6 rounded-md shadow-md">
           <div className="flex flex-col items-start justify-center space-y-6 mb-4">
 
-            <img src="/all-books.jpg" alt="Book" className="w-32 h-auto rounded object-cover" />
+            <img src="/all-books.jpg" alt="Book" className="w-40 h-auto rounded object-cover" />
             <div className="text-left">
               <h3 className="font-libre font-medium text-xl">{bookStyle.charAt(0).toUpperCase() + bookStyle.slice(1)} Storybook</h3>
               {/* <p className="line-through text-gray-600 font-libre text-sm">{price}</p> */}
@@ -302,17 +311,34 @@ export default function Checkout() {
           </div>
 
           <div className="flex mb-4">
-            <input value={discountCode} placeholder="Discount Code" onChange={(e) => setDiscountCode(e.target.value)}
-              className="border border-gray-300 p-2 rounded w-full mr-2" />
-            <button disabled={!discountCode} onClick={applyDiscount} className="py-2 px-4 rounded-lg bg-[#5784ba] text-white">Apply</button>
+            <input
+              value={discountCode}
+              placeholder="Discount Code"
+              onChange={(e) => setDiscountCode(e.target.value)}
+              className="border border-gray-300 p-2 rounded w-full mr-2"
+            />
+            <button
+              disabled={!discountCode}
+              onClick={applyDiscount}
+              className="py-2 px-4 rounded-lg bg-[#5784ba] text-white"
+            >
+              Apply
+            </button>
           </div>
 
-          {message && <p className="text-red-500 mb-2 text-sm">{message}</p>}
+          {message && (
+            <div className="w-full text-blue-600 bg-blue-50 px-4 py-2 rounded text-sm mb-2">
+              {message}
+            </div>
+          )}
 
           {appliedCoupon && (
-            <div className="flex items-center bg-green-100 font-poppins font-medium text-green-700 px-3 py-2 rounded mb-4">
+            <div className="flex items-center w-full bg-blue-50 font-poppins font-medium text-blue-800 px-3 py-2 rounded mb-4">
               {appliedCoupon}
-              <button onClick={() => setAppliedCoupon("")} className="ml-4 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors">
+              <button
+                onClick={() => setAppliedCoupon("")}
+                className="ml-4 bg-gray-200 text-gray-700 rounded-full p-1 hover:bg-gray-300 transition-colors"
+              >
                 <AiOutlineDelete size={12} />
               </button>
             </div>
