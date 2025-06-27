@@ -21,8 +21,8 @@ export const fixedPrices: {
     hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
   },
   AU: {
-    paperback: { price: "$49.99 AUD", shipping: "$8.99 AUD", taxes: "0" },
-    hardcover: { price: "$69.99 AUD", shipping: "$8.99 AUD", taxes: "0" },
+    paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+    hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
   },
   NZ: {
     paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
