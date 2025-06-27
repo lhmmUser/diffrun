@@ -84,7 +84,9 @@ export default function Confirmation() {
               city: data.city,
               country: data.country,
               postal_code: data.postal_code,
-              gender: data.gender
+              gender: data.gender,
+              locale: data.locale || "en-US",
+              dlv_purchase_event_fired: false
             });
 
             console.log("✅ GTM push complete. Sending POST to mark event fired...");
@@ -97,7 +99,7 @@ export default function Confirmation() {
 
             console.log("✅ Purchase event marked as fired in backend.");
           } else {
-            console.log("⚠️ GTM event already fired or jobId missing");
+            console.log("⚠️ GTM event already fired.");
           }
         }
       } catch (err) {

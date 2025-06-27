@@ -156,10 +156,8 @@ async def create_order(request: Request):
     discount_code = data.get("discount_code", "").upper()
     job_id = data.get("job_id")
 
-    # Price calculations will be sent in verify stage, so we don't store them here
-    # Only send limited fields to notes (max 15)
     order_data = {
-        "amount": 100,  # temporary, Razorpay needs amount (will override below)
+        "amount": 100, 
         "currency": "INR",
         "notes": {
             "name": name,
@@ -175,8 +173,6 @@ async def create_order(request: Request):
         }
     }
 
-    # Frontend should still pass final amount to calculate paise:
-    # fallback for safety
     final_amount = data.get("final_amount")
     if final_amount is None:
         return {"error": "Final amount missing."}
@@ -260,6 +256,7 @@ async def verify_signature(request: Request):
         {"$set": {
             "paid": True,
             "order_id": new_order_id,
+            "transaction_id": razorpay_payment_id,
             "customer_email": payer_email,
             "discount_code": discount_code,
             "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
@@ -331,7 +328,11 @@ async def get_order_status(job_id: str):
         "gender": order.get("gender"),
         "city": shipping.get("city"),
         "country": shipping.get("country"),
-        "postal_code": shipping.get("zip")
+        "postal_code": shipping.get("zip"),
+        "preview_url": order.get("preview_url"),
+        "username": order.get("user_name"),
+        "email": order.get("email"),
+        "name": order.get("name")
     }
 
 @app.post("/api/mark-dlv-purchase-event-fired")
@@ -347,7 +348,6 @@ async def mark_purchase_fired(data: dict):
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Job ID not found")
-
 
 @app.post("/create_checkout")
 def create_checkout(payload: CheckoutRequest):
