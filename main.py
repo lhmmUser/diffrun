@@ -16,6 +16,7 @@ import requests
 from typing import List, Optional
 import uuid
 import json
+import asyncio
 import websocket
 import urllib.request
 import urllib.parse
@@ -37,10 +38,11 @@ from dotenv import load_dotenv
 import hmac
 import hashlib
 import razorpay
-from paypalcheckoutsdk.core import LiveEnvironment, PayPalHttpClient
+from paypalcheckoutsdk.core import LiveEnvironment, PayPalHttpClient, SandboxEnvironment
 from paypalcheckoutsdk.orders import OrdersCreateRequest, OrdersCaptureRequest
+from helper.paypal_utils import get_paypal_access_token
 
-load_dotenv(dotenv_path="/.env")
+load_dotenv()
 
 SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
 INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
@@ -62,10 +64,18 @@ RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
-PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox")
+PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "live")
+BASE_URL = "https://api-m.paypal.com"
 
 environment = LiveEnvironment(
-    client_id=PAYPAL_CLIENT_ID, client_secret=PAYPAL_CLIENT_SECRET)
+    client_id=PAYPAL_CLIENT_ID,
+    client_secret=PAYPAL_CLIENT_SECRET
+)
+
+print("PayPal client ID:", PAYPAL_CLIENT_ID)
+print("PayPal secret:", PAYPAL_CLIENT_SECRET)
+print("PayPal environment:", PAYPAL_ENVIRONMENT)
+
 paypal_client = PayPalHttpClient(environment)
 
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
@@ -120,6 +130,7 @@ class ApproveRequest(BaseModel):
     job_id: str
     selectedSlides: List[int]
 
+
 class SaveUserDetailsRequest(BaseModel):
     job_id: str
     name: str
@@ -130,16 +141,19 @@ class SaveUserDetailsRequest(BaseModel):
     phone_number: str | None = None
     email: str | None = None
 
+
 class CheckoutRequest(BaseModel):
     book_name: str
     request_id: str
     variant_id: str
+
 
 class EmailRequest(BaseModel):
     username: str
     name: str
     email: EmailStr
     preview_url: str
+
 
 @app.post("/create-order-razorpay")
 async def create_order(request: Request):
@@ -157,7 +171,7 @@ async def create_order(request: Request):
     job_id = data.get("job_id")
 
     order_data = {
-        "amount": 100, 
+        "amount": 100,
         "currency": "INR",
         "notes": {
             "name": name,
@@ -176,7 +190,7 @@ async def create_order(request: Request):
     final_amount = data.get("final_amount")
     if final_amount is None:
         return {"error": "Final amount missing."}
-    
+
     amount_in_paise = int(final_amount * 100)
     order_data["amount"] = amount_in_paise
 
@@ -288,8 +302,10 @@ async def verify_signature(request: Request):
         taxes=taxes
     )
 
-    logger.info(f"✅ Razorpay payment captured successfully for job_id={job_id}")
+    logger.info(
+        f"✅ Razorpay payment captured successfully for job_id={job_id}")
     return {"success": True}
+
 
 @app.post("/save-user-details")
 async def save_user_details_endpoint(request: SaveUserDetailsRequest):
@@ -311,6 +327,7 @@ async def save_user_details_endpoint(request: SaveUserDetailsRequest):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to save user details: {str(e)}")
+
 
 @app.get("/api/order-status/{job_id}")
 async def get_order_status(job_id: str):
@@ -335,6 +352,7 @@ async def get_order_status(job_id: str):
         "name": order.get("name")
     }
 
+
 @app.post("/api/mark-dlv-purchase-event-fired")
 async def mark_purchase_fired(data: dict):
     job_id = data.get("job_id")
@@ -348,6 +366,7 @@ async def mark_purchase_fired(data: dict):
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Job ID not found")
+
 
 @app.post("/create_checkout")
 def create_checkout(payload: CheckoutRequest):
@@ -458,64 +477,7 @@ async def shopify_webhook(request: Request):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-@app.post("/api/orders")
-async def create_order(request: Request):
-    try:
-        body = await request.json()
-        cart = body.get("cart", [])
-        shipping_value = body.get("shipping", "0")
-        currency_code = body.get("currency", "USD")
-        request_id = body.get("request_id")
-
-        if not cart:
-            raise HTTPException(status_code=400, detail="Cart is empty")
-
-        item = cart[0]
-        item_price = item.get("price", "25")
-        item_price_value = float(
-            ''.join(c for c in item_price if c.isdigit() or c == '.'))
-        shipping_value_value = float(
-            ''.join(c for c in shipping_value if c.isdigit() or c == '.'))
-        total_amount = str(round(item_price_value + shipping_value_value, 2))
-
-        order_request = OrdersCreateRequest()
-        order_request.prefer('return=representation')
-        order_request.request_body({
-            "intent": "CAPTURE",
-            "purchase_units": [{
-                "amount": {
-                    "currency_code": currency_code,
-                    "value": total_amount,
-                    "breakdown": {
-                        "item_total": {"currency_code": currency_code, "value": str(item_price_value)},
-                        "shipping": {"currency_code": currency_code, "value": str(shipping_value_value)}
-                    }
-                },
-                "items": [{
-                    "name": item.get("name", "Storybook"),
-                    "unit_amount": {"currency_code": currency_code, "value": str(item_price_value)},
-                    "quantity": str(item.get("quantity", 1)),
-                    "description": item.get("description", ""),
-                    "category": "PHYSICAL_GOODS"
-                }]
-            }]
-        })
-
-        response = paypal_client.execute(order_request)
-        order = response.result
-
-        user_details_collection.update_one(
-            {"job_id": request_id},
-            {"$set": {"order_id": order.id, "payment_status": "CREATED"}}
-        )
-
-        return JSONResponse(content={"id": order.id, "status": order.status, "links": [l.__dict__ for l in order.links]})
-
-    except Exception as e:
-        logger.exception("Error creating PayPal order")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/orders/{order_id}/capture")
+@app.post("/api/orders/capture/{order_id}/")
 async def capture_order(order_id: str):
     try:
         capture_request = OrdersCaptureRequest(order_id)
@@ -582,6 +544,167 @@ async def capture_order(order_id: str):
         logger.exception("Error capturing PayPal order")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/orders")
+async def create_order(request: Request):
+    try:
+        body = await request.json()
+        cart = body.get("cart", [])
+        shipping_value = body.get("shipping", "0")
+        currency_code = body.get("currency", "USD")
+        request_id = body.get("request_id") or str(uuid.uuid4())
+
+        if not cart:
+            raise HTTPException(status_code=400, detail="Cart is empty")
+
+        item = cart[0]
+        item_price = item.get("price", "25")
+        item_price_value = float(
+            ''.join(c for c in item_price if c.isdigit() or c == '.'))
+        shipping_value_value = float(
+            ''.join(c for c in shipping_value if c.isdigit() or c == '.'))
+        total_amount = str(round(item_price_value + shipping_value_value, 2))
+
+        # Create PayPal order request
+        order_request = OrdersCreateRequest()
+        order_request.prefer("return=representation")
+        order_request.request_body({
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "amount": {
+                        "currency_code": currency_code,
+                        "value": total_amount,
+                        "breakdown": {
+                            "item_total": {
+                                "currency_code": currency_code,
+                                "value": str(item_price_value)
+                            },
+                            "shipping": {
+                                "currency_code": currency_code,
+                                "value": str(shipping_value_value)
+                            }
+                        }
+                    },
+                    "items": [
+                        {
+                            "name": item.get("name", "Storybook"),
+                            "description": item.get("description", ""),
+                            "unit_amount": {
+                                "currency_code": currency_code,
+                                "value": str(item_price_value)
+                            },
+                            "quantity": str(item.get("quantity", 1)),
+                            "category": "PHYSICAL_GOODS"
+                        }
+                    ]
+                }
+            ]
+        })
+
+        # Execute request with PayPal SDK
+        response = paypal_client.execute(order_request)
+        print("Response: ", response)
+        order_data = {
+            "id": response.result.id,
+            "status": response.result.status,
+            "links": [
+                {
+                    "href": link.href,
+                    "rel": link.rel,
+                    "method": link.method
+                }
+                for link in response.result.links
+            ]
+        }
+        print("Order Data: ", order_data)
+
+        # Save to DB
+        user_details_collection.update_one(
+            {"job_id": request_id},
+            {"$set": {"order_id": order_data["id"],
+                      "payment_status": "CREATED"}}
+        )
+
+        return JSONResponse(content=order_data)
+
+    except Exception as e:
+        logger.exception("❌ Error creating PayPal order")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/paypal/store-capture")
+async def fetch_and_store_capture(request: Request):
+    try:
+        body = await request.json()
+        order_id = body.get("order_id")
+        job_id = body.get("job_id")
+
+        if not order_id or not job_id:
+            raise HTTPException(status_code=400, detail="Missing order_id or job_id")
+
+        # Step 1: Get access token
+        token = await get_paypal_access_token()
+        print("Access Token:", token)
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+
+        # Step 2: ✅ Manually trigger capture
+        capture_url = f"{BASE_URL}/v2/checkout/orders/{order_id}/capture"
+        capture_res = requests.post(capture_url, headers=headers)
+        capture_res.raise_for_status()
+        capture_data = capture_res.json()
+
+        # Step 3: Extract capture ID and details
+        purchase_unit = capture_data["purchase_units"][0]
+        capture_id = purchase_unit["payments"]["captures"][0]["id"]
+        capture_details = purchase_unit["payments"]["captures"][0]
+
+        # Step 4: Extract shipping info
+        shipping_address = purchase_unit.get("shipping", {}).get("address", {})
+        shipping_name = purchase_unit.get("shipping", {}).get("name", {})
+
+        shipping_info = {
+            "name": shipping_name.get("full_name", ""),
+            "address1": shipping_address.get("address_line_1", ""),
+            "address2": shipping_address.get("address_line_2", ""),
+            "city": shipping_address.get("admin_area_2", ""),
+            "province": shipping_address.get("admin_area_1", ""),
+            "zip": shipping_address.get("postal_code", ""),
+            "country": shipping_address.get("country_code", ""),
+            "phone": ""  
+        }
+
+        # Step 5: Store in MongoDB
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {
+                "paid": True,
+                "paypal_order_id": order_id,
+                "paypal_capture_id": capture_id,
+                "payment_status": capture_details.get("status"),
+                "email": capture_details.get("payer", {}).get("email_address", ""),
+                "total_price": capture_details.get("amount", {}).get("value"),
+                "currency": capture_details.get("amount", {}).get("currency_code"),
+                "processed_at": capture_details.get("create_time"),
+                "updated_at": datetime.now(timezone.utc),
+                "shipping_address": shipping_info
+            }}
+        )
+
+        return {
+            "status": "success",
+            "capture_id": capture_id,
+            "details": capture_details,
+            "shipping_info": shipping_info
+        }
+
+    except Exception as e:
+        logger.exception("❌ Error in fetch_and_store_capture")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/update-preview-url")
 async def update_preview_url(
@@ -1996,6 +2119,7 @@ async def preview_email(payload: PreviewEmailRequest):
         raise HTTPException(
             status_code=500, detail="Failed to send preview email.")
 
+
 def payment_done_email(username: str, child_name: str, email: str, preview_url: str,
                        order_id: str, total_price: float, currency_code: str,
                        discount_code: str, payment_id: str,
@@ -2091,6 +2215,7 @@ def payment_done_email(username: str, child_name: str, email: str, preview_url: 
         logger.info(f"📧 Order confirmation email sent to {email}")
     except Exception as e:
         logger.error(f"❌ Failed to send order confirmation email: {e}")
+
 
 def send_approval_confirmation_email(username: str, child_name: str, email: str):
     try:

@@ -4,6 +4,7 @@ interface CardProps {
   bookKey: string;
   age: string;
   description?: string;
+  price?: string
 }
 
 export const Cards: CardProps[] = [
@@ -91,3 +92,42 @@ export const bookDetails: Record<string, { title: string; description: string }>
       "A magical journey through imagination—soar above clouds, tame dragons, and dive into a world where anything is possible and every dream feels real.",
   }
 };
+
+export const CardsLP3: CardProps[] = [
+  {
+    imageSrc: "/abcd-book.avif",
+    title: "Max meets ABC",
+    bookKey: "abcd",
+    age: "2 - 4",
+    description:
+      "A joyful introduction to the alphabet through playful rhymes, colorful characters, and interactive storytelling that makes learning fun and memorable.",
+    price:"₹1250"
+  },
+  {
+    imageSrc: "/astronaut-book.avif",
+    title: "Zoey's Space Adventure",
+    bookKey: "astro",
+    age: "4 - 10",
+    description:
+      "Blast off into space as the hero of your own mission. Discover distant planets, meet alien friends, and explore the wonders of the galaxy.",
+      price:"₹1450"
+  },
+  {
+    imageSrc: "/wigu-book.avif",
+    title: "When Sara Grows Up",
+    bookKey: "wigu",
+    age: "3 - 7",
+    description:
+      "Imagine all the amazing things you can grow up to be. From firefighter to inventor, this story inspires big dreams and bold adventures.",
+      price:"₹1650"
+  },
+  {
+    imageSrc: "/dream-book.png",
+    title: "Many Dreams of Zohaan",
+    bookKey: "dream",
+    age: "2 - 6",
+    description:
+      "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests in a world where every dream feels real.",
+      price:"₹1850"
+  },
+];

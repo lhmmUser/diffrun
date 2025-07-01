@@ -16,11 +16,6 @@ const currencyMap: { [countryCode: string]: string } = {
   NZ: "NZD",
 };
 
-const extractNumericValue = (priceStr: string): number => {
-  const numeric = priceStr.replace(/[^\d.]/g, "");
-  return parseFloat(numeric);
-};
-
 const DEFAULT_COUNTRY = "IN";
 
 const Purchase = () => {
@@ -41,6 +36,9 @@ const Purchase = () => {
     components: "buttons",
   };
 
+
+  console.log(initialOptions.clientId);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!jobId) return;
@@ -54,6 +52,7 @@ const Purchase = () => {
       }
     };
     fetchData();
+    console.log(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
   }, [jobId]);
 
   const handleSelectOption = async (option: "hardcover" | "paperback") => {
@@ -194,26 +193,29 @@ const Purchase = () => {
                 onApprove={async (data) => {
                   if (!selectedOption) return;
 
-                  const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
-                  const numericPrice = parseFloat(price.replace(/[^\d.]/g, ""));
-                  const numericShipping = parseFloat(shipping.replace(/[^\d.]/g, ""));
-                  const discountValue = 1450.00 - numericPrice;  
+                  const currentParams = new URLSearchParams(window.location.search);
 
-                  await fetch(`${apiBaseUrl}/api/orders/${data.orderID}/capture`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      original_price: 1450.00,
-                      discount_value: discountValue,
-                      shipping_price: numericShipping,
-                      tax_price: 0.00
-                    })
-                  });
+                  // ✅ Wait 1.5 seconds before hitting backend
+                  await new Promise((resolve) => setTimeout(resolve, 1500));
 
-                  setTimeout(() => {
-                    const currentParams = new URLSearchParams(window.location.search);
+                  try {
+                    const res = await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        order_id: data.orderID,
+                        job_id: jobId,
+                      }),
+                    });
+
+                    if (!res.ok) throw new Error("❌ Capture store failed");
+
+                    // ✅ Redirect to confirmation
                     window.location.href = `/confirmation?${currentParams.toString()}`;
-                  }, 3000);
+                  } catch (err) {
+                    console.error("Capture storage error:", err);
+                    alert("Payment succeeded, but storing details failed. Please contact support.");
+                  }
                 }}
 
               />

@@ -1,43 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Cards } from "@/data/data";
-import FAQClient from "./faq/faq-client";
+import { CardsLP3 } from "@/data/data";
+import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data'
 import { steps } from "@/data/steps";
-import CookieConsent from "@/components/custom/CookieConsent";
 
 export default function Home() {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const [locale, setLocale] = useState<string>("");
-
-  useEffect(() => {
-  const fetchCountry = async () => {
-    try {
-      const res = await fetch("https://ipapi.co/json/");
-      const data = await res.json();
-      const userLocale = data.country || "";
-
-      localStorage.setItem("userLocale", userLocale);
-      setLocale(userLocale);
-
-      await fetch(`${apiBaseUrl}/update-country`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: userLocale }),
-      });
-    } catch (err) {
-      console.error("🌐 Failed to fetch locale:", err);
-    }
-  };
-
-  fetchCountry();
-}, []);
-
     return (
-        <>
-        <CookieConsent />
         <main className="w-full min-h-screen relative overflow-hidden space-y-12 px-0 md:px-16 lg:px-40 xl:px-60">
 
             <div className="hidden md:flex w-full h-[400px]">
@@ -105,7 +75,7 @@ export default function Home() {
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
-                    {Cards.map((card, index) => (
+                    {CardsLP3.map((card, index) => (
                         <div
                             key={index}
                             className="flex flex-col h-full transition-transform duration-300 overflow-hidden"
@@ -119,11 +89,19 @@ export default function Home() {
                             </div>
 
                             <div className="flex flex-col flex-1 mt-2 space-y-4">
-                                <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-800">
-                                    {card.title}
-                                    <br />
-                                    <span className="text-sm font-thin md:text-base text-gray-700">Age: {card.age} years</span>
-                                </h3>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-800">
+                                            {card.title}
+                                        </h3>
+                                        <span className="text-lg font-libre md:text-xl text-gray-700">
+                                            Age: {card.age} years
+                                        </span>
+                                    </div>
+                                    <span className="text-sm font-poppins font-semibold md:text-lg text-gray-700">
+                                        From {card.price}
+                                    </span>
+                                </div>
 
                                 <div className="mt-auto">
                                     <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`} className="block" aria-label={`Personalize ${card.title} story for ages ${card.age}`}>
@@ -166,6 +144,5 @@ export default function Home() {
             </div>
 
         </main>
-        </>
     );
 }

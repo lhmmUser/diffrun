@@ -6,13 +6,8 @@ from datetime import datetime, timezone
 
 load_dotenv()
 
-load_dotenv()
-
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", "candyman")
-
-print("👉 Loaded MONGO_URI =", MONGO_URI)
-print("👉 Loaded DB_NAME =", DB_NAME)
 
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
