@@ -1469,7 +1469,10 @@ def get_country(request: Request):
 @app.post("/update-country")
 async def update_country(data: dict):
     job_id = data.get("job_id")
-    locale = data.get("locale")
+    locale = data.get("locale", "").upper()
+
+    if locale == "GB":
+        locale = "UK"
 
     job = user_details_collection.find_one({"job_id": job_id})
     if not job:
@@ -1485,7 +1488,6 @@ async def update_country(data: dict):
         print(f"ℹ️ Locale already set ({job['locale']}), not updating.")
 
     return {"status": "ok"}
-
 
 @app.post("/execute-workflow")
 async def execute_workflow(
