@@ -30,6 +30,10 @@ export const fixedPrices: {
   }
 };
 
+const COUNTRY_ALIAS_MAP: { [key: string]: string } = {
+  GB: "UK",
+};
+
 const ALLOWED_COUNTRIES = ["US", "UK", "CA", "IN", "AU", "NZ"];
 const DEFAULT_COUNTRY = "IN";
 
@@ -37,6 +41,8 @@ export const getFixedPriceByCountry = (
   countryCode: string,
   bookStyle: "hardcover" | "paperback"
 ): { price: string; shipping: string; taxes: string } => {
-  const country = ALLOWED_COUNTRIES.includes(countryCode) ? countryCode : DEFAULT_COUNTRY;
+  const upperCountry = countryCode.toUpperCase();
+  const normalizedCountry = COUNTRY_ALIAS_MAP[upperCountry] || upperCountry;
+  const country = ALLOWED_COUNTRIES.includes(normalizedCountry) ? normalizedCountry : DEFAULT_COUNTRY;
   return fixedPrices[country][bookStyle];
 };
