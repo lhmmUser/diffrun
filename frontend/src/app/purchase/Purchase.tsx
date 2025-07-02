@@ -6,6 +6,7 @@ import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { getFixedPriceByCountry } from "@/data/fixedPrices";
+import { FaTrash } from "react-icons/fa";
 
 const currencyMap: { [countryCode: string]: string } = {
   US: "USD",
@@ -25,6 +26,8 @@ const Purchase = () => {
   const name = searchParams.get("name") || "";
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [locale, setLocale] = useState<string>(DEFAULT_COUNTRY);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -106,6 +109,17 @@ const Purchase = () => {
 
   };
 
+  const handleApply = () => {
+    if (couponInput.trim() !== "") {
+      setAppliedCoupon(couponInput.trim());
+      setCouponInput("");
+    }
+  };
+
+  const handleRemove = () => {
+    setAppliedCoupon(null);
+  };
+
   return (
     <div className="flex flex-col items-center min-h-screen mt-10">
       <section className="w-full max-w-4xl mb-16 px-4 md:px-0">
@@ -156,70 +170,101 @@ const Purchase = () => {
               </button>
             </>
           ) : (
+            <>
+              <div className="w-full max-w-md">
+                <div className="flex items-center gap-2 mb-4">
 
-            <PayPalScriptProvider options={initialOptions}>
-              <PayPalButtons
-                style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
-                createOrder={async () => {
-                  if (!selectedOption) return;
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder="Enter coupon code"
+                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm"
+                  />
 
-                  const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
-                  const numericPrice = price.replace(/[^\d.]/g, "");
-                  const numericShipping = shipping.replace(/[^\d.]/g, "");
+                  <button
+                    onClick={handleApply}
+                    className="px-4 py-2 bg-[#5784ba] text-white text-sm rounded-lg hover:bg-[#456ca0] transition hover:cursor-pointer"
+                  >
+                    Apply
+                  </button>
+                </div>
 
-                  const response = await fetch(`${apiBaseUrl}/api/orders`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      cart: [{
-                        id: `${bookId}_${selectedOption}`,
-                        name: `${bookId}_${selectedOption}`,
-                        description: "Personalized storybook",
-                        quantity: 1,
-                        price: numericPrice,
-                      }],
-                      shipping: numericShipping,
-                      currency: currency,
-                      locale,
-                      preview_url: previewUrl,
-                      request_id: jobId
-                    }),
-                  });
+                {appliedCoupon && (
+                  <div className="flex items-center justify-between border rounded-lg px-4 py-2 text-sm text-gray-800">
+                    <span>Coupon applied: <strong>{appliedCoupon}</strong></span>
+                    <FaTrash
+                      className="text-indigo-950 rounded-full cursor-pointer ml-4 h-5"
+                      onClick={handleRemove}
+                      title="Remove coupon"
+                    />
+                  </div>
+                )}
+              </div>
+              <PayPalScriptProvider options={initialOptions}>
+                <PayPalButtons
+                  style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
+                  createOrder={async () => {
+                    if (!selectedOption) return;
 
-                  const orderData = await response.json();
-                  if (orderData.id) return orderData.id;
-                  throw new Error(orderData?.details?.[0]?.description || "Order creation failed");
-                }}
-                onApprove={async (data) => {
-                  if (!selectedOption) return;
+                    const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
+                    const numericPrice = price.replace(/[^\d.]/g, "");
+                    const numericShipping = shipping.replace(/[^\d.]/g, "");
 
-                  const currentParams = new URLSearchParams(window.location.search);
-
-                  // ✅ Wait 1.5 seconds before hitting backend
-                  await new Promise((resolve) => setTimeout(resolve, 1500));
-
-                  try {
-                    const res = await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
+                    const response = await fetch(`${apiBaseUrl}/api/orders`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        order_id: data.orderID,
-                        job_id: jobId,
+                        cart: [{
+                          id: `${bookId}_${selectedOption}`,
+                          name: `${bookId}_${selectedOption}`,
+                          description: "Personalized storybook",
+                          quantity: 1,
+                          price: numericPrice,
+                        }],
+                        shipping: numericShipping,
+                        currency: currency,
+                        locale,
+                        preview_url: previewUrl,
+                        request_id: jobId
                       }),
                     });
 
-                    if (!res.ok) throw new Error("❌ Capture store failed");
+                    const orderData = await response.json();
+                    if (orderData.id) return orderData.id;
+                    throw new Error(orderData?.details?.[0]?.description || "Order creation failed");
+                  }}
+                  onApprove={async (data) => {
+                    if (!selectedOption) return;
 
-                    // ✅ Redirect to confirmation
-                    window.location.href = `/confirmation?${currentParams.toString()}`;
-                  } catch (err) {
-                    console.error("Capture storage error:", err);
-                    alert("Payment succeeded, but storing details failed. Please contact support.");
-                  }
-                }}
+                    const currentParams = new URLSearchParams(window.location.search);
 
-              />
-            </PayPalScriptProvider>
+                    // ✅ Wait 1.5 seconds before hitting backend
+                    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+                    try {
+                      const res = await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          order_id: data.orderID,
+                          job_id: jobId,
+                        }),
+                      });
+
+                      if (!res.ok) throw new Error("❌ Capture store failed");
+
+                      // ✅ Redirect to confirmation
+                      window.location.href = `/confirmation?${currentParams.toString()}`;
+                    } catch (err) {
+                      console.error("Capture storage error:", err);
+                      alert("Payment succeeded, but storing details failed. Please contact support.");
+                    }
+                  }}
+
+                />
+              </PayPalScriptProvider>
+            </>
           )}
         </div>
 

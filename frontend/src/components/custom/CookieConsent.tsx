@@ -17,7 +17,8 @@ export default function CookieConsent() {
 
       const consent = localStorage.getItem("cookieConsent");
 
-      if (userLocale === "GB") {
+      // Check for both UK and GB
+      if (userLocale === "UK" || userLocale === "GB") {
         if (consent === "accepted") {
           loadGTM();
         } else if (!consent) {

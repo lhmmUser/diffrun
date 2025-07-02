@@ -274,7 +274,7 @@ async def verify_signature(request: Request):
             "customer_email": payer_email,
             "discount_code": discount_code,
             "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
-            "currency_code": currency_code,
+            "currency": currency_code,
             "total_price": final_amount,
             "shipping_address": shipping_info,
             "actual_price": actual_price,

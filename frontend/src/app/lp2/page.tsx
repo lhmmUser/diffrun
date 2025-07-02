@@ -7,6 +7,23 @@ import { faqData } from '@/data/data'
 import { steps } from "@/data/steps";
 
 export default function Home() {
+
+      const pastelTags = [
+        "bg-pink-100 text-pink-700",
+        "bg-green-100 text-green-700",
+        "bg-blue-100 text-blue-700",
+        "bg-yellow-100 text-yellow-700",
+        "bg-purple-100 text-purple-700",
+        "bg-orange-100 text-orange-700",
+        "bg-rose-100 text-rose-700",
+        "bg-lime-100 text-lime-700",
+    ];
+
+    const getRandomPastel = () => {
+        const index = Math.floor(Math.random() * pastelTags.length);
+        return pastelTags[index];
+    };
+
     return (
         <main className="w-full min-h-screen relative overflow-hidden space-y-12 px-0 md:px-16 lg:px-40 xl:px-60">
 
@@ -25,7 +42,7 @@ export default function Home() {
                         </p>
                         <Link href="/books" aria-label="Go to Books page">
                             <div className="relative inline-block">
-                                <button className="flex items-center gap-2 bg-[#5784ba] text-white py-3 px-8 font-medium shadow-md transition-all duration-300 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer">
+                                <button className="flex items-center gap-2 bg-[#5784ba] rounded-xl text-white py-3 px-8 font-medium shadow-md transition-all duration-300 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer">
                                     Generate instant preview
                                 </button>
                                 <div className="absolute -top-5 -right-7 bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg ">
@@ -86,13 +103,14 @@ export default function Home() {
                     Choose your story and start personalizing
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
                     {Cards.map((card, index) => (
                         <div
                             key={index}
-                            className="flex flex-col h-full transition-transform duration-300 overflow-hidden"
+                            className="flex flex-col bg-white shadow-md overflow-hidden transition-transform duration-300"
                         >
-                            <div className="relative w-full pt-[100%] sm:pt-[90%] md:pt-[80%] lg:pt-[75%]">
+                          
+                            <div className="relative w-full pt-[75%]">
                                 <img
                                     src={card.imageSrc}
                                     alt={card.title}
@@ -100,19 +118,40 @@ export default function Home() {
                                 />
                             </div>
 
-                            <div className="flex flex-col flex-1 mt-2 space-y-4">
-                                <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-800">
+                            <div className="flex flex-col flex-1 px-6 p-4 space-y-2">
+                           
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-xs px-4 py-1 font-semibold rounded-full ${getRandomPastel()}`}>
+                                        {card.category || "Storybook"}
+                                    </span>
+                                    <span className="text-sm text-gray-600 font-medium">Ages {card.age}</span>
+                                </div>
+
+                                {/* Title */}
+                                <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900">
                                     {card.title}
-                                    <br />
-                                    <span className="text-sm font-thin md:text-base text-gray-700">Age: {card.age} years</span>
                                 </h3>
 
-                                <div className="mt-auto">
-                                    <Link href={`/child-details?job_type=story&book_id=${card.bookKey}`} className="block" aria-label={`Personalize ${card.title} story for ages ${card.age}`}>
-                                        <button className="w-full bg-[#5784ba] text-gray-100 py-2.5 px-5 font-medium shadow-sm font-play transition-all duration-300 hover:bg-[hsl(213,55%,30%)] hover:text-white focus:outline-none cursor-pointer" aria-label={`Personalize the ${card.title} book`}>
-                                            Personalize
-                                        </button>
-                                    </Link>
+                                {/* Description */}
+                                <p className="text-sm text-gray-700">{card.description}</p>
+
+                                <div className="flex items-center justify-between mt-4">
+
+                                {/* Price */}
+                                {/* <span className="text-lg font-semibold text-gray-800">
+                                    From {card.price}
+                                </span> */}
+
+                                {/* Button */}
+                                <Link
+                                    href={`/child-details?job_type=story&book_id=${card.bookKey}`}
+                                    className="block"
+                                    aria-label={`Personalize ${card.title} story for ages ${card.age}`}
+                                >
+                                    <button className="w-full bg-[#5784ba] text-white py-2.5 px-5 rounded-xl font-medium font-play hover:bg-[#406493] transition hover:cursor-pointer">
+                                        Personalize
+                                    </button>
+                                </Link>
                                 </div>
                             </div>
                         </div>
