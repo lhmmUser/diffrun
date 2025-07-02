@@ -106,17 +106,23 @@ const pastelTags = [
                 />
 
                 <div className="bg-[#f7f6d0] w-full flex flex-col items-center text-center py-6 px-4">
-                    <h2 className="text-lg xs:text-xl sm:text-3xl font-libre text-gray-900 leading-tight">
+                    <h2 className="text-lg xs:text-xl sm:text-3xl mb-2 font-libre text-gray-900 leading-tight">
                         Turn photos into storybooks, instantly!
                     </h2>
-                    <div className="w-full flex justify-center mt-4">
-                        <Link href="/books" aria-label="Go to Books page">
-                            <button
-                                className="flex items-center gap-2 bg-[#5784ba] text-white py-3 px-8 font-medium shadow-md transition-all duration-300 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"
-                            >
-                                Generate free preview
-                            </button>
+                    <div className="w-full flex flex-col justify-center mt-4">
+                       <Link href="/books" aria-label="Go to Books page">
+                            <div className="relative inline-block">
+                                <button className="flex items-center gap-2 bg-[#5784ba] rounded-xl text-white py-3 px-8 font-medium shadow-md transition-all duration-300 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer">
+                                    Generate instant preview
+                                </button>
+                                <div className="absolute -top-5 -right-7 bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg ">
+                                    FREE
+                                </div>
+                            </div>
                         </Link>
+                        <p className="text-sm sm:text-lg text-gray-800 font-poppins my-2">
+                            takes only 2 minutes
+                        </p>
                     </div>
                 </div>
             </div>

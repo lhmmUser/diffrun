@@ -26,7 +26,7 @@ export default function Books() {
     };
 
   return (
-    <main className="w-full min-h-screen bg-white px-0 md:px-16 lg:px-40 xl:px-60 py-12">
+    <main className="w-full min-h-screen bg-white px-6 md:px-16 lg:px-40 xl:px-60 py-12">
 
         <div className="flex flex-col">
                 <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
@@ -84,7 +84,7 @@ export default function Books() {
                 </div>
             </div>
 
-            <div className="w-full my-20 px-10 md:px-0">
+            <div className="w-full my-20">
                 <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
             </div>
 
