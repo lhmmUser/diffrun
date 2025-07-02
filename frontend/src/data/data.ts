@@ -1,53 +1,160 @@
-interface CardProps {
-  imageSrc: string;
-  title: string;
+export interface CardProps {
   bookKey: string;
-  age: string;
+  title: string;
+  imageSrc: string;
+  age?: string;
   description?: string;
-  price?: string
-  category?: string
+  category?: string;
+  pages?: number;
+  features?: string[];
+  prices: {
+    [countryCode: string]: {
+      hardcover: { price: string; shipping: string; taxes: string };
+      paperback: { price: string; shipping: string; taxes: string };
+    };
+  };
 }
 
 export const Cards: CardProps[] = [
   {
-    imageSrc: "/abcd-book.avif",
-    title: "Max meets ABC",
     bookKey: "abcd",
+    title: "Max meets ABC",
+    imageSrc: "/abcd-book.avif",
     age: "2 - 4",
     description:
       "A joyful introduction to the alphabet through playful rhymes, colorful characters, and interactive storytelling that makes learning fun and memorable.",
-    price: "₹1450",
-    category: "Early Learning, Alphabet"
+    category: "Early Learning, Alphabet",
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
   },
   {
-    imageSrc: "/astronaut-book.avif",
-    title: "Zoey's Space Adventure",
     bookKey: "astro",
+    title: "Zoey's Space Adventure",
+    imageSrc: "/astronaut-book.avif",
     age: "4 - 10",
     description:
       "Blast off into space as the hero of your own mission. Discover distant planets, meet alien friends, and explore the wonders of the galaxy.",
-    price: "₹1450",
-    category: "Adventure, Sci-Fi, Fantasy"
+    category: "Adventure, Sci-Fi, Fantasy",
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
   },
   {
-    imageSrc: "/wigu-book.avif",
-    title: "When Sara Grows Up",
     bookKey: "wigu",
+    title: "When Sara Grows Up",
+    imageSrc: "/wigu-book.avif",
     age: "3 - 7",
     description:
       "Imagine all the amazing things you can grow up to be. From firefighter to inventor, this story inspires big dreams and bold adventures.",
-    price: "₹1450",
-    category: "Inspirational, Confidence Boosting"
+    category: "Inspirational, Confidence Boosting",
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
   },
   {
-    imageSrc: "/dream-book.png",
-    title: "Many Dreams of Zohaan",
     bookKey: "dream",
+    title: "Many Dreams of Zohaan",
+    imageSrc: "/dream-book.png",
     age: "2 - 6",
     description:
       "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests in a world where every dream feels real.",
-    price: "₹1450",
-    category: "Fantasy, Imagination"
+    category: "Fantasy, Imagination",
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
   },
 ];
 

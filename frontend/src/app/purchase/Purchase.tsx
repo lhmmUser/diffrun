@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import FAQClient from "../faq/faq-client";
 import { faqData } from '@/data/data';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { getFixedPriceByCountry } from "@/data/fixedPrices";
+import { Cards } from "@/data/data";
 import { FaTrash } from "react-icons/fa";
+import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 const currencyMap: { [countryCode: string]: string } = {
   US: "USD",
@@ -18,6 +19,11 @@ const currencyMap: { [countryCode: string]: string } = {
 };
 
 const DEFAULT_COUNTRY = "IN";
+const ALLOWED_COUNTRIES = ["US", "UK", "CA", "IN", "AU", "NZ"];
+
+const discountCodes: { [code: string]: number } = {
+  LHMM: 99,
+};
 
 const Purchase = () => {
   const searchParams = useSearchParams();
@@ -27,20 +33,73 @@ const Purchase = () => {
   const bookId = searchParams.get("book_id") || "";
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [couponInput, setCouponInput] = useState("");
+  const [showCouponInput, setShowCouponInput] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [locale, setLocale] = useState<string>(DEFAULT_COUNTRY);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const currency = currencyMap[locale] || currencyMap[DEFAULT_COUNTRY];
 
+  const getFixedPriceByCountry = (
+    countryCode: string,
+    bookStyle: "hardcover" | "paperback"
+  ): { price: string; shipping: string; taxes: string } => {
+    const country = ALLOWED_COUNTRIES.includes(countryCode) ? countryCode : DEFAULT_COUNTRY;
+    const selectedBook = Cards.find((b) => b.bookKey === bookId);
+    return (
+      selectedBook?.prices?.[country]?.[bookStyle] || {
+        price: "",
+        shipping: "",
+        taxes: "",
+      }
+    );
+  };
+
+  const parseCurrency = (priceStr: string): { currency: string; amount: number } => {
+    const match = priceStr.match(/^([^\d\s.,]+)?\s?([\d,]+(?:\.\d+)?)/);
+    if (!match) return { currency: "", amount: 0 };
+
+    const currency = match[1] || "";
+    const amount = parseFloat(match[2].replace(/,/g, ""));
+    return { currency, amount };
+  };
+
+  const calculateFinalAmount = (
+    basePrice: string,
+    shipping: string,
+    discountPercentage: number
+  ) => {
+    const currencyMatch = basePrice.trim().match(/[^0-9.,\s]+/);
+    const currency = currencyMatch ? currencyMatch[0] : "";
+
+    const numericBase = parseFloat(basePrice.replace(/[^\d.]/g, ""));
+    const numericShipping = parseFloat(shipping.replace(/[^\d.]/g, ""));
+
+    const discount = (numericBase * discountPercentage) / 100;
+    const discountedPrice =  (numericBase * (100 -  discountPercentage)) / 100;
+    const total = numericBase + numericShipping - discount;
+
+    return {
+      currency,
+      base: numericBase,
+      shipping: numericShipping,
+      discount,
+      total: total.toFixed(2),
+      discountPrice: discountedPrice
+    };
+  };
+
+  const { price, shipping } = getFixedPriceByCountry(locale, selectedOption || "paperback");
+
+  const discountPercentage = appliedCoupon === "LHMM" ? 99 : 0;
+
+  const finalAmount = calculateFinalAmount(price, shipping, discountPercentage);
+
   const initialOptions = {
     clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID as string,
     currency: currency,
     components: "buttons",
   };
-
-
-  console.log(initialOptions.clientId);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,7 +114,6 @@ const Purchase = () => {
       }
     };
     fetchData();
-    console.log(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID);
   }, [jobId]);
 
   const handleSelectOption = async (option: "hardcover" | "paperback") => {
@@ -74,15 +132,15 @@ const Purchase = () => {
   const handleCheckout = async () => {
     if (!selectedOption) return;
     const variantId = selectedOption === "hardcover" ? "41626628128902" : "41626628161670";
-    const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
+
     const payload = {
       book_name: bookId,
       preview_url: previewUrl,
       request_id: jobId,
       variant_id: variantId,
       selected_option: selectedOption,
-      price,
-      shipping,
+      price: finalAmount.total,
+      shipping: finalAmount.shipping.toString(),
       locale,
     };
 
@@ -101,19 +159,14 @@ const Purchase = () => {
     }
   };
 
-  const handleCheckoutRZP = () => {
-    if (!selectedOption) return;
-
-    const currentParams = new URLSearchParams(window.location.search);
-    window.location.href = `/checkout?${currentParams.toString()}`;
-
-  };
-
   const handleApply = () => {
-    if (couponInput.trim() !== "") {
-      setAppliedCoupon(couponInput.trim());
-      setCouponInput("");
+    const code = couponInput.trim().toUpperCase();
+    if (discountCodes[code]) {
+      setAppliedCoupon(code);
+    } else {
+      alert("Invalid coupon code");
     }
+    setCouponInput("");
   };
 
   const handleRemove = () => {
@@ -122,11 +175,13 @@ const Purchase = () => {
 
   return (
     <div className="flex flex-col items-center min-h-screen mt-10">
+      {/* Book selection */}
       <section className="w-full max-w-4xl mb-16 px-4 md:px-0">
         <h1 className="text-2xl md:text-3xl font-libre font-medium text-gray-800 py-4 px-1">
           {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
         </h1>
 
+        {/* Options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
           {(["hardcover", "paperback"] as const).map((format) => {
             const { price } = getFixedPriceByCountry(locale, format);
@@ -141,143 +196,139 @@ const Purchase = () => {
                 </div>
                 <img
                   src={`/${format === "hardcover" ? "hardcover" : "softpaper"}-${bookId}.jpg`}
-                  alt={`Diffrun personalized books - ${format} book`}
+                  alt={`Diffrun book - ${format}`}
                   className="w-auto h-48 object-cover mb-4"
                 />
                 <h2 className="text-xl font-poppins font-medium text-black capitalize">{format}</h2>
-                <p className="text-sm text-gray-700 font-poppins mb-2">
+                <p className="text-sm text-gray-700 mb-2">
                   {format === "hardcover" ? "Durable, premium binding with matte finish." : "Lightweight and portable softcover edition."}
                 </p>
-                <span className="text-lg font-poppins font-bold">{price}</span>
+                <span className="text-lg font-bold">{price}</span>
               </div>
             );
           })}
         </div>
 
-        <div className="flex flex-col gap-12 justify-center items-center px-6 py-10">
-          <div className="w-full text-center bg-[#f4cfdf] text-gray-800 text-sm font-poppins font-medium py-2 mt-6">
-            Shipping: {(getFixedPriceByCountry(locale, selectedOption || "hardcover")).shipping}
+        <div className="flex flex-col justify-center items-center mx-auto w-full max-w-sm mt-10 bg-[#fce4ec] px-6 py-4 shadow-md text-gray-800 space-y-2">
+          {appliedCoupon && (
+            <p className="text-sm font-poppins text-gray-700">
+              <span className="text-base">Discount Applied: -{finalAmount.currency}{finalAmount.discount.toFixed(2)}</span>
+            </p>
+          )}
+          {appliedCoupon && (
+          <p className="text-base font-poppins text-gray-700">Discounted Price: ${finalAmount.discountPrice}</p>
+           )}
+          <p className="text-base font-poppins">
+            Shipping: <span className="text-base">{finalAmount.currency}{finalAmount.shipping.toFixed(2)}</span>
+          </p>
+
+
+          <hr className="w-full border-t my-3 border-gray-400" />
+
+          <p className="text-lg font-poppins text-black">
+            Total: {finalAmount.currency}{finalAmount.total}
+          </p>
+        </div>
+
+        {/* Discount + Summary */}
+        <div className="py-2 w-full">
+          <div
+            className="max-w-xs mx-auto flex justify-center items-center cursor-pointer gap-2"
+            onClick={() => setShowCouponInput(!showCouponInput)}
+          >
+            <h3 className="text-sm font-medium font-poppins text-blue-900">Have a coupon code?</h3>
+            {showCouponInput ? (
+              <FiChevronUp className="text-xl text-indigo-800" />
+            ) : (
+              <FiChevronDown className="text-xl text-indigo-800" />
+            )}
           </div>
 
-          {locale === "IN" ? (
-            <>
+          {showCouponInput && (
+            <div className="w-60 mx-auto mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
+              <input
+                type="text"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
+                placeholder="Enter coupon code"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm mb-2"
+              />
               <button
-                onClick={handleCheckoutRZP}
-                disabled={!selectedOption}
-                className={`relative px-8 py-3 text-lg font-poppins font-medium text-white bg-[#5784BA] ${!selectedOption ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"}`}
+                onClick={handleApply}
+                className="w-full bg-[#5784ba] text-white py-1 rounded-md hover:bg-[#456ca0] transition"
               >
-                Proceed to Checkout
+                Apply Coupon
               </button>
-            </>
-          ) : (
-            <>
-              <div className="w-full max-w-md">
-                <div className="flex items-center gap-2 mb-4">
-
-                  <input
-                    type="text"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    placeholder="Enter coupon code"
-                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm"
+              {appliedCoupon && (
+                <div className="flex justify-between items-center text-sm text-gray-800 mt-3 bg-white p-2 rounded-md shadow">
+                  <span>
+                    Coupon applied: <strong>{appliedCoupon}</strong>
+                  </span>
+                  <FaTrash
+                    onClick={handleRemove}
+                    className="cursor-pointer text-[#5784ba] hover:text-[#5784ba]"
                   />
-
-                  <button
-                    onClick={handleApply}
-                    className="px-4 py-2 bg-[#5784ba] text-white text-sm rounded-lg hover:bg-[#456ca0] transition hover:cursor-pointer"
-                  >
-                    Apply
-                  </button>
                 </div>
-
-                {appliedCoupon && (
-                  <div className="flex items-center justify-between border rounded-lg px-4 py-2 text-sm text-gray-800">
-                    <span>Coupon applied: <strong>{appliedCoupon}</strong></span>
-                    <FaTrash
-                      className="text-indigo-950 rounded-full cursor-pointer ml-4 h-5"
-                      onClick={handleRemove}
-                      title="Remove coupon"
-                    />
-                  </div>
-                )}
-              </div>
-              <PayPalScriptProvider options={initialOptions}>
-                <PayPalButtons
-                  style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
-                  createOrder={async () => {
-                    if (!selectedOption) return;
-
-                    const { price, shipping } = getFixedPriceByCountry(locale, selectedOption);
-                    const numericPrice = price.replace(/[^\d.]/g, "");
-                    const numericShipping = shipping.replace(/[^\d.]/g, "");
-
-                    const response = await fetch(`${apiBaseUrl}/api/orders`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        cart: [{
-                          id: `${bookId}_${selectedOption}`,
-                          name: `${bookId}_${selectedOption}`,
-                          description: "Personalized storybook",
-                          quantity: 1,
-                          price: numericPrice,
-                        }],
-                        shipping: numericShipping,
-                        currency: currency,
-                        locale,
-                        preview_url: previewUrl,
-                        request_id: jobId
-                      }),
-                    });
-
-                    const orderData = await response.json();
-                    if (orderData.id) return orderData.id;
-                    throw new Error(orderData?.details?.[0]?.description || "Order creation failed");
-                  }}
-                  onApprove={async (data) => {
-                    if (!selectedOption) return;
-
-                    const currentParams = new URLSearchParams(window.location.search);
-
-                    // ✅ Wait 1.5 seconds before hitting backend
-                    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-                    try {
-                      const res = await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          order_id: data.orderID,
-                          job_id: jobId,
-                        }),
-                      });
-
-                      if (!res.ok) throw new Error("❌ Capture store failed");
-
-                      // ✅ Redirect to confirmation
-                      window.location.href = `/confirmation?${currentParams.toString()}`;
-                    } catch (err) {
-                      console.error("Capture storage error:", err);
-                      alert("Payment succeeded, but storing details failed. Please contact support.");
-                    }
-                  }}
-
-                />
-              </PayPalScriptProvider>
-            </>
+              )}
+            </div>
           )}
         </div>
 
-        <div className="p-6 text-center">
-          <p className="text-sm font-semibold">You can still make edits within 12 hours after placing your order</p>
-          <p className="text-sm mt-2">Printing and shipping may take up to 10 days</p>
+        {/* Checkout */}
+        <div className="mt-8 max-w-xs mx-auto">
+          {locale === "IN" ? (
+            <button
+              onClick={handleCheckout}
+              disabled={!selectedOption}
+              className="px-8 py-3 text-lg font-medium text-white bg-[#5784BA] rounded-xl"
+            >
+              Proceed to Checkout
+            </button>
+          ) : (
+            <PayPalScriptProvider options={initialOptions}>
+              <PayPalButtons
+                style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
+                createOrder={async () => {
+                  if (!selectedOption) return;
+                  const res = await fetch(`${apiBaseUrl}/api/orders`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      cart: [{
+                        id: `${bookId}_${selectedOption}`,
+                        name: `${bookId}_${selectedOption}`,
+                        quantity: 1,
+                        price: finalAmount.total,
+                      }],
+                      shipping: finalAmount.shipping.toFixed(2),
+                      currency,
+                      locale,
+                      preview_url: previewUrl,
+                      request_id: jobId,
+                    }),
+                  });
+                  const order = await res.json();
+                  return order.id;
+                }}
+                onApprove={async (data) => {
+                  await new Promise((r) => setTimeout(r, 1500));
+                  await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ order_id: data.orderID, job_id: jobId }),
+                  });
+                  window.location.href = `/confirmation?job_id=${jobId}`;
+                }}
+              />
+            </PayPalScriptProvider>
+          )}
         </div>
+
+        <div className="py-6 text-center text-sm text-gray-600">You can still make edits within 12 hours after ordering.</div>
       </section>
 
-      <section className="w-full max-w-4xl">
-        <div className="py-12">
-          <FAQClient items={faqData} />
-        </div>
+      <section className="w-full max-w-5xl px-4">
+        <FAQClient items={faqData} />
       </section>
     </div>
   );

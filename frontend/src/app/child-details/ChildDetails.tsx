@@ -16,7 +16,7 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import { Autoplay, Pagination } from "swiper/modules";
 import { FiUser, FiEye, FiTruck, FiImage } from 'react-icons/fi';
-import { bookDetails, Cards } from "@/data/data";
+import { Cards } from "@/data/data";
 
 interface ImageFile {
   file: File;
@@ -112,11 +112,12 @@ const Form: React.FC = () => {
 
   const [imageToCrop, setImageToCrop] = useState<number | null>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const GEO = process.env.GEO;
 
   useEffect(() => {
     const fetchCountry = async () => {
       try {
-        const res = await fetch("https://ipapi.co/json/");
+        const res = await fetch(`https://ipapi.co/json?token=${GEO}`);
         const data = await res.json();
         const locale = data.country || "";
 
@@ -326,7 +327,9 @@ const Form: React.FC = () => {
 
   const openCropModal = (index: number) => setImageToCrop(index);
 
-  const { title, description } = bookDetails[bookId] || bookDetails["astro"];
+  const selectedBook = Cards.find((b) => b.bookKey === bookId) ?? Cards[0];
+  const title = selectedBook?.title || "";
+  const description = selectedBook?.description || "";
 
   return (
     <main

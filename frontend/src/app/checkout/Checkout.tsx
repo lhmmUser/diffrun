@@ -4,8 +4,8 @@ import { useState, useEffect, ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Select, { SingleValue } from 'react-select';
 import Script from 'next/script';
-import { getFixedPriceByCountry } from "@/data/fixedPrices";
 import { AiOutlineDelete } from 'react-icons/ai';
+import { Cards } from "@/data/data";
 
 interface StateOption {
   value: string;
@@ -38,7 +38,19 @@ const VALID_COUPONS: Record<string, number> = {
   SPECIAL50: 50,
 };
 
+const DEFAULT_COUNTRY = "IN";
+const ALLOWED_COUNTRIES = ["US", "UK", "CA", "IN", "AU", "NZ"];
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+const getFixedPriceByCountry = (
+  countryCode: string,
+  bookStyle: "hardcover" | "paperback",
+  bookKey: string
+): { price: string; shipping: string; taxes: string } => {
+  const country = ALLOWED_COUNTRIES.includes(countryCode) ? countryCode : DEFAULT_COUNTRY;
+  const selectedBook = Cards.find((b) => b.bookKey === bookKey);
+  return selectedBook?.prices?.[country]?.[bookStyle] || { price: "", shipping: "", taxes: "" };
+};
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh",
@@ -55,11 +67,18 @@ export default function Checkout() {
   const jobId = searchParams.get("job_id") || "";
 
   const [formData, setFormData] = useState<FormData>({
-    email: "", firstName: "", lastName: "", address: "", apartment: "", city: "",
-    state: "", pincode: "", contact: ""
+    email: "",
+    firstName: "",
+    lastName: "",
+    address: "",
+    apartment: "",
+    city: "",
+    state: "",
+    pincode: "",
+    contact: ""
   });
-
   const [bookStyle, setBookStyle] = useState<"hardcover" | "paperback" | null>(null);
+  const [bookKey, setBookKey] = useState<string>("astro");
   const [appliedCoupon, setAppliedCoupon] = useState<string>("");
   const [discountCode, setDiscountCode] = useState<string>("");
   const [message, setMessage] = useState<string>("");
@@ -76,6 +95,7 @@ export default function Checkout() {
         } else {
           setBookStyle("paperback");
         }
+        if (data.book_id) setBookKey(data.book_id);
       } catch (err) {
         console.error("Error fetching job status:", err);
         setBookStyle("paperback");
@@ -90,7 +110,7 @@ export default function Checkout() {
     </div>;
   }
 
-  const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle);
+  const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle, bookKey);
   const numericPrice = extractNumericValue(price);
   const numericShipping = extractNumericValue(shipping);
   const numericTaxes = extractNumericValue(taxes);
@@ -101,20 +121,6 @@ export default function Checkout() {
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const validateForm = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[6-9]\d{9}$/;
-    const pincodeRegex = /^\d{6}$/;
-    if (!formData.email || !formData.firstName || !formData.lastName || !formData.address
-      || !formData.city || !formData.state || !formData.pincode || !formData.contact) {
-      setError("Please fill all mandatory fields."); return false;
-    }
-    if (!emailRegex.test(formData.email)) { setError("Please enter valid email."); return false; }
-    if (!phoneRegex.test(formData.contact)) { setError("Please enter valid 10-digit phone."); return false; }
-    if (!pincodeRegex.test(formData.pincode)) { setError("Please enter valid 6-digit PIN code."); return false; }
-    setError(""); return true;
   };
 
   const applyDiscount = () => {
@@ -155,39 +161,43 @@ export default function Checkout() {
     });
     const data = await res.json();
 
-    const options = {
+    const rzp = new window.Razorpay({
       key: data.razorpay_key,
       amount: data.amount,
       currency: data.currency,
       name: "Diffrun",
       description: "Personalised Storybook",
       order_id: data.order_id,
-      prefill: { name: `${formData.firstName} ${formData.lastName}`, email: formData.email, contact: formData.contact },
+      prefill: {
+        name: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        contact: formData.contact
+      },
       handler: async function (response: any) {
         await fetch(`${apiBaseUrl}/verify-razorpay`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            job_id: jobId,
-            actual_price: numericPrice,
-            discount_percentage: discountPercentage,
-            discount_amount: discountAmount,
-            shipping_price: numericShipping,
-            taxes: numericTaxes,
-            final_amount: finalAmount
-          })
+          body: JSON.stringify({ ...response, job_id: jobId, actual_price: numericPrice, discount_percentage: discountPercentage, discount_amount: discountAmount, shipping_price: numericShipping, taxes: numericTaxes, final_amount: finalAmount })
         });
-
-        const currentParams = new URLSearchParams(window.location.search);
         const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
-        window.location.href = `${frontendUrl}/confirmation?${currentParams.toString()}`;
+        window.location.href = `${frontendUrl}/confirmation?${new URLSearchParams(window.location.search).toString()}`;
       }
-    };
+    });
 
-    const rzp = new window.Razorpay(options);
     rzp.open();
+  };
+
+  const validateForm = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const pincodeRegex = /^\d{6}$/;
+    if (!formData.email || !formData.firstName || !formData.lastName || !formData.address
+      || !formData.city || !formData.state || !formData.pincode || !formData.contact) {
+      setError("Please fill all mandatory fields."); return false;
+    }
+    if (!emailRegex.test(formData.email)) { setError("Please enter valid email."); return false; }
+    if (!phoneRegex.test(formData.contact)) { setError("Please enter valid 10-digit phone."); return false; }
+    if (!pincodeRegex.test(formData.pincode)) { setError("Please enter valid 6-digit PIN code."); return false; }
+    setError(""); return true;
   };
 
   return (
