@@ -92,6 +92,7 @@ export default function Home() {
                             className="w-full h-full object-cover object-left"
                         />
                     </div>
+
                 </div>
 
                 <div className="block md:hidden w-full">
@@ -113,8 +114,10 @@ export default function Home() {
                                     <button className="flex items-center gap-2 bg-[#5784ba] rounded-xl text-white py-3 px-8 font-medium shadow-md transition-all duration-300 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer">
                                         Generate instant preview
                                     </button>
-                                    <div className="absolute -top-5 -right-7 bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg ">
-                                        FREE
+                                    <div className="absolute -top-5 -right-7">
+                                        <div className="relative overflow-hidden bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg shine">
+                                            FREE
+                                        </div>
                                     </div>
                                 </div>
                             </Link>
