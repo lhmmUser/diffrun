@@ -3,13 +3,13 @@ import { Cards } from "@/data/data";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Books | Diffrun",
-  description: "Explore all available storybooks on Diffrun. Discover, customize, and create personalized books where your child becomes the hero of the story.",
+    title: "Books | Diffrun",
+    description: "Explore all available storybooks on Diffrun. Discover, customize, and create personalized books where your child becomes the hero of the story.",
 };
 
 export default function Books() {
 
-   const pastelTags = [
+    const pastelTags = [
         "bg-pink-100 text-pink-700",
         "bg-green-100 text-green-700",
         "bg-blue-100 text-blue-700",
@@ -25,10 +25,10 @@ export default function Books() {
         return pastelTags[index];
     };
 
-  return (
-    <main className="w-full min-h-screen bg-white px-6 md:px-16 lg:px-40 xl:px-60 py-12">
+    return (
+        <main className="w-full min-h-screen bg-white px-4 md:px-16 lg:px-40 xl:px-60 py-12">
 
-        <div className="flex flex-col">
+            <div className="flex flex-col">
                 <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
                     Choose your story and start personalizing
                 </p>
@@ -39,7 +39,7 @@ export default function Books() {
                             key={index}
                             className="flex flex-col bg-white shadow-md overflow-hidden transition-transform duration-300"
                         >
-                          
+
                             <div className="relative w-full pt-[75%]">
                                 <img
                                     src={card.imageSrc}
@@ -48,14 +48,27 @@ export default function Books() {
                                 />
                             </div>
 
-                            <div className="flex flex-col flex-1 px-6 p-4 space-y-2">
-                           
-                                <div className="flex items-center justify-between">
-                                    <span className={`text-xs px-4 py-1 font-semibold rounded-full ${getRandomPastel()}`}>
-                                        {card.category || "Storybook"}
-                                    </span>
-                                    <span className="text-sm text-gray-600 font-medium">Ages {card.age}</span>
+                            <div className="flex flex-col flex-1 px-2 md:px-6 p-4 space-y-2">
+
+                                <div className="flex items-center justify-between mt-2">
+                                    <div className="flex flex-wrap gap-2">
+                                        {Array.isArray(card.category) && card.category.map((tag, index) => (
+                                            <span
+                                                key={index}
+                                                className={`text-xs px-3 py-1 rounded-full ${getRandomPastel()} font-semibold whitespace-nowrap`}
+                                            >
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    {card.age && (
+                                        <span className="text-sm text-gray-600 font-medium whitespace-nowrap ml-2">
+                                            Ages {card.age}
+                                        </span>
+                                    )}
                                 </div>
+
 
                                 {/* Title */}
                                 <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900">
@@ -63,19 +76,24 @@ export default function Books() {
                                 </h3>
 
                                 {/* Description */}
-                                <p className="text-sm text-gray-700">{card.description}</p>
+                                <p className="text-xs sm:text-sm text-gray-700">{card.description}</p>
 
                                 <div className="flex items-center justify-between mt-4">
-                                {/* Button */}
-                                <Link
-                                    href={`/child-details?job_type=story&book_id=${card.bookKey}`}
-                                    className="block"
-                                    aria-label={`Personalize ${card.title} story for ages ${card.age}`}
-                                >
-                                    <button className="w-full bg-[#5784ba] text-white py-2.5 px-5 rounded-xl font-medium font-play hover:bg-[#406493] transition hover:cursor-pointer">
-                                        Personalize
-                                    </button>
-                                </Link>
+
+                                    {/* Price */}
+                                    <span className="text-base md:text-lg font-semibold text-gray-800">
+                                        From {card.prices?.IN?.paperback?.price}
+                                    </span>
+                                    {/* Button */}
+                                    <Link
+                                        href={`/child-details?job_type=story&book_id=${card.bookKey}`}
+                                        className="block"
+                                        aria-label={`Personalize ${card.title} story for ages ${card.age}`}
+                                    >
+                                        <button className="w-full bg-[#5784ba] text-white py-2 px-6 rounded-xl font-medium  text-sm md:text-base hover:bg-[#406493] transition hover:cursor-pointer">
+                                            Personalize
+                                        </button>
+                                    </Link>
                                 </div>
 
                             </div>
@@ -88,6 +106,6 @@ export default function Books() {
                 <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
             </div>
 
-    </main>
-  );
+        </main>
+    );
 }

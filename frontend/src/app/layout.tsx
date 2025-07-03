@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/diffrun.png",
+        url: "/diffrun-meta.png",
         width: 1200,
         height: 630,
         alt: "Diffrun - Create personalized storybooks for children",
@@ -93,7 +93,7 @@ export const metadata: Metadata = {
       "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
     site: "@diffrun",
     creator: "@diffrun",
-    images: ["/diffrun.png"],
+    images: ["/diffrun-meta.png"],
   },
   robots: {
     index: true,
@@ -127,10 +127,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         }} />
         {/* End Google Tag Manager */}
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#ffffff" />
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
         <link rel="icon" href="/favicon.ico" />
+        <meta name="image" property="og:image" content="https://diffrun.com/diffrun-meta.png" />
+        <meta name="twitter:image" content="https://diffrun.com/diffrun-meta.png" />
+        <meta property="og:type" content="website" />
+        <meta name="title" content="Diffrun | Personalised books that say — you're the hero" />
+
         <Script
           id="structured-data"
           type="application/ld+json"
@@ -141,7 +146,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             "@type": "Organization",
             name: "Diffrun",
             url: "https://diffrun.com",
-            logo: "https://diffrun.com/diffrun.png",
+            logo: "https://diffrun.com/diffrun-meta.png",
             description: "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
             founder: {
               "@type": "Person",
@@ -188,7 +193,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript>
         {/* End Google Tag Manager (noscript) */}
-        <p className="bg-[#5784ba] text-base md:text-lg text-white flex items-center font-libre font-thin justify-center py-2">
+        <p className="bg-[#5784ba] text-xs sm:text-sm md:text-lg text-white flex items-center font-libre font-thin justify-center py-2">
           Printing and Delivery across Canada, India, UK and US
         </p>
         <Header />

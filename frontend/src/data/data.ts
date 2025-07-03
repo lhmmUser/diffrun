@@ -4,7 +4,7 @@ export interface CardProps {
   imageSrc: string;
   age?: string;
   description?: string;
-  category?: string;
+  category?: string[];
   pages?: number;
   features?: string[];
   prices: {
@@ -23,7 +23,7 @@ export const Cards: CardProps[] = [
     age: "2 - 4",
     description:
       "A joyful introduction to the alphabet through playful rhymes, colorful characters, and interactive storytelling that makes learning fun and memorable.",
-    category: "Early Learning, Alphabet",
+    category: ["Early Learning", "Alphabet"],
     prices: {
       US: {
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
@@ -58,7 +58,7 @@ export const Cards: CardProps[] = [
     age: "4 - 10",
     description:
       "Blast off into space as the hero of your own mission. Discover distant planets, meet alien friends, and explore the wonders of the galaxy.",
-    category: "Adventure, Sci-Fi, Fantasy",
+    category: ["Adventure", "Sci-Fi", "Fantasy"],
     prices: {
       US: {
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
@@ -93,7 +93,7 @@ export const Cards: CardProps[] = [
     age: "3 - 7",
     description:
       "Imagine all the amazing things you can grow up to be. From firefighter to inventor, this story inspires big dreams and bold adventures.",
-    category: "Inspirational, Confidence Boosting",
+    category: ["Inspirational"],
     prices: {
       US: {
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
@@ -128,7 +128,7 @@ export const Cards: CardProps[] = [
     age: "2 - 6",
     description:
       "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests in a world where every dream feels real.",
-    category: "Fantasy, Imagination",
+    category: ["Fantasy", "Imagination"],
     prices: {
       US: {
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },

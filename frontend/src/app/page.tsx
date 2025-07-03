@@ -104,7 +104,7 @@ export default function Home() {
                         className="w-full object-cover"
                     />
 
-                    <div className="bg-[#f7f6d0] w-full flex flex-col items-center text-center py-6 px-4">
+                    <div className="bg-[#f7f6d0] w-full flex flex-col items-center text-center py-0 sm:py-6 px-0 sm:px-4">
                         <h2 className="text-lg xs:text-xl sm:text-3xl mb-2 font-libre text-gray-900 leading-tight">
                             Turn photos into storybooks, instantly!
                         </h2>
@@ -128,7 +128,7 @@ export default function Home() {
                     </div>
                 </div>
 
-                <div className="flex flex-col px-10 md:px-0 mt-10">
+                <div className="flex flex-col px-3 sm:px-6 md:px-0 mt-10">
                     <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
                         Choose your story and start personalizing
                     </p>
@@ -148,13 +148,29 @@ export default function Home() {
                                     />
                                 </div>
 
-                                <div className="flex flex-col flex-1 px-6 p-4 space-y-2">
+                                <div className="flex flex-col flex-1 px-2 md:px-6 p-4 space-y-2">
 
-                                    <div className="flex items-center justify-between">
-                                        <span className={`text-xs px-4 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]}`}>
-                                            {card.category || "Storybook"}
-                                        </span>
-                                        <span className="text-sm text-gray-600 font-medium">Ages {card.age}</span>
+                                    <div className="flex justify-between items-center flex-wrap gap-y-1 mt-1">
+                                        <div className="flex flex-wrap gap-1">
+                                            {Array.isArray(card.category) && card.category.length > 0 ? (
+                                                card.category.map((tag, i) => (
+                                                    <span
+                                                        key={i}
+                                                        className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]} whitespace-nowrap`}
+                                                    >
+                                                        {tag}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]}`}>
+                                                    Storybook
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col text-right text-sm font-medium text-gray-600 whitespace-nowrap">
+                                            <span>Ages {card.age}</span>
+                                        </div>
                                     </div>
 
                                     {/* Title */}
@@ -163,12 +179,12 @@ export default function Home() {
                                     </h3>
 
                                     {/* Description */}
-                                    <p className="text-sm text-gray-700">{card.description}</p>
+                                    <p className="text-xs sm:text-sm text-gray-700">{card.description}</p>
 
                                     <div className="flex items-center justify-between mt-4">
 
                                         {/* Price */}
-                                        <span className="text-lg font-semibold text-gray-800">
+                                        <span className="text-base md:text-lg font-semibold text-gray-800">
                                             From {card.prices?.IN?.paperback?.price}
                                         </span>
                                         {/* Button */}
@@ -177,7 +193,7 @@ export default function Home() {
                                             className="block"
                                             aria-label={`Personalize ${card.title} story for ages ${card.age}`}
                                         >
-                                            <button className="w-full bg-[#5784ba] text-white py-2.5 px-5 rounded-xl font-medium font-play hover:bg-[#406493] transition hover:cursor-pointer">
+                                            <button className="w-full bg-[#5784ba] text-white py-2 px-6 rounded-xl font-medium  text-sm md:text-base hover:bg-[#406493] transition hover:cursor-pointer">
                                                 Personalize
                                             </button>
                                         </Link>
@@ -188,11 +204,11 @@ export default function Home() {
                     </div>
                 </div>
 
-                <div className="w-full my-20 px-10 md:px-0">
+                <div className="w-full my-20 px-3 md:px-0">
                     <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
                 </div>
 
-                <section className="bg-[#f7f6cf] py-10 px-4 my-20">
+                <section className="bg-[#f7f6cf] py-10 px-4 my-10 md:my-20">
                     <div className="mx-auto text-center space-y-8">
                         <h2 className="text-2xl lg:text-3xl xl:text-4xl font-libre font-medium text-gray-900 leading-tight">
                             Meaningful gifts, made in minutes
@@ -211,7 +227,7 @@ export default function Home() {
                     </div>
                 </section>
 
-                <div className="px-10 md:px-0">
+                <div className="px-4 md:px-0">
                     <FAQClient items={faqData} />
                 </div>
 
