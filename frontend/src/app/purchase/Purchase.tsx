@@ -173,6 +173,13 @@ const Purchase = () => {
     setAppliedCoupon(null);
   };
 
+  const handleCheckoutRZP = () => {
+      if (!selectedOption) return;
+
+    const currentParams = new URLSearchParams(window.location.search);
+    window.location.href = `/checkout?${currentParams.toString()}`;
+  }
+
   return (
     <div className="flex flex-col items-center min-h-screen mt-10">
       {/* Book selection */}
@@ -209,7 +216,19 @@ const Purchase = () => {
           })}
         </div>
 
-        <div className="flex flex-col justify-center items-center mx-auto w-full max-w-sm mt-10 bg-[#fce4ec] px-6 py-4 shadow-md text-gray-800 space-y-2">
+        {/* Checkout */}
+        <div className="mt-12 max-w-xs mx-auto">
+          {locale === "IN" ? (
+            <button
+              onClick={handleCheckoutRZP}
+              disabled={!selectedOption}
+              className="px-8 py-3 text-lg font-medium text-white bg-[#5784BA] rounded-xl hover:cursor-pointer"
+            >
+              Proceed to Checkout
+            </button>
+          ) : (
+            <>
+            <div className="flex flex-col justify-center items-center mx-auto w-full max-w-sm mt-10 bg-[#fce4ec] px-6 py-4 shadow-md text-gray-800 space-y-2">
           {appliedCoupon && (
             <p className="text-sm font-poppins text-gray-700">
               <span className="text-base">Discount Applied: -{finalAmount.currency}{finalAmount.discount.toFixed(2)}</span>
@@ -273,18 +292,6 @@ const Purchase = () => {
             </div>
           )}
         </div>
-
-        {/* Checkout */}
-        <div className="mt-8 max-w-xs mx-auto">
-          {locale === "IN" ? (
-            <button
-              onClick={handleCheckout}
-              disabled={!selectedOption}
-              className="px-8 py-3 text-lg font-medium text-white bg-[#5784BA] rounded-xl"
-            >
-              Proceed to Checkout
-            </button>
-          ) : (
             <PayPalScriptProvider options={initialOptions}>
               <PayPalButtons
                 style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
@@ -298,7 +305,7 @@ const Purchase = () => {
                         id: `${bookId}_${selectedOption}`,
                         name: `${bookId}_${selectedOption}`,
                         quantity: 1,
-                        price: finalAmount.total,
+                        price: finalAmount.discountPrice.toFixed(2),
                       }],
                       shipping: finalAmount.shipping.toFixed(2),
                       currency,
@@ -321,10 +328,11 @@ const Purchase = () => {
                 }}
               />
             </PayPalScriptProvider>
+            </>
           )}
         </div>
 
-        <div className="py-6 text-center text-sm text-gray-600">You can still make edits within 12 hours after ordering.</div>
+        <div className="mr-20 py-6 text-center text-sm text-gray-600">You can still make edits within 12 hours after ordering.</div>
       </section>
 
       <section className="w-full max-w-5xl px-4">
