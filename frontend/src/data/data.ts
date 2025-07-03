@@ -58,7 +58,7 @@ export const Cards: CardProps[] = [
     age: "4 - 10",
     description:
       "Blast off into space as the hero of your own mission. Discover distant planets, meet alien friends, and explore the wonders of the galaxy.",
-    category: ["Adventure", "Sci-Fi", "Fantasy"],
+    category: ["Adventure", "Sci-Fi"],
     prices: {
       US: {
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
@@ -93,7 +93,7 @@ export const Cards: CardProps[] = [
     age: "3 - 7",
     description:
       "Imagine all the amazing things you can grow up to be. From firefighter to inventor, this story inspires big dreams and bold adventures.",
-    category: ["Inspirational"],
+    category: ["Inspiration", "Confidence"],
     prices: {
       US: {
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },

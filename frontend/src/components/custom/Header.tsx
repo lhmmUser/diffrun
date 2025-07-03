@@ -22,9 +22,9 @@ const Header = () => {
   return (
     <>
       <header className="w-full z-20">
-        <div className="py-4 px-4 md:px-30 lg:px-50 flex justify-between items-center">
+        <div className="py-3 md:py-4 px-4 md:px-30 lg:px-50 flex justify-between items-center">
           <Link href="/" className="flex justify-center items-center" aria-label="Go to Diffrun homepage">
-            <img src="/Diffrun_logo.png" alt="Diffrun personalized books - logo" width="160" height="40" className="w-28 mb-2 h-auto object-contain ml-2 md:ml-10" />
+            <img src="/Diffrun_logo.png" alt="Diffrun personalized books - logo" width="160" height="40" className="w-24 md:w-28 mb-2 h-auto object-contain ml-2 md:ml-10" />
           </Link>
 
           <nav className="hidden md:flex gap-2 text-lg font-poppins mr-2 lg:mr-8" role="navigation" aria-label="Main navigation">

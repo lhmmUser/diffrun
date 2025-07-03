@@ -14,10 +14,10 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   return (
-    <main className="bg-white my-20">
-      <div className="mx-auto space-y-8">
+    <main className="bg-white py-0 sm:py-10 md:py-20">
+      <div className="mx-auto max-w-7xl px-3 md:px-0 space-y-8">
         <div className="text-left pb-6">
-          <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-800 font-libre">
+          <h1 className="text-2xl md:text-4xl font-medium tracking-tight text-gray-800 font-libre">
             Frequently Asked Questions
           </h1>
         </div>
@@ -77,7 +77,7 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
           ))}
         </div>
 
-        <div className="bg-[#f7f6cf] p-6 text-center rounded-lg space-y-4 shadow-md">
+        <div className="bg-[#f7f6cf] p-6 text-center rounded-lg space-y-4 shadow-md mb-6">
           <h2 className="text-xl font-libre text-gray-800">Still need help?</h2>
           <p className="text-sm sm:text-base text-gray-700 font-poppins">
             Have a question or need assistance with your order? Just respond to our emails{' '}

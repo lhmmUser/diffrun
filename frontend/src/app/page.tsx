@@ -50,7 +50,7 @@ export default function Home() {
     return (
         <>
             <CookieConsent />
-            <main className="w-full min-h-screen relative overflow-hidden space-y-12 px-0 md:px-16 lg:px-40 xl:px-60">
+            <main className="w-full min-h-screen relative overflow-hidden space-y-2 md:space-y-12 px-0 md:px-16 lg:px-40 xl:px-60">
 
                 <div className="hidden md:flex w-full h-[400px]">
                     <div className="w-1/2 bg-[#f7f6cf] flex items-center justify-start px-8">
@@ -121,14 +121,14 @@ export default function Home() {
                                     </div>
                                 </div>
                             </Link>
-                            <p className="text-sm sm:text-lg text-gray-800 font-poppins my-2">
+                            <p className="text-sm sm:text-lg text-gray-800 font-poppins my-2 mb-4">
                                 takes only 2 minutes
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col px-3 sm:px-6 md:px-0 mt-10">
+                <div className="flex flex-col px-3 sm:px-6 md:px-0 mt-4 md:mt-10">
                     <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
                         Choose your story and start personalizing
                     </p>
@@ -204,7 +204,7 @@ export default function Home() {
                     </div>
                 </div>
 
-                <div className="w-full my-20 px-3 md:px-0">
+                <div className="w-full my-10 md:my-20 px-3 md:px-0">
                     <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
                 </div>
 
@@ -227,11 +227,10 @@ export default function Home() {
                     </div>
                 </section>
 
-                <div className="px-4 md:px-0">
-                    <FAQClient items={faqData} />
-                </div>
-
             </main>
+            <div className="px-4 md:px-0">
+                    <FAQClient items={faqData} />
+            </div>
         </>
     );
 }
