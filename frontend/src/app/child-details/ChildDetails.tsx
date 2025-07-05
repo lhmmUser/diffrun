@@ -95,6 +95,7 @@ const Form: React.FC = () => {
 
   const [name, setName] = useState<string>("");
   const [gender, setGender] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -213,8 +214,13 @@ const Form: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!name.trim() || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
+    if (!name.trim() || !email || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
       setError("Please fill all fields correctly and confirm consent.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address.");
       return;
     }
 
@@ -225,6 +231,7 @@ const Form: React.FC = () => {
       const formData = new FormData();
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
       formData.append("gender", gender.toLowerCase());
+      formData.append("email", email.trim().toLowerCase());
       formData.append("job_type", jobType);
       formData.append("book_id", bookId);
       images.forEach(({ file }) => formData.append("images", file));
@@ -245,6 +252,7 @@ const Form: React.FC = () => {
         jobType,
         name,
         gender,
+        email,
         bookId,
       };
       setRedirectData(redirectPayload);
@@ -466,7 +474,20 @@ const Form: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="">
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="block w-full px-4 md:py-1 text-lg bg-white border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-pastel-purple shadow-sm placeholder-gray-400"
+                    placeholder="Your Email Address"
+                  />
+                </div>
+
+                <div className="">
                   <div
                     {...getRootProps()}
                     className={`py-3 text-center bg-[#5784ba] text-white border border-gray-300 rounded hover:bg-pastel-blue cursor-pointer transition-all duration-200 ${imageToCrop !== null ? "opacity-60 pointer-events-none" : ""
@@ -566,9 +587,9 @@ const Form: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={!name || !gender || images.length < 1 || images.length > 3 || loading || !isConfirmed}
+                  disabled={!name || !gender || !email || images.length < 1 || images.length > 3 || loading || !isConfirmed}
                   title={
-                    !name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
+                    !name || !gender || !email || images.length < 1 || images.length > 3 || !isConfirmed
                       ? "Fill all details and confirm consent to continue"
                       : ""
                   }
@@ -584,12 +605,6 @@ const Form: React.FC = () => {
                   <span>We follow strict data privacy standards</span>
                   <FcPrivacy className="text-lg" />
                 </p>
-
-                {error && (
-                  <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-sm mt-4 shadow-sm">
-                    {error}
-                  </div>
-                )}
               </form>
             </div>
 

@@ -17,7 +17,8 @@ const UserDetails: React.FC = () => {
   const bookId = searchParams.get("book_id") || "";
   const selected = searchParams.get("selected") || "";
 
-  const [email, setEmail] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [email, setEmail] = useState<string>(""); 
   const [username, setUsername] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -32,6 +33,7 @@ const UserDetails: React.FC = () => {
 
         const data = await response.json();
         console.log("🔗 Preview URL fetched:", data.preview_url);
+        setEmail(data.email || "");
         setPreviewUrl(data.preview_url || "");
       } catch (err: any) {
         console.error("⚠️ Error fetching preview URL:", err.message);
@@ -47,8 +49,13 @@ const UserDetails: React.FC = () => {
       setError(null);
       setSuccessMessage(null);
   
-      if (!email.trim() || !username.trim()) {
+      if (!phoneNumber.trim() || !username.trim()) {
         setError("Please fill in all fields.");
+        return;
+      }
+
+      if (!/^[\d\s+-]{10,15}$/.test(phoneNumber)) {
+        setError("Please enter a valid phone number (10-15 digits)");
         return;
       }
   
@@ -63,8 +70,9 @@ const UserDetails: React.FC = () => {
         name,
         gender,
         preview_url: safePreviewUrl,
-        email,
+        phone_number: phoneNumber.trim(),
         user_name: username,
+        email: email
       };
   
       const response = await fetch(`${apiBaseUrl}/save-user-details`, {
@@ -119,64 +127,89 @@ const UserDetails: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-[90vh] p-4">
-      <div className="w-full max-w-md border border-gray-900 shadow-[8px_8px_0px_rgba(0,0,0,0.9)] rounded-none p-8 space-y-8">
-        <h2 className="text-gray-900 text-2xl font-bold text-center">
-          Get Your Book Preview & Price
-        </h2>
-
-        {error && (
-          <p className="text-red-600 text-sm font-medium text-center">{error}</p>
-        )}
-
-        <div className="w-full space-y-1 text-left">
-          <label htmlFor="email" className="block text-black font-bold tracking-wide">
-            Email
-          </label>
-          <p className="text-sm text-gray-600 font-poppins">
-            Preview link will be sent to this email
-          </p>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-4 py-3 border border-gray-900 rounded-none focus:border-indigo-500"
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="username" className="block text-black font-bold tracking-wide">
-            Name
-          </label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-900 rounded-none focus:border-indigo-500"
-            required
-            placeholder="John Doe"
-          />
-        </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !email.trim() || !username.trim()}
-          className={`w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold py-3 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.9)] transition-opacity ${!email.trim() || !username.trim() ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
-            }`}
-        >
-          {loading ? "Saving..." : "Save Preview & Show Price"}
-        </button>
-      </div>
-      <button
-        onClick={handleBackToPreview}
-        className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-colors duration-200 text-white font-semibold py-3 px-4 mt-12 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.9)]"
-      >
-        Back to Preview
-      </button>
+    <div className="flex flex-col items-center justify-center h-[80vh] p-6">
+  <div className="w-full max-w-md rounded-lg border shadow-xl overflow-hidden p-8 space-y-6">
+    <div className="text-center space-y-2">
+      <h2 className="text-2xl font-light text-gray-800">
+        Complete Your Order
+      </h2>
+      <p className="text-gray-500 text-sm">
+        Preview link will be sent to your email
+      </p>
     </div>
+
+    {error && (
+      <div className="bg-red-50 border-l-4 border-red-400 p-4">
+        <p className="text-red-700 text-sm">{error}</p>
+      </div>
+    )}
+
+    <div className="space-y-4">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          Your Name
+        </label>
+        <input
+          type="text"
+          id="name"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
+          placeholder="John Doe"
+          required
+        />
+      </div>
+
+      <div>
+        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+          Phone Number
+        </label>
+        <input
+          type="tel"
+          id="phone"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
+          placeholder="+1 (123) 456-7890"
+          pattern="[\d\s+-]{10,15}"
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          For order updates and support
+        </p>
+      </div>
+    </div>
+
+    <button
+      onClick={handleSubmit}
+      disabled={loading || !phoneNumber.trim() || !username.trim()}
+      className={`w-full py-3 rounded-md text-white font-medium transition-colors ${
+        !phoneNumber.trim() || !username.trim() 
+          ? "bg-gray-300 cursor-not-allowed" 
+          : "bg-[#5784ba] hover:bg-blue-600"
+      }`}
+    >
+      {loading ? (
+        <span className="flex items-center justify-center">
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Processing...
+        </span>
+      ) : (
+        "Continue to Payment"
+      )}
+    </button>
+
+    <button
+      onClick={handleBackToPreview}
+      className="w-full py-2.5 text-sm text-blue-500 hover:text-blue-700 font-medium transition-colors"
+    >
+      Back to book preview
+    </button>
+  </div>
+</div>
   );
 };
 

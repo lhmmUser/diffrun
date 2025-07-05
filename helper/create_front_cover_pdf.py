@@ -41,7 +41,10 @@ def create_front_cover_pdf(job_id: str, book_style: str, book_id: str) -> str:
             TARGET_SIZE_PX = (5756, 3047)
         elif book_id == "dream":
             PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1378, 731
-            TARGET_SIZE_PX = (5743, 3047)       
+            TARGET_SIZE_PX = (5743, 3047)
+        elif book_id == "sports":
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1378, 731
+            TARGET_SIZE_PX = (5738, 3047)       
     elif book_style == "paperback":
         # PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1156, 578
         # TARGET_SIZE_PX = (4811, 2405)
@@ -56,7 +59,10 @@ def create_front_cover_pdf(job_id: str, book_style: str, book_id: str) -> str:
             TARGET_SIZE_PX = (5082, 2551)
         elif book_id == "dream":
             PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1217, 612
-            TARGET_SIZE_PX = (5069, 2551) 
+            TARGET_SIZE_PX = (5069, 2551)
+        elif book_id == "sports":
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1215, 612
+            TARGET_SIZE_PX = (5065, 2551) 
     else:
         raise ValueError(f"Unknown book_style: {book_style}")
 

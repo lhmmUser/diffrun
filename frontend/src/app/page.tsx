@@ -128,7 +128,7 @@ export default function Home() {
                     </div>
                 </div>
 
-                <div className="flex flex-col px-3 sm:px-6 md:px-0 mt-4 md:mt-10">
+                <div className="flex flex-col px-4 sm:px-6 md:px-0 mt-4 md:mt-10">
                     <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
                         Choose your story and start personalizing
                     </p>

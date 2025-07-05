@@ -41,14 +41,17 @@ import razorpay
 from paypalcheckoutsdk.core import LiveEnvironment, PayPalHttpClient, SandboxEnvironment
 from paypalcheckoutsdk.orders import OrdersCreateRequest, OrdersCaptureRequest
 from helper.paypal_utils import get_paypal_access_token
+from pydantic import BaseModel, Field
+from typing import Optional
 
-load_dotenv()
+load_dotenv(dotenv_path=".env")
 
 SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
 INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
 OUTPUT_FOLDER = os.path.normpath(os.getenv("OUTPUT_FOLDER"))
 JPG_OUTPUT = os.path.normpath(os.getenv("JPG_OUTPUT"))
-WATERMARK_PATH = os.path.normpath(os.getenv("WATERMARK_PATH"))
+WATERMARK_PATH = r"D:\Kush\Diffrun Latest\diffrun\images\Watermark.png"
+print("WATERMARK_PATH:", WATERMARK_PATH)
 STORIES_FOLDER = os.path.normpath(os.getenv("STORIES_FOLDER"))
 IP_ADAPTER = os.getenv("IP_ADAPTER")
 PYTORCH_MODEL = os.getenv("PYTORCH_MODEL")
@@ -130,30 +133,35 @@ class ApproveRequest(BaseModel):
     job_id: str
     selectedSlides: List[int]
 
-
 class SaveUserDetailsRequest(BaseModel):
     job_id: str
     name: str
     gender: str
     preview_url: str
-
-    user_name: str | None = None
-    phone_number: str | None = None
-    email: str | None = None
-
+    phone_number: Optional[str] = Field(
+        None,
+        min_length=10,
+        max_length=15,
+        example="+1234567890",
+        description="User's phone number (10-15 digits)"
+    )
+    user_name: str
+    email: Optional[str] = Field(
+        None,
+        example="user@example.com",
+        description="User's email address"
+    )
 
 class CheckoutRequest(BaseModel):
     book_name: str
     request_id: str
     variant_id: str
 
-
 class EmailRequest(BaseModel):
     username: str
     name: str
     email: EmailStr
     preview_url: str
-
 
 @app.post("/create-order-razorpay")
 async def create_order(request: Request):
@@ -317,11 +325,10 @@ async def save_user_details_endpoint(request: SaveUserDetailsRequest):
         save_user_details(data)
 
         return {
-            "status": "success",
-            "message": "User details saved successfully!",
             "preview_url": data["preview_url"],
+            "phone_number": data.get("phone_number"),
             "email": data.get("email"),
-            "user_name": data.get("user_name"),
+            "user_name": data["user_name"],
             "name": data["name"]
         }
     except Exception as e:
@@ -1063,26 +1070,40 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
 @app.post("/store-user-details")
 async def store_user_details(
     name: str = Form(...),
+    email: str = Form(...),  # New email field
     gender: str = Form(...),
     job_type: str = Form(...),
     book_id: str = Form(...),
     images: List[UploadFile] = File(...)
 ):
+    # Input validation and sanitization
     name = name.strip().lower().capitalize()
+    email = email.strip().lower()  # Normalize email
+    
+    # Validate email format
+    if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email):
+        logger.warning("❌ Invalid email format: %s", email)
+        raise HTTPException(
+            status_code=400, 
+            detail="Please provide a valid email address"
+        )
 
-    logger.info("📥 Received user details: name=%s, gender=%s", name, gender)
+    logger.info("📥 Received user details: name=%s, email=%s, gender=%s", name, email, gender)
     logger.debug("📦 Number of uploaded files: %d", len(images))
 
     if not (1 <= len(images) <= 3):
         logger.warning("❌ Invalid number of images: %d", len(images))
         raise HTTPException(
-            status_code=400, detail="You must upload between 1 and 3 images.")
+            status_code=400, 
+            detail="You must upload between 1 and 3 images."
+        )
 
     job_id = str(uuid.uuid4())
     logger.info("🆕 Generated job_id: %s", job_id)
 
     saved_filenames = []
 
+    # Process images (unchanged from your original code)
     for i, image in enumerate(images):
         logger.info("🔍 Processing image %d: %s", i + 1, image.filename)
         image_data = await image.read()
@@ -1096,7 +1117,9 @@ async def store_user_details(
         except Exception as e:
             logger.error("❌ Failed to save debug image: %s", str(e))
             raise HTTPException(
-                status_code=500, detail="Failed to save debug file")
+                status_code=500, 
+                detail="Failed to save debug file"
+            )
 
         new_filename = f"{job_id}_{i+1:02d}.jpg"
         image_path = os.path.join(INPUT_FOLDER, new_filename)
@@ -1110,36 +1133,44 @@ async def store_user_details(
         except Exception as e:
             logger.error("❌ Error processing image: %s", str(e))
             raise HTTPException(
-                status_code=400, detail=f"Invalid image file: {str(e)}")
+                status_code=400, 
+                detail=f"Invalid image file: {str(e)}"
+            )
 
         saved_filenames.append(new_filename)
 
     logger.info("🎉 Successfully processed %d image(s)", len(saved_filenames))
     logger.debug("📝 Saved filenames: %s", saved_filenames)
 
+    # Prepare response with email included
     response = {
         "job_id": job_id,
         "job_type": job_type.lower(),
         "saved_files": saved_filenames,
         "gender": gender.lower(),
         "name": name.capitalize(),
+        "email": email, 
         "preview_url": "",
         "book_id": book_id,
         "paid": False,
         "approved": False,
-        "status": "initiated"
+        "status": "initiated",
+       "created_at": datetime.now(timezone.utc), 
+        "updated_at": datetime.now(timezone.utc)
     }
-    print(response, "response")
+
     try:
+        # Save to MongoDB (update your save_user_details function accordingly)
         save_user_details(response)
     except Exception as e:
         logger.error("❌ Could not save user details to MongoDB: %s", str(e))
         raise HTTPException(
-            status_code=500, detail="Failed to save user details to database.")
+            status_code=500, 
+            detail="Failed to save user details to database."
+        )
 
-    logger.info("🚀 Returning response: %s", response)
+    logger.info("🚀 Returning response: %s", {**response, "email": "[REDACTED]"})  # Don't log full email
     return response
-
 
 def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]]:
     base_dir = os.path.join(

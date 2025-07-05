@@ -17,12 +17,117 @@ export interface CardProps {
 
 export const Cards: CardProps[] = [
   {
+     bookKey: "sports",
+    title: "Amaira is a born Sportstar",
+    imageSrc: "/sports-book.avif",
+    age: "4 - 10",
+    description:
+     "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
+    category: ["Motivation", "Sports"],
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
+  },
+  {
+    bookKey: "dream",
+    title: "Many Dreams of Zohaan",
+    imageSrc: "/dream-book.png",
+    age: "2 - 6",
+    description:
+      "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests.",
+    category: ["Fantasy", "Imagination"],
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
+  },
+  {
+    bookKey: "wigu",
+    title: "When Sara Grows Up",
+    imageSrc: "/wigu-book.avif",
+    age: "3 - 7",
+    description:
+      "All the amazing things a child can grow up to be. This book inspires big dreams.",
+    category: ["Inspiration", "Confidence"],
+    prices: {
+      US: {
+        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+      },
+      UK: {
+        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
+  },
+  {
     bookKey: "abcd",
     title: "Max meets ABC",
     imageSrc: "/abcd-book.avif",
     age: "2 - 4",
     description:
-      "A joyful introduction to the alphabet through playful rhymes, colorful characters, and interactive storytelling that makes learning fun and memorable.",
+      "Introduction to the alphabet through playful rhymes, colorful characters that makes learning fun and memorable.",
     category: ["Early Learning", "Alphabet"],
     prices: {
       US: {
@@ -57,7 +162,7 @@ export const Cards: CardProps[] = [
     imageSrc: "/astronaut-book.avif",
     age: "4 - 10",
     description:
-      "Blast off into space as the hero of your own mission. Discover distant planets, meet alien friends, and explore the wonders of the galaxy.",
+      "The Child blasts off into space as the hero of their own mission, exploring the wonders of the galaxy.",
     category: ["Adventure", "Sci-Fi"],
     prices: {
       US: {
@@ -79,76 +184,6 @@ export const Cards: CardProps[] = [
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
         hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
-      },
-      NZ: {
-        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
-        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
-      },
-    },
-  },
-  {
-    bookKey: "wigu",
-    title: "When Sara Grows Up",
-    imageSrc: "/wigu-book.avif",
-    age: "3 - 7",
-    description:
-      "Imagine all the amazing things you can grow up to be. From firefighter to inventor, this story inspires big dreams and bold adventures.",
-    category: ["Inspiration", "Confidence"],
-    prices: {
-      US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
-      },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
-      },
-      CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-      },
-      IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
-      },
-      AU: {
-        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
-        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
-      },
-      NZ: {
-        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
-        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
-      },
-    },
-  },
-  {
-    bookKey: "dream",
-    title: "Many Dreams of Zohaan",
-    imageSrc: "/dream-book.png",
-    age: "2 - 6",
-    description:
-      "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests in a world where every dream feels real.",
-    category: ["Fantasy", "Imagination"],
-    prices: {
-      US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
-      },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
-      },
-      CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-      },
-      IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
-      },
-      AU: {
-        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
-        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
       },
       NZ: {
         paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },

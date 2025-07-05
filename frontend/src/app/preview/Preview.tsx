@@ -1492,7 +1492,7 @@ const Preview: React.FC = () => {
                 });
                 router.push(`/user-details?${query.toString()}`);
               }}
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-poppins border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 text-xs md:text-sm"
+              className="bg-[#5784ba] rounded-xl text-white py-2.5 px-5 font-poppins  text-xs md:text-sm"
             >
               Email Preview Link
             </button>
@@ -1500,7 +1500,7 @@ const Preview: React.FC = () => {
         )}
 
         <footer className="w-full p-4 sm:p-6">
-          <div className="max-w-xl mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
+          <div className="max-w-md mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
             {!paid && !approved && (
               <p className="text-center text-sm sm:text-base text-gray-600 mb-2 font-poppins">
                 You can continue refining your book even after this step — regenerate images and finalize later at your convenience.
@@ -1512,10 +1512,10 @@ const Preview: React.FC = () => {
                 disabled={!jobId || loading || carousels.length < 2 || submitting || regeneratingIndexes.length > 0}
                 className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white
                 ${carousels.length >= 2 && !submitting && regeneratingIndexes.length === 0
-                    ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 shadow-[3px_3px_0px_#232323]'
+                    ? 'bg-[#5784ba] hover:bg-[#5784bb] active:bg-indigo-700 shadow-md'
                     : 'bg-gray-300 cursor-not-allowed'}`}
               >
-                {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Story"}
+                {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Preview and Continue"}
               </button>
             )}
 
