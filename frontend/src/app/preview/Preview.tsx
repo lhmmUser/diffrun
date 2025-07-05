@@ -1449,19 +1449,19 @@ const Preview: React.FC = () => {
               <div key="placeholder" className="w-full max-w-md mx-auto mb-12 relative">
                 <div className="w-full text-center mb-2 flex justify-end">
                   <div className="inline-block px-3 py-1 text-sm font-poppins text-gray-800 bg-gray-100 rounded-full">
-                    Page {visibleCarousels + 1}
+                    Page {visibleCarousels}
                   </div>
                 </div>
                 <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
                   <div className="flex flex-col justify-center items-center w-full h-full">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
                     <p className="text-sm text-gray-700 mt-4 font-poppins">
-                      Generating image {visibleCarousels + 1} of {carousels.length}
+                      Generating image {visibleCarousels} of {carousels.length}
                     </p>
                   </div>
                 </div>
                 <p className="text-center text-sm text-gray-500 mt-8 italic font-poppins">
-                  Waiting for page {visibleCarousels + 1} to be generated...
+                  Waiting for page {visibleCarousels} to be generated...
                 </p>
               </div>
             )}
@@ -1470,10 +1470,7 @@ const Preview: React.FC = () => {
 
         {loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
           <div
-            className="max-w-xs md:max-w-md fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-4 md:p-6 rounded-lg shadow-brutalist text-center"
-            style={{
-              boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.1)",
-            }}
+            className="w-72 md:max-w-md fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white p-4 md:p-6 rounded-lg text-center shadow-xl"
           >
             <p className="text-gray-800 font-poppins mb-4 text-lg sm:text-xl animate-fade-in">
               Don&apos;t want to wait?
