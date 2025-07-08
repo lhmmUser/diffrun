@@ -23,11 +23,9 @@ class UserDetails(BaseModel):
     
 class PreviewEmailRequest(BaseModel):
     name: str
-    username: str
     email: EmailStr
     preview_url: str
 
 class BookStylePayload(BaseModel):
     job_id: str
     book_style: str
-

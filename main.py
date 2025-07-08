@@ -1459,11 +1459,38 @@ def run_workflow_in_background(
             ws.close()
 
         # ✅ Mark as completed in DB
-        workflow_key = f"workflow_{workflow_filename.replace('.json', '')}"
+        workflow_key = f"workflow_pg{page_num}"
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {f"workflows.{workflow_key}.status": "completed"}}
         )
+
+        # ✅ Now check if all workflows are completed
+        updated_user = user_details_collection.find_one({"job_id": job_id})
+        all_statuses = [
+            wf.get("status") for wf in updated_user.get("workflows", {}).values()
+        ]
+        if all(status == "completed" for status in all_statuses):
+            logger.info(f"✅ All workflows completed for job_id={job_id}")
+
+            # 🔄 Mark overall workflow_status = completed
+            user_details_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {"workflow_status": "completed"}}
+            )
+
+            # 📧 Trigger preview email
+            name = updated_user.get("name", "")
+            email = updated_user.get("email", "")
+            preview_url = updated_user.get("preview_url", "")
+
+            if name and email and preview_url:
+                try:
+                    logger.info(f"📧 Triggering preview email for job_id={job_id}")
+                    preview_email(name, email, preview_url)
+                    logger.info(f"📧 Preview email sent for job_id={job_id}")
+                except Exception as e:
+                    logger.exception(f"📨 Failed to send preview email for job_id={job_id}")
 
     except Exception as e:
         logger.exception(
@@ -1573,41 +1600,6 @@ async def execute_workflow(
             {"$set": {"workflows": {}}}
         )
 
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-
-        if job_type == "comic":
-            gender_folder = "male_tod" if gender == "boy" else "female_tod"
-            workflow_dir = os.path.join(
-                script_dir, "comics", "comic1", gender_folder)
-            workflow_files = sorted([
-                f for f in os.listdir(workflow_dir)
-                if f.startswith("Astronaut_") and f.endswith(".json")
-            ])
-
-            if not workflow_files:
-                raise HTTPException(
-                    status_code=404, detail="No comic workflows found.")
-
-            for file_name in workflow_files:
-                workflow_key = f"workflow_pg{page_num}"
-
-                user_details_collection.update_one(
-                    {"job_id": job_id},
-                    {"$set": {f"workflows.{workflow_key}.status": "processing"}}
-                )
-
-                thread = LoggedThread(target=run_workflow_in_background, args=(
-                    job_id, name, gender, saved_filenames, job_type, book_id, file_name
-                ))
-                thread.start()
-
-            return {
-                "status": "processing",
-                "job_id": job_id,
-                "workflows_started": [f.rstrip(".json") for f in workflow_files]
-            }
-
-       # ✨ STORY MODE (New structure with pgX detection)
         workflow_files = get_sorted_workflow_files(book_id, gender)
 
         if not workflow_files:
@@ -1636,7 +1628,6 @@ async def execute_workflow(
     except Exception as e:
         logger.exception("❌ Error during workflow execution")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 @app.post("/regenerate-workflow")
 def regenerate_workflow(
@@ -1770,6 +1761,17 @@ async def poll_images(job_id: str = Query(...)):
                 )
                 logger.info(
                     "🎉 Workflow marked as COMPLETED for job_id=%s", job_id)
+                                # ✅ Attempt to send preview email
+                name = user_details.get("name")
+                email = user_details.get("email")
+                preview_url = user_details.get("preview_url")
+
+                if name and email and preview_url:
+                    try:
+                        logger.info(f"📧 Triggering preview email for job_id={job_id}")
+                        preview_email(name, email, preview_url)
+                    except Exception as e:
+                        logger.exception(f"📨 Failed to send preview email for job_id={job_id}")
 
         logger.info("✅ Polling complete: %d workflows found, completed=%s", len(
             carousels), completed)
@@ -2090,14 +2092,12 @@ async def generate_pdf(job_id: str = Query(...)):
 async def preview_email(payload: PreviewEmailRequest):
     try:
         name = payload.name.capitalize()
-        username = payload.username.capitalize()
         preview_url = payload.preview_url
         email = payload.email
 
         # ✅ Log all the critical values
         print("📩 Sending Preview Email:")
         print(f" - To: {email}")
-        print(f" - Username: {username}")
         print(f" - Name: {name}")
         print(f" - Preview URL: {preview_url}")
 
@@ -2107,7 +2107,7 @@ async def preview_email(payload: PreviewEmailRequest):
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <p>Dear <strong>{username}</strong>,</p>
+            <p>Hey,</p>
 
             <p>Thank you for taking the first step toward creating a magical, personalized book for <strong>{name}</strong> with <strong>Diffrun</strong>!</p>
 
@@ -2152,6 +2152,68 @@ async def preview_email(payload: PreviewEmailRequest):
         raise HTTPException(
             status_code=500, detail="Failed to send preview email.")
 
+def preview_email(name: str, email: str, preview_url: str):
+    try:
+        name = name.capitalize()
+        preview_url = preview_url
+        email = email
+
+        # ✅ Log all the critical values
+        print("📩 Sending Preview Email:")
+        print(f" - To: {email}")
+        print(f" - Name: {name}")
+        print(f" - Preview URL: {preview_url}")
+
+        print("🔗 Email Link Block:\n",
+              f'<a href="{preview_url}">Refine {name}’s Book</a>')
+
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <p>Hey there,</p>
+
+            <p>Thank you for taking the first step toward creating a magical, personalized book for <strong>{name}</strong> with <strong>Diffrun</strong>!</p>
+
+            <p>We make the storybooks truly special — <strong>{name}</strong> is the star of the story, brought to life through beautiful, personalised illustrations.</p>
+
+            <p>🌈 You can now preview and refine the book to make it even more special.</p>
+
+            <a href="{preview_url}" 
+              style="display: inline-block; 
+                    padding: 12px 24px; 
+                    background-color: #6366F1; 
+                    color: white; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    border-radius: 6px;
+                    margin: 16px 0;">
+              Refine {name}’s Book
+            </a>
+
+            <p>Keep the magic going — click above to continue building the book.</p>
+
+            <p>With excitement,<br><strong>The Diffrun Team</strong></p>
+          </body>
+        </html>
+        """
+
+        msg = EmailMessage()
+        msg["Subject"] = f"{name}'s Magical Book Is Being Crafted!"
+        msg["From"] = EMAIL_USER
+        msg["To"] = email
+        msg.set_content("This email contains HTML content.")
+        msg.add_alternative(html_content, subtype="html")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+
+        return {"status": "success", "message": f"Email sent to {email}"}
+
+    except Exception as e:
+        print("❌ Email sending error:", str(e))
+        raise HTTPException(
+            status_code=500, detail="Failed to send preview email.")
 
 def payment_done_email(username: str, child_name: str, email: str, preview_url: str,
                        order_id: str, total_price: float, currency_code: str,

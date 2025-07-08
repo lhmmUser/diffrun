@@ -128,14 +128,14 @@ const UserDetails: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-[80vh] p-6">
-  <div className="w-full max-w-md rounded-lg border shadow-xl overflow-hidden p-8 space-y-6">
+  <div className="w-full max-w-md rounded-lg shadow-lg border border-gray-200 p-8 space-y-6">
     <div className="text-center space-y-2">
-      <h2 className="text-2xl font-light text-gray-800">
-        Complete Your Order
-      </h2>
-      <p className="text-gray-500 text-sm">
-        Preview link will be sent to your email
+      <p className="text-gray-500 text-sm font-medium font-poppins">
+        You'll recieve the preview link on your email
       </p>
+      <h2 className="text-2xl font-light text-gray-800">
+        Continue to Purchase
+      </h2>
     </div>
 
     {error && (
@@ -146,37 +146,30 @@ const UserDetails: React.FC = () => {
 
     <div className="space-y-4">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-          Your Name
-        </label>
+        
         <input
           type="text"
           id="name"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="w-full px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
-          placeholder="John Doe"
+          placeholder="Your Name"
           required
         />
       </div>
 
       <div>
-        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-          Phone Number
-        </label>
+      
         <input
           type="tel"
           id="phone"
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
           className="w-full px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
-          placeholder="+1 (123) 456-7890"
+          placeholder="Phone Number"
           pattern="[\d\s+-]{10,15}"
           required
         />
-        <p className="text-xs text-gray-500 mt-1">
-          For order updates and support
-        </p>
       </div>
     </div>
 
@@ -186,7 +179,7 @@ const UserDetails: React.FC = () => {
       className={`w-full py-3 rounded-md text-white font-medium transition-colors ${
         !phoneNumber.trim() || !username.trim() 
           ? "bg-gray-300 cursor-not-allowed" 
-          : "bg-[#5784ba] hover:bg-blue-600"
+          : "bg-[#5784ba] hover:bg-[#547096]"
       }`}
     >
       {loading ? (
@@ -198,7 +191,7 @@ const UserDetails: React.FC = () => {
           Processing...
         </span>
       ) : (
-        "Continue to Payment"
+        "Show Purchase Options"
       )}
     </button>
 

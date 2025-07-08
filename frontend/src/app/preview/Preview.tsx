@@ -121,7 +121,7 @@ const Preview: React.FC = () => {
       if (!updateResponse.ok) {
         throw new Error(`Failed to save state: ${updateResponse.status}`);
       }
-      
+
     } catch (err) {
       console.error("Failed to save state:", err);
     } finally {
@@ -910,6 +910,31 @@ const Preview: React.FC = () => {
     };
   }, [selectedSlides, carousels, saveCurrentState, jobId]);
 
+  useEffect(() => {
+    const saveInitialPreviewUrl = async () => {
+      if (!jobId) return;
+
+      const currentParams = new URLSearchParams(window.location.search);
+      const previewUrl = `${window.location.origin}/preview?${currentParams.toString()}`;
+
+      try {
+        await fetch(`${apiBaseUrl}/update-preview-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            job_id: jobId,
+            preview_url: previewUrl,
+          }),
+        });
+        console.log("✅ Initial preview URL saved:", previewUrl);
+      } catch (err) {
+        console.error("Failed to save initial preview URL:", err);
+      }
+    };
+
+    saveInitialPreviewUrl();
+  }, [jobId, apiBaseUrl]);
+
   const handleSubmit = useCallback(async () => {
     try {
       setSubmitting(true);
@@ -1208,20 +1233,12 @@ const Preview: React.FC = () => {
     queueSelectionUpdate(workflowIndex, Math.max(0, index));
   }, [selectedSlides, queueSelectionUpdate, isInitializingFromUrl]);
 
-  const handleSlideChange = useCallback((carouselIdx: number, swiper: any) => {
-    setSelectedSlides(prev => {
-      const updated = [...prev];
-      updated[carouselIdx] = swiper.activeIndex;
-      return updated;
-    });
-  }, []);
-
-  const formatName = (name: string) => 
-  name
-    .trim()
-    .split(/\s+/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+  const formatName = (name: string) =>
+    name
+      .trim()
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -1470,7 +1487,7 @@ const Preview: React.FC = () => {
 
         {loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
           <div
-            className="w-72 md:max-w-md fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white p-4 md:p-6 rounded-lg text-center shadow-xl"
+            className="w-60 sm:w-72 md:max-w-md fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-4 md:p-6 rounded-lg text-center shadow-xl"
           >
             <p className="text-gray-800 font-poppins mb-4 text-lg sm:text-xl animate-fade-in">
               Don&apos;t want to wait?
@@ -1489,17 +1506,17 @@ const Preview: React.FC = () => {
                 });
                 router.push(`/user-details?${query.toString()}`);
               }}
-              className="bg-[#5784ba] rounded-xl text-white py-2.5 px-5 font-poppins  text-xs md:text-sm"
+              className="bg-[#5784ba] rounded-xl hover:cursor-pointer text-white py-2.5 px-5 font-poppins  text-xs md:text-sm"
             >
-              Email Preview Link
+              Email Preview Link & Continue
             </button>
           </div>
         )}
 
-        <footer className="w-full p-4 sm:p-6">
+        <footer className="w-full p-2 sm:p-6">
           <div className="max-w-md mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
             {!paid && !approved && (
-              <p className="text-center text-sm sm:text-base text-gray-600 mb-2 font-poppins">
+              <p className="text-center text-sm sm:text-sm md:text-base text-gray-600 mb-2 font-poppins">
                 You can continue refining your book even after this step — regenerate images and finalize later at your convenience.
               </p>
             )}
@@ -1509,7 +1526,7 @@ const Preview: React.FC = () => {
                 disabled={!jobId || loading || carousels.length < 2 || submitting || regeneratingIndexes.length > 0}
                 className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white
                 ${carousels.length >= 2 && !submitting && regeneratingIndexes.length === 0
-                    ? 'bg-[#5784ba] hover:bg-[#5784bb] active:bg-indigo-700 shadow-md'
+                    ? 'bg-[#5784ba] hover:bg-[#5784bc] active:bg-[#5784bd] shadow-md'
                     : 'bg-gray-300 cursor-not-allowed'}`}
               >
                 {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Preview and Continue"}

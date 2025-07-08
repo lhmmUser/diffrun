@@ -27,6 +27,12 @@ interface LoadingBarProps {
   progress: number;
 }
 
+interface FormGuide {
+  visible: boolean;
+  message: string;
+  type: 'info' | 'success' | 'warning';
+}
+
 const TypingCycle: React.FC = () => {
   const texts = [
     "Good things take a few seconds... Great things take a little longer!",
@@ -88,6 +94,7 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => (
 );
 
 const Form: React.FC = () => {
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const jobType = searchParams.get("job_type") || "story";
@@ -110,6 +117,17 @@ const Form: React.FC = () => {
     gender: string;
     bookId: string;
   } | null>(null);
+
+  const [formGuide, setFormGuide] = useState<FormGuide>({
+    visible: false,
+    message: '',
+    type: 'info'
+  });
+
+  const showFormGuide = (message: string, type: FormGuide['type'] = 'info') => {
+    setFormGuide({ visible: true, message, type });
+    setTimeout(() => setFormGuide(prev => ({ ...prev, visible: false })), 5000);
+  };
 
   const [imageToCrop, setImageToCrop] = useState<number | null>(null);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -223,6 +241,26 @@ const Form: React.FC = () => {
       setError("Please enter a valid email address.");
       return;
     }
+
+    if (!gender) {
+    showFormGuide("Please select your child's gender", 'warning');
+    return;
+  }
+
+  if (!email) {
+    showFormGuide("We need your email to send the preview", 'warning');
+    return;
+  }
+
+  if (images.length < 1 || images.length > 3) {
+    showFormGuide("Please upload between 1-3 photos of your child", 'warning');
+    return;
+  }
+
+  if (!isConfirmed) {
+    showFormGuide("Please confirm you have consent to use these photos", 'warning');
+    return;
+  }
 
     setError(null);
     setLoading(true);
@@ -340,10 +378,7 @@ const Form: React.FC = () => {
   const description = selectedBook?.description || "";
 
   return (
-    <main
-      className="w-full min-h-screen flex flex-col items-center bg-white"
-    // style={{ backgroundImage: "url('/background-grid.jpg')" }} 
-    >
+    <main className="w-full min-h-screen flex flex-col items-center bg-white">
       {showContent ? (
         <>
           <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto justify-between items-start px-4 lg:px-0 py-2 md:py-8">
@@ -383,14 +418,14 @@ const Form: React.FC = () => {
                       <img
                         src={`/${bookId}-book-${num}.avif`}
                         alt={`Diffrun personalized books - Book ${num}`}
-                        className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
+                        className="w-full h-auto mx-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
                       />
                     </SwiperSlide>
                   ))}
                 </Swiper>
-                <div className="flex lg:justify-start mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
+                <div className="flex justify-center lg:justify-start mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
 
-                  <ul className="text-left text-sm text-gray-700 md:text-base font-poppins">
+                  <ul className="text-left text-sm sm:text-lg text-gray-700 md:text-base font-poppins">
                     <li className="flex items-center space-x-2">
                       <FiUser aria-hidden="true" />
                       <span>Perfect for children aged 0 to 6</span>
@@ -496,7 +531,7 @@ const Form: React.FC = () => {
                     <input {...getInputProps()} disabled={imageToCrop !== null} />
                     <button className="">
                       <span className="text-left font-medium ml-4">
-                        Upload Images of Your Child
+                        Upload upto 3 Images of Your Child
                       </span>
                     </button>
                     {imageToCrop !== null && (
@@ -521,7 +556,7 @@ const Form: React.FC = () => {
                   </div>
 
                   {images.length > 0 && (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-3 md:mt-2">
                       {images.map((img, index) => (
                         <div key={index} className="relative bg-white border border-gray-200 rounded-sm shadow-sm">
                           <img
