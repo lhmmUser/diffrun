@@ -50,8 +50,7 @@ SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
 INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
 OUTPUT_FOLDER = os.path.normpath(os.getenv("OUTPUT_FOLDER"))
 JPG_OUTPUT = os.path.normpath(os.getenv("JPG_OUTPUT"))
-WATERMARK_PATH = r"D:\Kush\Diffrun Latest\diffrun\images\Watermark.png"
-print("WATERMARK_PATH:", WATERMARK_PATH)
+WATERMARK_PATH = os.path.normpath(os.getenv("WATERMARK_PATH"))
 STORIES_FOLDER = os.path.normpath(os.getenv("STORIES_FOLDER"))
 IP_ADAPTER = os.getenv("IP_ADAPTER")
 PYTORCH_MODEL = os.getenv("PYTORCH_MODEL")
@@ -75,6 +74,7 @@ environment = LiveEnvironment(
     client_secret=PAYPAL_CLIENT_SECRET
 )
 
+print(WATERMARK_PATH)
 print("PayPal client ID:", PAYPAL_CLIENT_ID)
 print("PayPal secret:", PAYPAL_CLIENT_SECRET)
 print("PayPal environment:", PAYPAL_ENVIRONMENT)
