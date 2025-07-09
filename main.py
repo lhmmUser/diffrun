@@ -36,13 +36,11 @@ from pathlib import Path
 import glob
 from dotenv import load_dotenv
 import hmac
-import fnmatch
 import hashlib
 import razorpay
 from paypalcheckoutsdk.core import LiveEnvironment, PayPalHttpClient, SandboxEnvironment
 from paypalcheckoutsdk.orders import OrdersCreateRequest, OrdersCaptureRequest
 from helper.paypal_utils import get_paypal_access_token
-from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -62,8 +60,6 @@ S3_DIFFRUN_GENERATIONS = os.getenv("S3_DIFFRUN_GENERATIONS")
 S3_JPG_PREFIX = os.getenv("S3_JPG_PREFIX", "jpg_output")
 APPROVED_OUTPUT_BUCKET = os.getenv("S3_DIFFRUN_GENERATIONS")
 APPROVED_OUTPUT_PREFIX = os.getenv("APPROVED_OUTPUT_PREFIX")
-REPLICACOMFY_BUCKET = os.getenv("REPLICACOMFY_BUCKET")
-
 GEO = os.getenv("GEO")
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
@@ -72,8 +68,6 @@ PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
 PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "live")
 BASE_URL = "https://api-m.paypal.com"
-
-
 
 environment = LiveEnvironment(
     client_id=PAYPAL_CLIENT_ID,
@@ -120,8 +114,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 if not EMAIL_USER or not EMAIL_PASS:
     raise RuntimeError(
@@ -976,7 +968,8 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"📡 Queued prompt {prompt_id} for workflow {workflow_id_str}")
 
     while True:
-        logger.debug(f"🛰️ Waiting for WebSocket message for workflow {workflow_id_str}")
+        logger.debug(
+            f"🛰️ Waiting for WebSocket message for workflow {workflow_id_str}")
         out = ws.recv()
 
         if isinstance(out, str):
@@ -984,18 +977,19 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
             if message['type'] == 'executing':
                 data = message['data']
                 if data['node'] is None and data['prompt_id'] == prompt_id:
-                    logger.info(f"🔚 Execution complete for workflow {workflow_id_str}, prompt_id={prompt_id}")
+                    logger.info(
+                        f"🔚 Execution complete for workflow {workflow_id_str}, prompt_id={prompt_id}")
                     break
         else:
-            logger.warning(f"⚠️ Received non-string WebSocket message for workflow {workflow_id_str}")
-        
+            logger.warning(
+                f"⚠️ Received non-string WebSocket message for workflow {workflow_id_str}")
 
     try:
         history = get_history(prompt_id)[prompt_id]
     except Exception as e:
         logger.error(f"❌ Failed to get execution history: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve workflow execution history")
-        
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve workflow execution history")
 
     logger.info(f"📜 Retrieved execution history for prompt {prompt_id}")
 
@@ -1006,43 +1000,38 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
             continue
 
         for image in node_output['images']:
-            logger.info(f"🖼️ Found image: {image['filename']} (type: {image['type']})")
-            
+            logger.info(
+                f"🖼️ Found image: {image['filename']} (type: {image['type']})")
 
             try:
-                image_data = get_image(image['filename'], image['subfolder'], image['type'])
-                
+                image_data = get_image(
+                    image['filename'], image['subfolder'], image['type'])
             except Exception as e:
                 logger.error(f"❌ Failed to fetch image: {str(e)}")
                 continue
 
             timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
-            base_filename = f"{job_id}_{workflow_id_str}_{timestamp}_{image_index:03d}"
-            jpg_filename = f"{base_filename}.jpg"
-            png_renamed_filename = f"{base_filename}.png"
+            jpg_filename = f"{job_id}_{workflow_id_str}_{timestamp}_{image_index:03d}.jpg"
             jpg_path = os.path.join(JPG_OUTPUT, jpg_filename)
 
             try:
-                # Save PNG locally using original comfy filename (only once)
-                folder_type = "exterior" if page_number == 0 else "interior"
-                local_dir = os.path.join(OUTPUT_FOLDER, job_id, folder_type)
-                os.makedirs(local_dir, exist_ok=True)
-                
+                # Step 1 → Save PNG to output/{job_id}/interior
+                local_interior_dir = os.path.join(
+                    OUTPUT_FOLDER, job_id, "interior")
+                os.makedirs(local_interior_dir, exist_ok=True)
 
-                original_png_name = os.path.basename(image['filename'])
-                local_png_path = os.path.join(local_dir, original_png_name)
-                
-                
-                with open(local_png_path, "wb") as f:
+                # Use original filename → do NOT add timestamp
+                png_filename_clean = os.path.basename(image['filename'])
+                png_path = os.path.join(local_interior_dir, png_filename_clean)
+
+                # Save PNG
+                with open(png_path, "wb") as f:
                     f.write(image_data)
-                logger.info(f"🖼️ Saved PNG locally: {local_png_path}")
-                
+                logger.info(f"🖼️ Saved PNG to local interior: {png_path}")
 
-                # Convert PNG to JPG
-                # Convert PNG to JPG
+                # Step 2 → Convert PNG to JPG for frontend
                 convert_png_to_jpg(image_data, jpg_path, WATERMARK_PATH)
-                logger.info(f"🖼️ Saved JPG to: {jpg_path}")
-                
+                logger.info(f"🖼️ Saved JPG to JPG_OUTPUT: {jpg_path}")
             except Exception as e:
                 logger.error(f"❌ Conversion failed: {e}")
                 continue
@@ -1051,27 +1040,15 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
                 logger.error(f"❌ JPG missing: {jpg_path}")
                 continue
 
-            # Upload JPG to diffrungenerations
-            # Upload JPG to diffrungenerations
             try:
                 s3_key = f"{S3_JPG_PREFIX}/{jpg_filename}"
                 s3.upload_file(jpg_path, S3_DIFFRUN_GENERATIONS, s3_key)
-                logger.info(f"📤 Uploaded JPG to diffrungenerations: s3://{S3_DIFFRUN_GENERATIONS}/{s3_key}")
-                
+                logger.info(
+                    f"📤 Uploaded to S3: s3://{S3_DIFFRUN_GENERATIONS}/{s3_key}")
             except Exception as e:
-                logger.error(f"❌ Failed to upload JPG: {e}")
-                
+                logger.error(f"❌ Failed to upload {jpg_filename} to S3: {e}")
                 continue
 
-            # Upload renamed PNG to replicacomfy (no redundant local save)
-            try:
-                replicacomfy_key = f"output/{job_id}/{folder_type}/{png_renamed_filename}"
-                s3.upload_file(local_png_path, "replicacomfy", replicacomfy_key)
-                logger.info(f"📤 Uploaded PNG to replicacomfy: s3://replicacomfy/{replicacomfy_key}")
-            except Exception as e:
-                logger.error(f"❌ Failed to upload PNG to replicacomfy: {e}")
-
-        
             try:
                 with open(jpg_path, "rb") as f:
                     jpg_data = f.read()
@@ -1085,9 +1062,10 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
 
         output_images[node_id] = images_output
 
-    logger.info(f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
-    logger.info(f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
+    logger.info(
+        f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
     return output_images
+
 
 @app.post("/store-user-details")
 async def store_user_details(
@@ -1155,67 +1133,9 @@ async def store_user_details(
         except Exception as e:
             logger.error("❌ Error processing image: %s", str(e))
             raise HTTPException(
-                status_code=400, detail=f"Invalid image file: {str(e)}")
-        try:
-            s3_key = f"input_images/{job_id}/{new_filename}"
-
-            with open(image_path, "rb") as f:
-                s3.upload_fileobj(
-                    f,
-                    S3_DIFFRUN_GENERATIONS,
-                    s3_key,
-                    ExtraArgs={"ContentType": "image/jpeg"}
-                )
-                logger.info("☁️ Uploaded image to S3: %s/%s", S3_DIFFRUN_GENERATIONS, s3_key)
-        except (BotoCoreError, ClientError) as e:
-            logger.error("❌ Failed to upload image to S3: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to S3")
-
-        try:
-            replicacomfy_key = f"input/{new_filename}"
-            with open(image_path, "rb") as f:
-                s3.upload_fileobj(
-                    f,
-                    REPLICACOMFY_BUCKET,
-                    replicacomfy_key,   
-                    ExtraArgs={"ContentType": "image/jpeg"}
-                )
-                logger.info("📤 Also uploaded to replicacomfy: %s", replicacomfy_key)
-        except (BotoCoreError, ClientError) as e:
-            logger.error("❌ Failed to upload image to replicacomfy: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to replicacomfy S3 bucket.")        
-        try:
-            s3_key = f"input_images/{job_id}/{new_filename}"
-
-            with open(image_path, "rb") as f:
-                s3.upload_fileobj(
-                    f,
-                    S3_DIFFRUN_GENERATIONS,
-                    s3_key,
-                    ExtraArgs={"ContentType": "image/jpeg"}
-                )
-                logger.info("☁️ Uploaded image to S3: %s/%s", S3_DIFFRUN_GENERATIONS, s3_key)
-        except (BotoCoreError, ClientError) as e:
-            logger.error("❌ Failed to upload image to S3: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to S3")
-
-        try:
-            replicacomfy_key = f"input/{new_filename}"
-            with open(image_path, "rb") as f:
-                s3.upload_fileobj(
-                    f,
-                    REPLICACOMFY_BUCKET,
-                    replicacomfy_key,   
-                    ExtraArgs={"ContentType": "image/jpeg"}
-                )
-                logger.info("📤 Also uploaded to replicacomfy: %s", replicacomfy_key)
-        except (BotoCoreError, ClientError) as e:
-            logger.error("❌ Failed to upload image to replicacomfy: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to replicacomfy S3 bucket.")        
+                status_code=400, 
+                detail=f"Invalid image file: {str(e)}"
+            )
 
         saved_filenames.append(new_filename)
 
@@ -1300,30 +1220,6 @@ def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]
     logger.info(f"✅ Total valid workflows detected: {len(workflow_files)}")
     return workflow_files
 
-def find_matching_s3_key(bucket, prefix, pattern):
-    import fnmatch
-
-    paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            filename = os.path.basename(key)
-            if fnmatch.fnmatch(filename, pattern):
-                return key
-    return None
-
-def find_matching_s3_key(bucket, prefix, pattern):
-    import fnmatch
-
-    paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            filename = os.path.basename(key)
-            if fnmatch.fnmatch(filename, pattern):
-                return key
-    return None
-
 
 @app.post("/approve")
 async def approve_for_printing(
@@ -1340,121 +1236,34 @@ async def approve_for_printing(
         "message": "Approval started. Backend is finalizing the book in background."
     }
 
-def extract_sorted_candidates_by_pg(keys, pg_label):
-    """
-    Helper to extract all keys for a given page number,
-    sort them by the timestamp embedded in the filename.
-    """
-    def extract_timestamp(key):
-        parts = key.split("_")
-        try:
-            return int(parts[2])  # timestamp
-        except (IndexError, ValueError):
-            return 0
-
-    filtered = [k for k in keys if f"_pg{pg_label}_" in k]
-    sorted_keys = sorted(filtered, key=extract_timestamp)
-    return sorted_keys
-
-def extract_sorted_candidates_by_pg(keys, pg_label):
-    """
-    Helper to extract all keys for a given page number,
-    sort them by the timestamp embedded in the filename.
-    """
-    def extract_timestamp(key):
-        parts = key.split("_")
-        try:
-            return int(parts[2])  # timestamp
-        except (IndexError, ValueError):
-            return 0
-
-    filtered = [k for k in keys if f"_pg{pg_label}_" in k]
-    sorted_keys = sorted(filtered, key=extract_timestamp)
-    return sorted_keys
-
 
 def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
         selected = json.loads(selectedSlides)
         logger.info(f"🧪 Selected slides: {selected}")
         interior_selected = selected[1:]
-
-        
-        # Create approved_output directory locally
-        approved_dir = Path(OUTPUT_FOLDER) / job_id / "approved_output" / "interior_approved"
+        source_dir = Path(OUTPUT_FOLDER) / job_id / "interior"
+        approved_dir = Path(OUTPUT_FOLDER) / job_id / \
+            "approved_output" / "interior_approved"
         approved_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"📁 Created approved_output folder: {approved_dir}")
 
         for i, variant_index in enumerate(interior_selected):
-            pg_label = str(i + 1)
-            local_path = None
+            page = str(i + 1).zfill(2)
+            variant = str(variant_index + 1).zfill(5)
+            pattern = f"*_{page}_{variant}*.png"
+            logger.info(f"🔍 Looking for pattern: {pattern} in {source_dir}")
+            matches = list(source_dir.glob(pattern))
+            if matches:
+                shutil.copy(matches[0], approved_dir / matches[0].name)
+                logger.info(f"✅ Copied: {matches[0]}")
+            else:
+                logger.warning(f"❌ No match for {pattern} in {source_dir}")
 
-            s3_prefix = f"output/{job_id}/interior/"
-            result = s3.list_objects_v2(Bucket="replicacomfy", Prefix=s3_prefix)
-
-            if "Contents" not in result:
-                logger.warning(f"⚠️ No contents under {s3_prefix} in S3 bucket")
-                continue
-
-            all_keys = [obj["Key"] for obj in result["Contents"]]
-            sorted_pg_keys = extract_sorted_candidates_by_pg(all_keys, pg_label)
-
-            try:
-                selected_key = sorted_pg_keys[variant_index]
-                # Calculate the renamed format
-                page_str = str(i + 1).zfill(2)
-                variant_str = str(variant_index + 1).zfill(5)
-                renamed_filename = f"_{job_id}_{page_str}_{variant_str}_.png"
-                local_path = approved_dir / renamed_filename
-
-                s3.download_file("replicacomfy", selected_key, str(local_path))
-                logger.info(f"✅ Downloaded: {selected_key} → {local_path}")
-
-                approved_s3_key = f"output/{job_id}/approved_output/interior_approved/{renamed_filename}"
-                s3.upload_file(str(local_path), "replicacomfy", approved_s3_key)
-                logger.info(f"📤 Uploaded to S3: {approved_s3_key}")
-
-            except IndexError:
-                logger.warning(f"❌ No match for pg{pg_label} variant {variant_index} (only {len(sorted_pg_keys)} found)")
-            pg_label = str(i + 1)
-            local_path = None
-
-            s3_prefix = f"output/{job_id}/interior/"
-            result = s3.list_objects_v2(Bucket="replicacomfy", Prefix=s3_prefix)
-
-            if "Contents" not in result:
-                logger.warning(f"⚠️ No contents under {s3_prefix} in S3 bucket")
-                continue
-
-            all_keys = [obj["Key"] for obj in result["Contents"]]
-            sorted_pg_keys = extract_sorted_candidates_by_pg(all_keys, pg_label)
-
-            try:
-                selected_key = sorted_pg_keys[variant_index]
-                # Calculate the renamed format
-                page_str = str(i + 1).zfill(2)
-                variant_str = str(variant_index + 1).zfill(5)
-                renamed_filename = f"_{job_id}_{page_str}_{variant_str}_.png"
-                local_path = approved_dir / renamed_filename
-
-                s3.download_file("replicacomfy", selected_key, str(local_path))
-                logger.info(f"✅ Downloaded: {selected_key} → {local_path}")
-
-                approved_s3_key = f"output/{job_id}/approved_output/interior_approved/{renamed_filename}"
-                s3.upload_file(str(local_path), "replicacomfy", approved_s3_key)
-                logger.info(f"📤 Uploaded to S3: {approved_s3_key}")
-
-            except IndexError:
-                logger.warning(f"❌ No match for pg{pg_label} variant {variant_index} (only {len(sorted_pg_keys)} found)")
-
-        
-        # --- DB fetch ---
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
             raise Exception("User record not found for PDF step")
 
-       
-        # --- Interior PDF ---
         interior_pdf_path = str(approved_dir / f"{job_id}_interior.pdf")
         create_interior_pdf(
             source_folder=str(approved_dir),
@@ -1469,10 +1278,9 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         logger.info(f"📤 Uploaded interior PDF to s3://storyprints/{s3_key}")
         interior_url = f"https://storyprints.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
 
-        
-        # --- Cover Page Upload ---
         exterior_index = selected[0]
         variant_str = str(exterior_index + 1).zfill(5)
+
         book_id = user.get("book_id")
         book_style = user.get("book_style")
 
@@ -1483,27 +1291,21 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
 
         cover_matches = list(cover_exterior_dir.glob(cover_src_pattern))
         if not cover_matches:
-            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
-            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
+            raise Exception(
+                f"Cover image not found for pattern: {cover_src_pattern}")
+
         cover_dest = cover_input_dir / cover_matches[0].name
         shutil.copy(cover_matches[0], cover_dest)
         cover_input_filename = cover_matches[0].name
         logger.info(f"✅ Copied cover image: {cover_matches[0]} → {cover_dest}")
 
-
-        # --- Kick off cover workflow ---
-        s3_cover_key = f"input/cover_inputs/{job_id}/{cover_input_filename}"
-        s3.upload_file(str(cover_dest), "replicacomfy", s3_cover_key)
-        logger.info(f"📤 Uploaded cover to S3: {s3_cover_key}")
-
-        # --- Kick off cover workflow ---
         run_coverpage_workflow_in_background(
             job_id=job_id,
             book_id=book_id,
             book_style=book_style,
             cover_input_filename=cover_input_filename
         )
-        # --- DB update ---
+
         approved_at = datetime.now(timezone.utc)
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -1514,29 +1316,27 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
-        logger.info(f"✅ Marked job_id={job_id} as approved")
+        logger.info(f"✅ Marked job_id={job_id} as approved in database")
 
-    
-        # --- Email ---
         try:
-            username = user.get("user_name") or user.get("name", "").capitalize()
+            username = user.get("user_name") or user.get(
+                "name", "").capitalize()
             child_name = user.get("name", "").capitalize()
             email = user.get("email") or user.get("shopify_email")
 
             if username and child_name and email:
                 send_approval_confirmation_email(
                     username=username, child_name=child_name, email=email)
-                logger.info(f"📧 Email sent to {email}")
-                
+                logger.info(f"📧 Approval email sent to {email}")
             else:
-                logger.warning("⚠️ Missing user data for email")
-                
+                logger.warning(
+                    "⚠️ Missing data for approval email — skipping send")
         except Exception as e:
-            logger.error(f"❌ Email error: {e}")
-            
+            logger.error(f"❌ Error while sending approval email: {e}")
 
     except Exception as e:
         logger.exception("❌ Approval background task failed")
+
 
 @app.get("/get-workflow-status/{job_id}")
 async def get_workflow_status(job_id: str):
@@ -1851,66 +1651,6 @@ def regenerate_workflow(
         if not saved_filenames:
             raise HTTPException(
                 status_code=404, detail="No input images found.")
-        
-        # S3 download logic
-        s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("AWS_REGION")
-        )
-
-        for i in range(1, 4):
-            s3_key = f"input_images/{job_id}/{job_id}_{i:02d}.jpg"
-            local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
-
-            try:
-                logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
-                s3_client.download_file("diffrungenerations", s3_key, local_path)
-                logger.info(f"✅ Downloaded {s3_key}")
-            except Exception as e:
-                logger.warning(f"⚠️ Could not download {s3_key}: {e}")
-
-        # Reload saved_filenames after download attempt
-        saved_filenames = [
-            file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
-        ]
-
-        if not saved_filenames:
-            logger.error(f"❌ Failed to download any input images for job_id={job_id}")
-            raise HTTPException(
-                status_code=404, detail="No input images found locally or on S3.")
-    
-        
-        # S3 download logic
-        s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("AWS_REGION")
-        )
-
-        for i in range(1, 4):
-            s3_key = f"input_images/{job_id}/{job_id}_{i:02d}.jpg"
-            local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
-
-            try:
-                logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
-                s3_client.download_file("diffrungenerations", s3_key, local_path)
-                logger.info(f"✅ Downloaded {s3_key}")
-            except Exception as e:
-                logger.warning(f"⚠️ Could not download {s3_key}: {e}")
-
-        # Reload saved_filenames after download attempt
-        saved_filenames = [
-            file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
-        ]
-
-        if not saved_filenames:
-            logger.error(f"❌ Failed to download any input images for job_id={job_id}")
-            raise HTTPException(
-                status_code=404, detail="No input images found locally or on S3.")
-    
 
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -2210,17 +1950,6 @@ def run_coverpage_workflow_in_background(
             ws.close()
 
         logger.info(f"✅ Coverpage workflow completed for job_id={job_id}")
-
-         # ✅ Upload final PNG to S3 replicacomfy/output/{job_id}/finalcoverpage/
-        final_png_dir = Path(OUTPUT_FOLDER) / job_id / "final_coverpage"
-        final_png_candidates = list(final_png_dir.glob(f"{job_id}_final_coverpage*.png"))
-        if final_png_candidates:
-            final_png_path = final_png_candidates[0]
-            s3_key = f"output/{job_id}/final_coverpage/{final_png_path.name}"
-            s3.upload_file(str(final_png_path), "replicacomfy", s3_key)
-            logger.info(f"📤 Uploaded final PNG to S3: s3://replicacomfy/{s3_key}")
-        else:
-            logger.warning("⚠️ Final coverpage PNG not found for upload to S3")
 
         # ✅ Generate cover PDF
         pdf_path = create_front_cover_pdf(job_id, book_style, book_id)
@@ -2679,9 +2408,6 @@ async def serve_about():
 async def after_payment():
     return FileResponse("frontend/out/after-payment.html")
 
-@app.get("/checkout")
-async def checkout():
-    return FileResponse("frontend/out/checkout.html")
 
 @app.get("/healthcheck")
 def healthcheck():
