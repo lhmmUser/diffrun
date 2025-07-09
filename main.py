@@ -1792,8 +1792,28 @@ async def execute_workflow(
         ]
 
         if not (1 <= len(saved_filenames) <= 3):
+            logger.warning(f"⚠️ No input images found locally for job_id={job_id}. Trying S3 fallback...")
+
+            for i in range(1, 4):
+                s3_key = f"input/{job_id}_{i:02d}.jpg"
+                local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
+
+                try:
+                    logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
+                    s3.download_file("replicacomfy", s3_key, local_path)
+                    logger.info(f"✅ Downloaded {s3_key}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not download {s3_key}: {e}")
+
+            saved_filenames =[
+                file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
+            ]
+
+        if not (1 <= len(saved_filenames) <= 3):
+            logger.error(f"❌ Uploaded images not found locally or on S3 for job_id={job_id}")
             raise HTTPException(
-                status_code=400, detail="Uploaded images not found.")
+                status_code=404, detail="Uploaded images not found."
+            )
 
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -1861,12 +1881,12 @@ def regenerate_workflow(
         )
 
         for i in range(1, 4):
-            s3_key = f"input_images/{job_id}/{job_id}_{i:02d}.jpg"
+            s3_key = f"input/{job_id}_{i:02d}.jpg"
             local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
 
             try:
                 logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
-                s3_client.download_file("diffrungenerations", s3_key, local_path)
+                s3_client.download_file("replicacomfy", s3_key, local_path)
                 logger.info(f"✅ Downloaded {s3_key}")
             except Exception as e:
                 logger.warning(f"⚠️ Could not download {s3_key}: {e}")
