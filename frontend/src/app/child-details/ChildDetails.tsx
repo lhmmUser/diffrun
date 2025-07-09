@@ -320,7 +320,7 @@ const Form: React.FC = () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
 
       let progress = 0;
-      const duration = 65000;
+      const duration = 50000;
       const startTime = Date.now();
 
       const step = () => {

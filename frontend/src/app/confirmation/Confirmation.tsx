@@ -77,7 +77,7 @@ export default function Confirmation() {
 
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({
-              event: "purchase_ready",
+              event: "purchase",
               transaction_id: data.job_id,
               value: data.value,
               currency: data.currency,
