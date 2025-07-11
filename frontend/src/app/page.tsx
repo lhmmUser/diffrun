@@ -85,7 +85,7 @@ export default function Home() {
 
                     <div className="w-1/2 h-full">
                         <img
-                            src="/banner-gif.avif"
+                            src="/big-banner.avif"
                             alt="Diffrun personalized books - banner"
                             width="600"
                             height="400"
@@ -133,7 +133,7 @@ export default function Home() {
                         Choose your story and start personalizing
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
                         {Cards.map((card, index) => (
                             <div
                                 key={index}
@@ -144,11 +144,18 @@ export default function Home() {
                                     aria-label={`Personalize ${card.title} story for ages ${card.age}`}
                                     className="flex flex-col h-full"
                                 >
-                                    <div className="relative w-full pt-[75%]">
+                                    <div className="relative w-full pt-[75%] overflow-hidden">
                                         <img
                                             src={card.imageSrc}
                                             alt={card.title}
-                                            className="absolute inset-0 object-cover w-full h-full"
+                                            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                                            loading="lazy"
+                                        />
+
+                                        <img
+                                            src={card.hoverImageSrc || card.imageSrc}
+                                            alt={`${card.title} hover`}
+                                            className="absolute inset-0 w-full h-full object-cover transform scale-100 transition-transform duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100 opacity-0"
                                             loading="lazy"
                                         />
                                     </div>
@@ -236,7 +243,7 @@ export default function Home() {
                 </section>
 
             </main>
-            <div className="px-4 md:px-0">
+            <div className="px-4 md:px-16 lg:px-40 xl:px-60">
                 <FAQClient items={faqData} />
             </div>
         </>

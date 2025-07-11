@@ -43,8 +43,12 @@ from paypalcheckoutsdk.orders import OrdersCreateRequest, OrdersCaptureRequest
 from helper.paypal_utils import get_paypal_access_token
 from pydantic import BaseModel, Field
 from typing import Optional
+from concurrent.futures import ProcessPoolExecutor
+from html import escape
+from email.header import Header
 
 load_dotenv(dotenv_path=".env")
+executor = ProcessPoolExecutor(max_workers=2) 
 
 SERVER_ADDRESS = os.getenv("SERVER_ADDRESS")
 INPUT_FOLDER = os.path.normpath(os.getenv("INPUT_FOLDER"))
@@ -102,7 +106,6 @@ class LoggedThread(Thread):
         except Exception as e:
             logger.exception(f"🧵 Uncaught thread error: {e}")
 
-
 app = FastAPI()
 router = APIRouter()
 app.include_router(router)
@@ -118,7 +121,6 @@ app.add_middleware(
 if not EMAIL_USER or not EMAIL_PASS:
     raise RuntimeError(
         "Missing EMAIL_USER or EMAIL_PASS environment variables")
-
 
 @app.middleware("http")
 async def add_no_cache_headers(request: Request, call_next):
@@ -210,7 +212,6 @@ async def create_order(request: Request):
         "currency": "INR",
         "razorpay_key": RAZORPAY_KEY_ID
     }
-
 
 @app.post("/verify-razorpay")
 async def verify_signature(request: Request):
@@ -314,6 +315,114 @@ async def verify_signature(request: Request):
         f"✅ Razorpay payment captured successfully for job_id={job_id}")
     return {"success": True}
 
+@app.post("/verify-razorpay-lock")
+async def verify_signature(request: Request, background_tasks: BackgroundTasks):
+    data = await request.json()
+
+    razorpay_order_id = data.get("razorpay_order_id")
+    razorpay_payment_id = data.get("razorpay_payment_id")
+    razorpay_signature = data.get("razorpay_signature")
+    job_id = data.get("job_id")
+
+    # Pricing fields sent directly from frontend (safe)
+    actual_price = data.get("actual_price")
+    discount_percentage = data.get("discount_percentage")
+    discount_amount = data.get("discount_amount")
+    shipping_price = data.get("shipping_price")
+    taxes = data.get("taxes")
+    final_amount = data.get("final_amount")
+
+    # Verify signature
+    body = razorpay_order_id + "|" + razorpay_payment_id
+    generated_signature = hmac.new(
+        bytes(RAZORPAY_KEY_SECRET, 'utf-8'),
+        bytes(body, 'utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    if generated_signature != razorpay_signature:
+        return {"success": False, "error": "Signature verification failed"}
+
+    payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
+    notes = payment_details.get("notes", {})
+    payer_name = notes.get("name", "")
+    payer_email = notes.get("email", "")
+    payer_contact = notes.get("contact", "")
+    discount_code = notes.get("discount_code", "")
+    currency_code = payment_details.get("currency")
+    processed_at = payment_details.get("created_at")
+
+    shipping_info = {
+        "name": payer_name,
+        "address1": notes.get("address1", ""),
+        "address2": notes.get("address2", ""),
+        "city": notes.get("city", ""),
+        "province": notes.get("province", ""),
+        "zip": notes.get("zip", ""),
+        "country": notes.get("country", "India"),
+        "phone": payer_contact
+    }
+
+    latest_order = user_details_collection.find_one(
+        {"order_id": {"$regex": "^#\\d+"}}, sort=[("order_id", -1)]
+    )
+    if latest_order and latest_order.get("order_id"):
+        latest_number = int(latest_order["order_id"].replace("#", ""))
+        new_order_id = f"#{latest_number + 1}"
+    else:
+        new_order_id = "#1200"
+
+    user_record = user_details_collection.find_one({"job_id": job_id})
+    if not user_record:
+        return {"success": False, "error": "Job ID not found in database"}
+
+    user_details_collection.update_one(
+        {"job_id": job_id},
+        {"$set": {
+            "paid": True,
+            "order_id": new_order_id,
+            "transaction_id": razorpay_payment_id,
+            "customer_email": payer_email,
+            "discount_code": discount_code,
+            "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
+            "currency": currency_code,
+            "total_price": final_amount,
+            "shipping_address": shipping_info,
+            "actual_price": actual_price,
+            "discount_percentage": discount_percentage,
+            "discount_amount": discount_amount,
+            "shipping_price": shipping_price,
+            "taxes": taxes,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+
+    logger.info(f"📧 Preparing to send order confirmation email to {payer_email} for job_id={job_id}")
+
+    await payment_done_email_lock(
+        username=user_record.get("user_name", ""),
+        child_name=user_record.get("name", ""),
+        email=user_record.get("email", ""),
+        preview_url=user_record.get("preview_url", ""),
+        order_id=new_order_id,
+        total_price=final_amount,
+        currency_code=currency_code,
+        discount_code=discount_code,
+        payment_id=razorpay_payment_id,
+        shipping_info=shipping_info,
+        discount_amount=discount_amount,
+        shipping_price=shipping_price,
+        taxes=taxes,
+        actual_price=float(actual_price)
+    )
+
+    logger.info(f"✅ Order confirmation email sent for job_id={job_id} to {payer_email}")
+
+    background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=10)
+
+    logger.info(
+        f"✅ Razorpay payment captured successfully for job_id={job_id}")
+    return {"success": True}
 
 @app.post("/save-user-details")
 async def save_user_details_endpoint(request: SaveUserDetailsRequest):
@@ -334,7 +443,6 @@ async def save_user_details_endpoint(request: SaveUserDetailsRequest):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to save user details: {str(e)}")
-
 
 @app.get("/api/order-status/{job_id}")
 async def get_order_status(job_id: str):
@@ -359,7 +467,6 @@ async def get_order_status(job_id: str):
         "name": order.get("name")
     }
 
-
 @app.post("/api/mark-dlv-purchase-event-fired")
 async def mark_purchase_fired(data: dict):
     job_id = data.get("job_id")
@@ -373,7 +480,6 @@ async def mark_purchase_fired(data: dict):
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Job ID not found")
-
 
 @app.post("/create_checkout")
 def create_checkout(payload: CheckoutRequest):
@@ -393,7 +499,6 @@ def create_checkout(payload: CheckoutRequest):
     full_url = f"{shopify_cart_url}?{encoded_attributes}"
 
     return {"checkout_url": full_url}
-
 
 @app.post("/webhooks/shopify")
 async def shopify_webhook(request: Request):
@@ -483,7 +588,6 @@ async def shopify_webhook(request: Request):
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
 @app.post("/api/orders/capture/{order_id}/")
 async def capture_order(order_id: str):
     try:
@@ -550,7 +654,6 @@ async def capture_order(order_id: str):
     except Exception as e:
         logger.exception("Error capturing PayPal order")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/api/orders")
 async def create_order(request: Request):
@@ -639,7 +742,6 @@ async def create_order(request: Request):
         logger.exception("❌ Error creating PayPal order")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/api/paypal/store-capture")
 async def fetch_and_store_capture(request: Request):
     try:
@@ -726,8 +828,6 @@ async def update_preview_url(
             detail="Invalid or empty preview URL"
         )
 
-    print(f"🔧 Updating preview_url for job_id={job_id}: {preview_url}")
-
     existing_job = user_details_collection.find_one({"job_id": job_id})
     if not existing_job:
         print("⚠️ No matching job_id found in DB")
@@ -740,20 +840,13 @@ async def update_preview_url(
 
     if (not existing_job.get("preview_country")) and preview_country:
         update_fields["preview_country"] = preview_country
-        print(
-            f"🌍 Setting initial preview_country for job_id={job_id}: {preview_country}")
-    else:
-        print(
-            f"ℹ️ preview_country already set: {existing_job.get('preview_country', '')}, not updating.")
 
     result = user_details_collection.update_one(
         {"job_id": job_id},
         {"$set": update_fields}
     )
 
-    print(f"✅ Updated preview_url for job_id={job_id}")
     return {"message": "Preview URL updated successfully"}
-
 
 @app.get("/get-job-status/{job_id}")
 async def get_job_status(job_id: str):
@@ -780,7 +873,6 @@ async def get_job_status(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve job status: {str(e)}")
 
-
 @app.get("/get-user-details/{job_id}")
 async def get_user_details(job_id: str):
 
@@ -794,7 +886,6 @@ async def get_user_details(job_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve user details: {str(e)}")
-
 
 @app.post("/update-book-style")
 async def update_book_style(payload: BookStylePayload):
@@ -821,8 +912,6 @@ async def update_book_style(payload: BookStylePayload):
             status_code=500, detail="Failed to update book style")
 
 # Helper function to validate workflow files
-
-
 def load_workflow(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Workflow file not found: {file_path}")
@@ -842,8 +931,6 @@ def load_workflow(file_path):
             f"Invalid JSON in workflow file: {file_path}. Error: {str(e)}")
 
 # Function to queue a prompt
-
-
 def queue_prompt(prompt, client_id):
     payload = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(payload).encode('utf-8')
@@ -859,8 +946,6 @@ def queue_prompt(prompt, client_id):
             status_code=400, detail=f"ComfyUI API Error: {str(e)}")
 
 # Function to get an image from the server
-
-
 def get_image(filename, subfolder, folder_type):
     params = {"filename": filename,
               "subfolder": subfolder, "type": folder_type}
@@ -869,15 +954,11 @@ def get_image(filename, subfolder, folder_type):
         return response.read()
 
 # Function to get history of a prompt execution
-
-
 def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{SERVER_ADDRESS}/history/{prompt_id}") as response:
         return json.loads(response.read())
 
 # Function to convert PNG to JPG
-
-
 def convert_png_to_jpg(png_data, output_path, watermark_path):
     try:
         img = Image.open(io.BytesIO(png_data))
@@ -912,8 +993,6 @@ def convert_png_to_jpg(png_data, output_path, watermark_path):
         raise ValueError(f"Error converting PNG to JPG: {str(e)}")
 
 # Function to get images after execution
-
-
 def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
     logger.info("🔧 Copying selected interior PNGs...")
 
@@ -945,7 +1024,6 @@ def copy_interiors_for_print(job_id: str, selected: list[int]) -> str:
                 f"⚠️ Interior image not found using pattern: {pattern}")
 
     return approved_dir
-
 
 def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"🧲 get_images() started for workflow {workflow_number}")
@@ -1066,13 +1144,11 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
         f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
     return output_images
 
-
 @app.post("/store-user-details")
 async def store_user_details(
     name: str = Form(...),
     email: str = Form(...),  # New email field
     gender: str = Form(...),
-    job_type: str = Form(...),
     book_id: str = Form(...),
     images: List[UploadFile] = File(...)
 ):
@@ -1145,7 +1221,6 @@ async def store_user_details(
     # Prepare response with email included
     response = {
         "job_id": job_id,
-        "job_type": job_type.lower(),
         "saved_files": saved_filenames,
         "gender": gender.lower(),
         "name": name.capitalize(),
@@ -1220,7 +1295,6 @@ def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]
     logger.info(f"✅ Total valid workflows detected: {len(workflow_files)}")
     return workflow_files
 
-
 @app.post("/approve")
 async def approve_for_printing(
     background_tasks: BackgroundTasks,
@@ -1235,7 +1309,6 @@ async def approve_for_printing(
         "status": "processing_started",
         "message": "Approval started. Backend is finalizing the book in background."
     }
-
 
 def process_approval_workflow(job_id: str, selectedSlides: str):
     try:
@@ -1325,7 +1398,7 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
             email = user.get("email") or user.get("shopify_email")
 
             if username and child_name and email:
-                send_approval_confirmation_email(
+                approval_confirmation_email(
                     username=username, child_name=child_name, email=email)
                 logger.info(f"📧 Approval email sent to {email}")
             else:
@@ -1336,7 +1409,6 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
 
     except Exception as e:
         logger.exception("❌ Approval background task failed")
-
 
 @app.get("/get-workflow-status/{job_id}")
 async def get_workflow_status(job_id: str):
@@ -1352,7 +1424,6 @@ async def get_workflow_status(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve workflow status: {str(e)}")
 
-
 def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
     for node_id, node_data in workflow_data.items():
         if isinstance(node_data, dict):
@@ -1363,13 +1434,11 @@ def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
     logger.warning("⚠️ No job_id node found matching known_job_id")
     return None
 
-
 def run_workflow_in_background(
     job_id: str,
     name: str,
     gender: str,
     saved_filenames: List[str],
-    job_type: str,
     book_id: str,
     workflow_filename: str
 ):
@@ -1503,6 +1572,171 @@ def run_workflow_in_background(
         raise HTTPException(
             status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
 
+def run_workflow_in_background_lock(
+    job_id: str,
+    name: str,
+    gender: str,
+    saved_filenames: List[str],
+    book_id: str,
+    workflow_filename: str
+):
+    name = name.capitalize()
+    try:
+        logger.info(
+            f"🚀 Running workflow {workflow_filename} for job_id={job_id}")
+
+        gender_folder = gender.lower()
+
+        # 🔢 Extract pg number from filename like 'pg1.json' or '1.json'
+        match = re.match(r'^(?:pg)?(\d+)', workflow_filename)
+        if not match:
+            raise HTTPException(
+                status_code=400, detail="Invalid workflow filename format")
+
+        page_num = int(match.group(1))
+        expected_filename = f"{page_num:02d}_{book_id}_{gender}.json"
+
+        workflow_path = os.path.join(
+            INPUT_FOLDER, "stories", book_id, gender_folder, f"pg{page_num}", expected_filename
+        )
+
+        if not os.path.exists(workflow_path):
+            logger.error(f"❌ Workflow file not found: {workflow_path}")
+            raise HTTPException(
+                status_code=404, detail=f"Workflow not found: {workflow_filename}")
+
+        # 🧠 Load and parse workflow
+        workflow_data = load_workflow(workflow_path)
+        if isinstance(workflow_data, list):
+            workflow_data = workflow_data[0] if workflow_data else {}
+
+        allowed_values = workflow_data["4"].get(
+            "inputs", {}).get("instantid_file", [])
+        logger.info(f"📋 Allowed instantid_file values: {allowed_values}")
+        print(IP_ADAPTER, "IP_ADApTER", PYTORCH_MODEL, "pytorchmodel")
+
+        if "4" in workflow_data and "inputs" in workflow_data["4"]:
+            instantid_file_path = IP_ADAPTER
+            print(IP_ADAPTER, "IP_ADAPTER",
+                  instantid_file_path, "instantid_file_path")
+            workflow_data["4"]["inputs"]["instantid_file"] = instantid_file_path
+            logger.info(
+                f"🧠 Injected instantid_file into node 4: {instantid_file_path}")
+
+        if "6" in workflow_data and "inputs" in workflow_data["4"]:
+            control_net_file_path = PYTORCH_MODEL
+            workflow_data["6"]["inputs"]["control_net_name"] = control_net_file_path
+            logger.info(
+                f"🧠 Injected control_net_name into node 6: {control_net_file_path}")
+
+        # 🖼️ Inject images into nodes 12, 13, 14
+        for i, node_id in enumerate(["12", "13", "14"][:len(saved_filenames)]):
+            if node_id in workflow_data and "inputs" in workflow_data[node_id]:
+                workflow_data[node_id]["inputs"]["image"] = os.path.join(
+                    INPUT_FOLDER, saved_filenames[i])
+                logger.info(f"🖼️ Injected image into node {node_id}")
+
+        # ✍️ Inject name into node 46
+        if "46" in workflow_data and "inputs" in workflow_data["46"]:
+            workflow_data["46"]["inputs"]["value"] = name
+            logger.info("📝 Injected name into node 46")
+
+        # 🆔 Inject job_id into string node
+        known_job_id = "e44054af-f0ce-4413-8b37-853e1cc680aa"
+        job_id_node = find_job_id_node(workflow_data, known_job_id)
+        if job_id_node and "inputs" in workflow_data[job_id_node]:
+            workflow_data[job_id_node]["inputs"]["strings"] = job_id
+            logger.info(f"🆔 Replaced job_id in node {job_id_node}")
+        else:
+            logger.warning("⚠️ Could not update job_id — node not found")
+
+        # 🎲 Inject random seed into node 1
+        if "1" in workflow_data and "inputs" in workflow_data["1"]:
+            workflow_data["1"]["inputs"]["seed"] = generate_random_seed()
+            logger.info("🎲 Injected random seed into node 1")
+
+        # 📡 Run via WebSocket
+        client_id = f"{job_id}_workflow_{workflow_filename.replace('.json', '')}"
+        ws = websocket.WebSocket()
+        try:
+            ws.connect(f"ws://{SERVER_ADDRESS}/ws?clientId={client_id}")
+            get_images(ws, workflow_data, job_id,
+                       workflow_filename.replace(".json", ""), client_id)
+        finally:
+            ws.close()
+
+       # ✅ Mark as completed in DB
+        workflow_key = f"workflow_pg{page_num}"
+        update_result = user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {f"workflows.{workflow_key}.status": "completed"}}
+        )
+        
+        logger.info(f"✅ Updated workflow status for {workflow_key} in DB", update_result)
+        
+        # Get the current state of all workflows
+        user = user_details_collection.find_one({"job_id": job_id})
+        if not user:
+            logger.error(f"❌ User record not found for job_id={job_id}")
+            return
+
+        workflows = user.get("workflows", {})
+        logger.info(f"📊 Current workflows status: {workflows}")
+
+        # Check if all first 10 workflows are completed
+        all_completed = True
+        for i in range(10):  # Check pg0 to pg9
+            workflow_key = f"workflow_pg{i}"
+            if workflows.get(workflow_key, {}).get("status") != "completed":
+                all_completed = False
+                logger.info(f"⏳ Workflow {workflow_key} not completed yet")
+                break
+
+        if all_completed:
+            logger.info("🎉 All 10 workflows completed!")
+            
+            preview_url = user.get("preview_url", "")
+            email = user.get("email")
+            
+            if not email:
+                logger.error("❌ No email found in user record")
+                return
+                
+            if not preview_url:
+                logger.error("❌ No preview_url found in user record")
+                return
+                
+            try:
+                logger.info(f"📧 Preparing to send preview email to {email}")
+                preview_email_lock(
+                    name=user.get("name", ""),
+                    email=email,
+                    preview_url=preview_url
+                )
+                logger.info("✅ Preview email sent successfully")
+                
+                # Mark that email was sent to prevent duplicates
+                user_details_collection.update_one(
+                    {"job_id": job_id},
+                    {"$set": {"preview_email_sent": True}}
+                )
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to send preview email: {str(e)}")
+                raise
+                
+        else:
+            logger.info("🔄 Not all workflows completed yet")
+            
+    except Exception as e:
+        logger.exception(f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
+        workflow_key = f"workflow_{workflow_filename.replace('.json', '')}"
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {f"workflows.{workflow_key}.status": "failed"}}
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Workflow {workflow_filename} failed: {str(e)}")
 
 @app.get("/get-country")
 def get_country(request: Request):
@@ -1522,7 +1756,6 @@ def get_country(request: Request):
         locale = ""
 
     return {"locale": locale}
-
 
 @app.post("/update-country")
 async def update_country(data: dict):
@@ -1547,10 +1780,55 @@ async def update_country(data: dict):
 
     return {"status": "ok"}
 
+def execute_remaining_workflows(job_id: str, start_from_pg: int = 10):
+    user = user_details_collection.find_one({"job_id": job_id})
+    if not user:
+        logger.error(f"❌ Job not found: {job_id}")
+        return
+
+    name = user.get("name", "Friend")
+    gender = user.get("gender", "female")
+    book_id = user.get("book_id", "storybook")
+    saved_filenames = user.get("saved_filenames", [])
+
+    if not saved_filenames:
+        # 🧠 Fall back to checking input folder directly
+        saved_filenames = [
+            file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
+        ]
+        if not saved_filenames:
+            logger.error(f"❌ No input images found for job_id: {job_id}")
+            return
+
+    total = user.get("total_workflows", 20)
+
+    for page_index in range(start_from_pg, total):
+        workflow_filename = f"{page_index:02d}_{book_id}_{gender}.json"
+        logger.info(f"⚙️ Starting pg{page_index} -> {workflow_filename}")
+
+        try:
+            run_workflow_in_background_lock(
+                job_id, name, gender, saved_filenames, book_id, workflow_filename
+            )
+        except Exception as e:
+            logger.exception(f"❌ Failed to start workflow {workflow_filename}: {e}")
+
+async def run_remaining_workflows_async(job_id: str, start_from_pg: int = 10):
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(
+            executor,
+            execute_remaining_workflows,
+            job_id,
+            start_from_pg 
+        )
+        logger.info(f"✅ Background processing completed for {job_id}")
+    except Exception as e:
+        logger.error(f"❌ Background processing failed for {job_id}: {e}")
+
 @app.post("/execute-workflow")
 async def execute_workflow(
     job_id: str = Form(...),
-    job_type: str = Form(...),
     name: str = Form(...),
     gender: str = Form(...),
     force: str = Form("false"),
@@ -1561,7 +1839,6 @@ async def execute_workflow(
 
     name = name.strip().lower().capitalize()
     gender = gender.lower()
-    job_type = job_type.lower()
     force_flag = force.lower() == "true"
     book_id = (book_id or "story1").lower()
 
@@ -1574,7 +1851,6 @@ async def execute_workflow(
                 "job_id": job_id,
                 "name": name,
                 "gender": gender,
-                "job_type": job_type,
                 "book_id": book_id,
                 "preview_url": "",
                 "user_name": None,
@@ -1616,7 +1892,7 @@ async def execute_workflow(
             background_tasks.add_task(
                 run_workflow_in_background,
                 job_id, name, gender, saved_filenames,
-                job_type, book_id, file_name
+                 book_id, file_name
             )
 
         return {
@@ -1629,6 +1905,105 @@ async def execute_workflow(
         logger.exception("❌ Error during workflow execution")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@app.post("/execute-workflow-lock")
+async def execute_workflow_lock(
+    job_id: str = Form(...),
+    name: str = Form(...),
+    gender: str = Form(...),
+    force: str = Form("false"),
+    book_id: str = Form(None),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    logger.info("📩 [EXECUTE] Request received for job_id=%s", job_id)
+
+    name = name.strip().capitalize()
+    gender = gender.lower()
+    force_flag = force.lower() == "true"
+    book_id = (book_id or "story1").lower()
+
+    try:
+        # Step 1: Ensure user record exists
+        user_details = user_details_collection.find_one({"job_id": job_id})
+        if not user_details:
+            logger.info("👤 No user found for job_id=%s. Creating entry.", job_id)
+            user_details_collection.insert_one({
+                "job_id": job_id,
+                "name": name,
+                "gender": gender,
+                "book_id": book_id,
+                "preview_url": "",
+                "user_name": None,
+                "phone_number": None,
+                "email": None,
+                "paid": False,
+                "approved": False,
+                "workflows": {},
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+            })
+
+        # Step 2: Validate uploaded input images
+        saved_filenames = [
+            file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
+        ]
+
+        if not (1 <= len(saved_filenames) <= 3):
+            logger.warning("❌ No valid input images found for job_id=%s", job_id)
+            raise HTTPException(
+                status_code=400, detail="Uploaded images not found.")
+
+        # Step 3: Reset workflows before starting
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"workflows": {}}}
+        )
+
+        # Step 4: Load and sort story workflows (pgX)
+        all_workflows = get_sorted_workflow_files(book_id, gender)
+        total_workflows = len(all_workflows)
+        workflows_to_run = all_workflows[:10]
+
+        if not workflows_to_run:
+            logger.error("❌ No valid story workflow files found in pg0–pg9.")
+            raise HTTPException(
+                status_code=404, detail="No valid story workflow files found.")
+
+        # Step 5: Save total_workflows to DB for frontend lock logic
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {
+                "total_workflows": total_workflows,
+                "workflows_completed": 0  # Initialize counter
+            }}
+        )
+
+        logger.info("🔢 Found %d total workflows, executing first 10...", total_workflows)
+
+        # Step 6: Launch each workflow (pg0–pg9)
+        for page_num, file_name in workflows_to_run:
+            workflow_key = f"workflow_pg{page_num}"
+            user_details_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {f"workflows.{workflow_key}.status": "processing"}}
+            )
+
+            background_tasks.add_task(
+                run_workflow_in_background_lock,
+                job_id, name, gender, saved_filenames, book_id, file_name
+            )
+            logger.info("🚀 Launched workflow_pg%d for job_id=%s", page_num, job_id)
+
+        return {
+            "status": "processing",
+            "job_id": job_id,
+            "workflows_started": [f"pg{page}" for page, _ in workflows_to_run],
+            "total_workflows": total_workflows
+        }
+
+    except Exception as e:
+        logger.exception("❌ Error during workflow execution for job_id=%s", job_id)
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
 @app.post("/regenerate-workflow")
 def regenerate_workflow(
     job_id: str = Form(...),
@@ -1680,6 +2055,41 @@ def regenerate_workflow(
         logger.exception("🔥 Error during workflow regeneration")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/regenerate-workflow-lock")
+def regenerate_workflow_lock(
+    job_id: str = Form(...),
+    name: str = Form(...),
+    gender: str = Form(...),
+    workflow_number: str = Form(...),
+    book_id: str = Form("story1"),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    try:
+        saved_filenames = [
+            file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
+        ]
+
+        if not saved_filenames:
+            raise HTTPException(
+                status_code=404, detail="No input images found.")
+
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {f"workflows.workflow_{workflow_number}.status": "processing"}}
+        )
+
+        workflow_filename = f"{workflow_number}.json"
+
+        background_tasks.add_task(
+            run_workflow_in_background_lock,
+            job_id, name, gender, saved_filenames, book_id, workflow_filename
+        )
+
+        return {"status": "regenerating", "workflow": workflow_number}
+
+    except Exception as e:
+        logger.exception("🔥 Error during workflow regeneration")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/poll-images")
 async def poll_images(job_id: str = Query(...)):
@@ -1786,92 +2196,78 @@ async def poll_images(job_id: str = Query(...)):
         raise HTTPException(
             status_code=500, detail=f"An error occurred: {str(e)}")
 
+@app.get("/poll-images-lock")
+async def poll_images_lock(job_id: str = Query(...)):
+    workflow_groups = {}
 
-@app.post("/run-combined-workflow")
-async def run_combined_workflow(job_id: str = Form(...)):
     try:
-        logger.info(f"🎬 Running combined workflow for job_id={job_id}")
+        user_details = user_details_collection.find_one({"job_id": job_id})
+        if not user_details:
+            raise HTTPException(status_code=404, detail="User not found for job ID.")
 
-        # Step 1: Collect the latest image from each of the 10 workflows
-        input_images = []
-        for i in range(1, 11):
-            workflow_name = f"Astronaut_{i}"
-            prefix = f"{job_id}_{workflow_name}_"
-            matching_files = sorted([
-                f for f in os.listdir(JPG_OUTPUT)
-                if f.startswith(prefix) and f.lower().endswith(".jpg")
-            ])
+        total = user_details.get("total_workflows", 20)
+        expected_suffixes = [f"pg{i}" for i in range(total)]
+        logger.debug(f"🧠 Expecting workflows: {expected_suffixes}")
 
-            if not matching_files:
-                raise HTTPException(
-                    status_code=404, detail=f"Image not found for workflow {i}")
-            input_images.append(os.path.join(JPG_OUTPUT, matching_files[-1]))
+        response = s3.list_objects_v2(
+            Bucket=S3_DIFFRUN_GENERATIONS,
+            Prefix=f"{S3_JPG_PREFIX}/{job_id}_"
+        )
+        s3_files = response.get("Contents", [])
 
-        # Step 2: Load combined workflow JSON
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        workflow_path = os.path.join(
-            script_dir, "comics", "combined_comic", "combined_workflow.json")
+        for obj in s3_files:
+            key = obj["Key"]
+            file = os.path.basename(key)
 
-        with open(workflow_path, "r", encoding="utf-8") as f:
-            workflow_data = json.load(f)
+            if (
+                not file.startswith(job_id)
+                or not file.lower().endswith(".jpg")
+                or "collage" in file.lower()
+            ):
+                continue
 
-        # Step 3: Inject the 10 images into specific node IDs
-        target_nodes = [9, 10, 13, 14, 17, 19, 21, 23, 25, 27]
-        for idx, node_id in enumerate(target_nodes):
-            node_key = str(node_id)
-            if node_key in workflow_data and "inputs" in workflow_data[node_key]:
-                workflow_data[node_key]["inputs"]["image"] = input_images[idx]
-                logger.info(
-                    f"🖼️ Injected image {input_images[idx]} into node {node_key}")
-            else:
-                logger.warning(f"⚠️ Node {node_key} missing or invalid")
+            match = re.match(rf"{re.escape(job_id)}_(pg\d+|\d+)_\d+_\d+\.jpg", file)
+            if not match:
+                logger.debug("⚠️ Skipping unmatched filename: %s", file)
+                continue
 
-        # Step 4: Inject job ID into node 41
-        if "41" in workflow_data and "inputs" in workflow_data["41"]:
-            workflow_data["41"]["inputs"]["strings"] = job_id
-        else:
-            logger.warning("⚠️ Node 41 not found or missing 'inputs'")
+            workflow_id = match.group(1)
+            normalized_workflow_id = f"pg{int(re.sub(r'\D', '', workflow_id))}"
 
-        # Step 5: Run the workflow
-        ws = websocket.WebSocket()
-        client_id = f"{job_id}_combined"
-        ws.connect(f"ws://{SERVER_ADDRESS}/ws?clientId={client_id}")
-        result_images = get_images(ws, workflow_data, job_id, 99, client_id)
-        # Cleanup: Remove intermediate files from workflow 99
-        for file in os.listdir(JPG_OUTPUT):
-            if file.startswith(f"{job_id}_99_") and file.endswith(".jpg"):
-                try:
-                    os.remove(os.path.join(JPG_OUTPUT, file))
-                    logger.info(f"🧹 Deleted intermediate collage file: {file}")
-                except Exception as e:
-                    logger.warning(f"⚠️ Could not delete {file}: {e}")
+            if normalized_workflow_id not in expected_suffixes:
+                logger.debug("🛑 Skipping non-expected workflow ID: %s", normalized_workflow_id)
+                continue
 
-        ws.close()
+            try:
+                image_url = f"https://{S3_DIFFRUN_GENERATIONS}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{key}"
+                workflow_groups.setdefault(normalized_workflow_id, []).append({
+                    "filename": file,
+                    "url": image_url
+                })
+            except Exception as e:
+                logger.warning("❌ Could not construct image URL for file %s: %s", file, str(e))
 
-        all_images = []
-        for node_imgs in result_images.values():
-            all_images.extend(node_imgs)
+        carousels = []
+        for workflow_id in sorted(expected_suffixes, key=lambda x: int(re.sub(r"\D", "", x))):
+            images = sorted(workflow_groups.get(workflow_id, []), key=lambda x: x["filename"])
+            carousels.append({
+                "workflow": workflow_id,
+                "images": images
+            })
 
-        if not all_images:
-            raise HTTPException(
-                status_code=500, detail="No images returned from workflow.")
+        completed = all(len(c["images"]) > 0 for c in carousels)
 
-        img_base64 = all_images[-1].split(",")[1]
-        img_data = base64.b64decode(img_base64)
-        collage_filename = f"{job_id}_collage.jpg"
-        collage_path = os.path.join(JPG_OUTPUT, collage_filename)
-
-        try:
-            with open(collage_path, "wb") as f:
-                f.write(img_data)
-            logger.info(f"✅ Saved collage as: {collage_path}")
-        except Exception as e:
-            logger.error(f"❌ Failed to save collage image: {e}")
+        return {
+            "carousels": carousels,
+            "completed": completed,
+            "job_id": job_id,
+            "total_generated": sum(len(c["images"]) for c in carousels),
+            "total_workflows": total
+        }
 
     except Exception as e:
-        logger.exception("🔥 Error running combined workflow")
-        raise HTTPException(status_code=500, detail=str(e))
-
+        logger.exception("❌ Error while polling images for job_id=%s", job_id)
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 def run_coverpage_workflow_in_background(
     job_id: str,
@@ -1978,185 +2374,12 @@ def run_coverpage_workflow_in_background(
         raise HTTPException(
             status_code=500, detail=f"Coverpage workflow failed: {str(e)}")
 
-
-@app.get("/get-combined-image")
-async def get_combined_image(job_id: str = Query(...)):
-    collage_path = os.path.join(JPG_OUTPUT, f"{job_id}_collage.jpg")
-
-    if not os.path.exists(collage_path):
-        raise HTTPException(status_code=404, detail="Collage image not found.")
-
-    try:
-        with open(collage_path, "rb") as f:
-            img_data = f.read()
-
-        encoded = base64.b64encode(img_data).decode("utf-8")
-        return {"image": f"data:image/jpeg;base64,{encoded}"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error reading collage image: {e}")
-
-
-@app.get("/generate-comic-pdf")
-async def generate_pdf(job_id: str = Query(...)):
-    collage_filename = f"{job_id}_collage.jpg"
-    collage_path = os.path.join(JPG_OUTPUT, collage_filename)
-    pdf_path = os.path.join(OUTPUT_FOLDER, f"Your_Story_{job_id}.pdf")
-
-    if not os.path.exists(collage_path):
-        raise HTTPException(status_code=404, detail="Collage image not found.")
-
-    try:
-        c = canvas.Canvas(pdf_path, pagesize=A4)
-        width, height = A4
-
-        img = Image.open(collage_path)
-        img_width, img_height = img.size
-
-        max_width = width - 100
-        max_height = height - 100
-        aspect_ratio = img_width / img_height
-
-        if img_width > max_width:
-            img_width = max_width
-            img_height = int(img_width / aspect_ratio)
-
-        if img_height > max_height:
-            img_height = max_height
-            img_width = int(img_height * aspect_ratio)
-
-        x = (width - img_width) / 2
-        y = (height - img_height) / 2
-
-        c.drawImage(collage_path, x, y, width=img_width, height=img_height)
-        c.save()
-
-        return FileResponse(pdf_path, filename=f"Your-Story-{job_id}.pdf")
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating PDF: {str(e)}")
-
-    username = payload.username.capitalize()
-    name = payload.name.capitalize()
-    try:
-        html_content = f"""
-        <html>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <p>Dear <strong>{username}</strong>,</p>
-
-            <p>Thank you for taking the first step toward creating a magical, personalized book for <strong>{name}</strong> with <strong>Diffrun</strong>!</p>
-
-            <p>We make the storybooks truly special — <strong>{name}</strong> is the star of the story, brought to life through beautiful, personalised illustrations.</p>
-
-            <p>🌈 You can now preview and refine the book to make it even more special.</p>
-
-            <a href="{payload.preview_url}" 
-               style="display: inline-block; 
-                      padding: 12px 24px; 
-                      background-color: #6366F1; 
-                      color: white; 
-                      text-decoration: none; 
-                      font-weight: bold; 
-                      border-radius: 6px;
-                      margin: 16px 0;">
-                Refine {name}’s Book
-            </a>
-
-            <p>Keep the magic going — click above to continue building the book.</p>
-
-            <p>With excitement,<br><strong>The Diffrun Team</strong></p>
-          </body>
-        </html>
-        """
-
-        msg = EmailMessage()
-        msg["Subject"] = f"{name}'s Magical Book Is Being Crafted!"
-        msg["From"] = EMAIL_USER
-        msg["To"] = payload.email
-        msg.set_content("This email contains HTML content.")
-        msg.add_alternative(html_content, subtype="html")
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_USER, EMAIL_PASS)
-            smtp.send_message(msg)
-
-        return {"message": "Email sent successfully!"}
-
-    except Exception as e:
-        print("Email send error:", e)
-        raise HTTPException(status_code=500, detail="Failed to send email.")
-
-
 @app.post("/preview-email")
 async def preview_email(payload: PreviewEmailRequest):
     try:
         name = payload.name.capitalize()
         preview_url = payload.preview_url
         email = payload.email
-
-        # ✅ Log all the critical values
-        print("📩 Sending Preview Email:")
-        print(f" - To: {email}")
-        print(f" - Name: {name}")
-        print(f" - Preview URL: {preview_url}")
-
-        print("🔗 Email Link Block:\n",
-              f'<a href="{preview_url}">Refine {name}’s Book</a>')
-
-        html_content = f"""
-        <html>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <p>Hey,</p>
-
-            <p>Thank you for taking the first step toward creating a magical, personalized book for <strong>{name}</strong> with <strong>Diffrun</strong>!</p>
-
-            <p>We make the storybooks truly special — <strong>{name}</strong> is the star of the story, brought to life through beautiful, personalised illustrations.</p>
-
-            <p>🌈 You can now preview and refine the book to make it even more special.</p>
-
-            <a href="{preview_url}" 
-              style="display: inline-block; 
-                    padding: 12px 24px; 
-                    background-color: #6366F1; 
-                    color: white; 
-                    text-decoration: none; 
-                    font-weight: bold; 
-                    border-radius: 6px;
-                    margin: 16px 0;">
-              Refine {name}’s Book
-            </a>
-
-            <p>Keep the magic going — click above to continue building the book.</p>
-
-            <p>With excitement,<br><strong>The Diffrun Team</strong></p>
-          </body>
-        </html>
-        """
-
-        msg = EmailMessage()
-        msg["Subject"] = f"{name}'s Magical Book Is Being Crafted!"
-        msg["From"] = EMAIL_USER
-        msg["To"] = email
-        msg.set_content("This email contains HTML content.")
-        msg.add_alternative(html_content, subtype="html")
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_USER, EMAIL_PASS)
-            smtp.send_message(msg)
-
-        return {"status": "success", "message": f"Email sent to {email}"}
-
-    except Exception as e:
-        print("❌ Email sending error:", str(e))
-        raise HTTPException(
-            status_code=500, detail="Failed to send preview email.")
-
-def preview_email(name: str, email: str, preview_url: str):
-    try:
-        name = name.capitalize()
-        preview_url = preview_url
-        email = email
 
         # ✅ Log all the critical values
         print("📩 Sending Preview Email:")
@@ -2187,6 +2410,133 @@ def preview_email(name: str, email: str, preview_url: str):
                     font-weight: bold; 
                     border-radius: 6px;
                     margin: 16px 0;">
+              View {name}’s Book
+            </a>
+
+            <p>Keep the magic going — click above to continue building the book.</p>
+
+            <p>With excitement,<br><strong>The Diffrun Team</strong></p>
+          </body>
+        </html>
+        """
+
+        msg = EmailMessage()
+        msg["Subject"] = f"{name}'s Magical Book Is Being Crafted!"
+        msg["From"] = EMAIL_USER
+        msg["To"] = email
+        msg.set_content("This email contains HTML content.")
+        msg.add_alternative(html_content, subtype="html")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+
+        return {"status": "success", "message": f"Email sent to {email}"}
+
+    except Exception as e:
+        print("❌ Email sending error:", str(e))
+        raise HTTPException(
+            status_code=500, detail="Failed to send preview email.")
+
+def preview_email_lock(name: str, email: str, preview_url: str):
+    try:
+        name = name.title()
+        preview_url = preview_url
+        email = email
+
+        print("📩 Sending Preview Email:")
+        print(f" - To: {email}")
+        print(f" - Name: {name}")
+        print(f" - Preview URL: {preview_url}")
+
+        print("🔗 Email Link Block:\n",
+              f'<a href="{preview_url}">View {name}’s Book</a>')
+
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <p>Hey there,</p>
+
+            <p>Thank you for taking the first step toward creating a magical, personalized storybook for <strong>{name}</strong> with <strong>Diffrun</strong>! 🌈</p>
+
+            <p>We are sure <strong>{name}</strong> will love the personalized storybook with all the beautiful illustrations.</p>
+
+            <p>You can preview {name}'s personalized storybook and continue building the book.</p>
+
+            <a href="{preview_url}" 
+              style="display: inline-block; 
+                    padding: 12px 24px; 
+                    background-color: #6366F1; 
+                    color: white; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    border-radius: 6px;
+                    margin: 16px 0;">
+              View {name}’s Book
+            </a>
+
+            <p>You can unlock the full preview by purchasing the book. A high quality print will be delivered to your doorstep within 7 working days.</p>
+
+            <p>With excitement,<br><strong>The Diffrun Team</strong></p>
+          </body>
+        </html>
+        """
+
+        msg = EmailMessage()
+        msg["Subject"] = f"{name}'s Magical Book is ready!"
+        msg["From"] = EMAIL_USER
+        msg["To"] = email
+        msg.set_content("This email contains HTML content.")
+        msg.add_alternative(html_content, subtype="html")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+
+        return {"status": "success", "message": f"Email sent to {email}"}
+
+    except Exception as e:
+        print("❌ Email sending error:", str(e))
+        raise HTTPException(
+            status_code=500, detail="Failed to send preview email.")
+
+def preview_email(payload: PreviewEmailRequest):
+    try:
+        name = payload.name.capitalize()
+        username = payload.username.capitalize()
+        preview_url = payload.preview_url
+        email = payload.email
+
+        # ✅ Log all the critical values
+        print("📩 Sending Preview Email:")
+        print(f" - To: {email}")
+        print(f" - Username: {username}")
+        print(f" - Name: {name}")
+        print(f" - Preview URL: {preview_url}")
+
+        print("🔗 Email Link Block:\n",
+              f'<a href="{preview_url}">Refine {name}’s Book</a>')
+
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <p>Dear <strong>{username}</strong>,</p>
+
+            <p>Thank you for taking the first step toward creating a magical, personalized book for <strong>{name}</strong> with <strong>Diffrun</strong>!</p>
+
+            <p>We make the storybooks truly special — <strong>{name}</strong> is the star of the story, brought to life through beautiful, personalised illustrations.</p>
+
+            <p>🌈 You can now preview and refine the book to make it even more special.</p>
+
+            <a href="{preview_url}" 
+              style="display: inline-block; 
+                    padding: 12px 24px; 
+                    background-color: #6366F1; 
+                    color: white; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    border-radius: 6px;
+                    margin: 16px 0;">
               Refine {name}’s Book
             </a>
 
@@ -2215,12 +2565,14 @@ def preview_email(name: str, email: str, preview_url: str):
         raise HTTPException(
             status_code=500, detail="Failed to send preview email.")
 
-def payment_done_email(username: str, child_name: str, email: str, preview_url: str,
+async def payment_done_email(username: str, child_name: str, email: str, preview_url: str,
                        order_id: str, total_price: float, currency_code: str,
                        discount_code: str, payment_id: str,
                        shipping_price: float, taxes: float,
-                       discount_amount: float, shipping_info: dict):
+                       discount_amount: float, shipping_info: dict, actual_price: float):
     try:
+        username = escape(username)
+        child_name = escape(child_name)
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; color: #333; max-width: 700px; margin: auto;">
@@ -2243,7 +2595,7 @@ def payment_done_email(username: str, child_name: str, email: str, preview_url: 
                 </tr>
                 <tr>
                     <td>Original Price</td>
-                    <td align="right"><del>{currency_code} 1450.00</del></td>
+                    <td align="right"><del>{currency_code} {actual_price:.2f}</del></td>
                 </tr>
                 <tr>
                     <td>Discount {f"({discount_code})" if discount_code else ""}</td>
@@ -2297,6 +2649,105 @@ def payment_done_email(username: str, child_name: str, email: str, preview_url: 
         """
 
         msg = EmailMessage()
+        msg["Subject"] = str(Header(f"{child_name}'s Storybook Order Confirmation ✨", 'utf-8'))
+        msg["From"] = EMAIL_USER
+        msg["To"] = email
+        msg.set_content("This email contains HTML content.")
+        msg.add_alternative(html_content, subtype="html")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+
+        logger.info(f"📧 Order confirmation email sent to {email}")
+    except Exception as e:
+        logger.error(f"❌ Failed to send order confirmation email: {e}")
+
+async def payment_done_email_lock(username: str, child_name: str, email: str, preview_url: str,
+                       order_id: str, total_price: float, currency_code: str,
+                       discount_code: str, payment_id: str,
+                       shipping_price: float, taxes: float,
+                       discount_amount: float, shipping_info: dict, actual_price: float):
+    try:
+        child_name = child_name.title()
+        html_content = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; color: #333; max-width: 700px; margin: auto;">
+            <h2 style="color: #333;">Order {order_id}</h2>
+            <p>Hi <strong>{username}</strong>,</p>
+
+            <p>Thank you for your order! ✨
+                <br/><br/> You can now preview <strong>{child_name}</strong>'s full storybook and make refinements using the link below.
+            </p>
+
+            <a href="{preview_url}" style="display:inline-block;padding:12px 24px;background-color:#5784ba;color:white;text-decoration:none;border-radius:16px;margin:10px 0;">View & Refine Full Storybook</a>
+
+            <p>You still have 12 hours to make refinements before the book is sent for printing. If there are any pages you'd like to adjust, you can regenerate specific images directly within the preview.</p>
+
+            <hr style="margin: 30px 0;">
+
+            <h3>Order Summary</h3>
+                <table width="60%" cellpadding="8" cellspacing="0" style="border-collapse: collapse; max-width: 600px;">
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td width="30%">Product</td>
+                    <td width="30%" align="right">Personalised Storybook × 1</td>
+                </tr>
+                <tr>
+                    <td>Original Price</td>
+                    <td align="right">{currency_code} {actual_price:.2f}</td>
+                </tr>
+                <tr>
+                    <td>Discount {f"({discount_code})" if discount_code else ""}</td>
+                    <td align="right">-{currency_code} {discount_amount:.2f}</td>
+                </tr>
+                <tr>
+                    <td>Subtotal</td>
+                    <td align="right">{currency_code} {(total_price + shipping_price + taxes):.2f}</td>
+                </tr>
+                <tr>
+                    <td>Shipping</td>
+                    <td align="right">{currency_code} {shipping_price:.2f}</td>
+                </tr>
+                <tr>
+                    <td>Taxes</td>
+                    <td align="right">{currency_code} {taxes:.2f}</td>
+                </tr>
+                <tr style="border-top: 1px solid #ddd; font-weight: bold;">
+                    <td>Total</td>
+                    <td align="right">{currency_code} {total_price:.2f}</td>
+                </tr>
+                </table>
+
+            <h3>Customer Information</h3>
+            <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+              <tr>
+                <td valign="top">
+                  <strong>Shipping Address</strong><br>
+                  {shipping_info.get('name', '')}<br>
+                  {shipping_info.get('address1', '')} {shipping_info.get('address2', '')}<br>
+                  {shipping_info.get('city', '')}, {shipping_info.get('province', '')} {shipping_info.get('zip', '')}<br>
+                  {shipping_info.get('country', '')}
+                </td>
+                <td valign="top">
+                  <strong>Billing Address</strong><br>
+                  {shipping_info.get('name', '')}<br>
+                  {shipping_info.get('address1', '')} {shipping_info.get('address2', '')}<br>
+                  {shipping_info.get('city', '')}, {shipping_info.get('province', '')} {shipping_info.get('zip', '')}<br>
+                  {shipping_info.get('country', '')}
+                </td>
+              </tr>
+            </table>
+
+            <p><strong>Payment Method:</strong> {payment_id}</p>
+            <p><strong>Shipping Method:</strong> Standard</p>
+
+            <hr style="margin: 30px 0;">
+            <p style="font-size: 12px; color: #555;">If you have any questions, reply to this email or contact us at <a href="mailto:support@diffrun.com">support@diffrun.com</a>.</p>
+          </body>
+        </html>
+        """
+
+        msg = EmailMessage()
         msg["Subject"] = f"{child_name}'s Storybook Order Confirmation ✨"
         msg["From"] = EMAIL_USER
         msg["To"] = email
@@ -2311,15 +2762,15 @@ def payment_done_email(username: str, child_name: str, email: str, preview_url: 
     except Exception as e:
         logger.error(f"❌ Failed to send order confirmation email: {e}")
 
-
-def send_approval_confirmation_email(username: str, child_name: str, email: str):
+def approval_confirmation_email(username: str, child_name: str, email: str):
+    child_name = child_name.title()
     try:
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <p>Hi <strong>{username}</strong>,</p>
 
-            <p>Great news! <strong>{child_name}</strong>'s magical storybook has been finalized and sent for printing. It will soon be on its way to you. 🚀📚</p>
+            <p><strong>{child_name}</strong>'s magical storybook has been finalized and sent for printing. It will soon be on its way to you. 🚀📚</p>
 
             <p>Please allow us <strong>7–8 working days</strong> as all books are custom made to order.</p>
 
@@ -2348,71 +2799,65 @@ def send_approval_confirmation_email(username: str, child_name: str, email: str)
     except Exception as e:
         logger.error(f"❌ Failed to send delivery email: {e}")
 
-
 @app.get("/about")
 async def serve_about():
     return FileResponse("frontend/out/about.html")
-
 
 @app.get("/books")
 async def serve_about():
     return FileResponse("frontend/out/books.html")
 
-
 @app.get("/child-details")
 async def serve_child_details():
     return FileResponse("frontend/out/child-details.html")
-
 
 @app.get("/contact")
 async def serve_contact():
     return FileResponse("frontend/out/contact.html")
 
+@app.get("/checkout")
+async def serve_contact():
+    return FileResponse("frontend/out/checkout.html")
+
+@app.get("/confirmation")
+async def serve_contact():
+    return FileResponse("frontend/out/confirmation.html")
 
 @app.get("/preview")
 async def serve_preview():
     return FileResponse("frontend/out/preview.html")
 
-
 @app.get("/purchase")
 async def serve_purchase():
     return FileResponse("frontend/out/purchase.html")
-
 
 @app.get("/user-details")
 async def serve_user_details():
     return FileResponse("frontend/out/user-details.html")
 
-
 @app.get("/faq")
 async def serve_user_details():
     return FileResponse("frontend/out/faq.html")
-
 
 @app.get("/email-preview-request")
 async def serve_email_preview_request():
     return FileResponse("frontend/out/email-preview-request.html")
 
-
 @app.get("/thankyou")
 def thankyou():
     return FileResponse("frontend/out/thankyou.html")
-
 
 @app.get("/approved")
 async def serve_about():
     return FileResponse("frontend/out/approved.html")
 
-
 @app.get("/after-payment")
 async def after_payment():
     return FileResponse("frontend/out/after-payment.html")
 
-
 @app.get("/healthcheck")
 def healthcheck():
     return {"status": "ok"}
-
 
 app.mount("/", StaticFiles(directory="frontend/out", html=True), name="static")
 

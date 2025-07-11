@@ -17,6 +17,7 @@ import "swiper/css/navigation";
 import { Autoplay, Pagination } from "swiper/modules";
 import { FiUser, FiEye, FiTruck, FiImage } from 'react-icons/fi';
 import { Cards } from "@/data/data";
+import { IoCloudUploadOutline } from "react-icons/io5";
 
 interface ImageFile {
   file: File;
@@ -97,7 +98,6 @@ const Form: React.FC = () => {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const jobType = searchParams.get("job_type") || "story";
   const bookId = searchParams.get("book_id") || "story1";
 
   const [name, setName] = useState<string>("");
@@ -112,7 +112,6 @@ const Form: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [redirectData, setRedirectData] = useState<{
     jobId: string;
-    jobType: string;
     name: string;
     gender: string;
     bookId: string;
@@ -243,24 +242,24 @@ const Form: React.FC = () => {
     }
 
     if (!gender) {
-    showFormGuide("Please select your child's gender", 'warning');
-    return;
-  }
+      showFormGuide("Please select your child's gender", 'warning');
+      return;
+    }
 
-  if (!email) {
-    showFormGuide("We need your email to send the preview", 'warning');
-    return;
-  }
+    if (!email) {
+      showFormGuide("We need your email to send the preview", 'warning');
+      return;
+    }
 
-  if (images.length < 1 || images.length > 3) {
-    showFormGuide("Please upload between 1-3 photos of your child", 'warning');
-    return;
-  }
+    if (images.length < 1 || images.length > 3) {
+      showFormGuide("Please upload between 1-3 photos of your child", 'warning');
+      return;
+    }
 
-  if (!isConfirmed) {
-    showFormGuide("Please confirm you have consent to use these photos", 'warning');
-    return;
-  }
+    if (!isConfirmed) {
+      showFormGuide("Please confirm you have consent to use these photos", 'warning');
+      return;
+    }
 
     setError(null);
     setLoading(true);
@@ -270,7 +269,6 @@ const Form: React.FC = () => {
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
       formData.append("gender", gender.toLowerCase());
       formData.append("email", email.trim().toLowerCase());
-      formData.append("job_type", jobType);
       formData.append("book_id", bookId);
       images.forEach(({ file }) => formData.append("images", file));
       console.log("📤 Sending form data to /store-user-details");
@@ -287,7 +285,6 @@ const Form: React.FC = () => {
       const data = await storeResponse.json();
       const redirectPayload = {
         jobId: data.job_id,
-        jobType,
         name,
         gender,
         email,
@@ -305,7 +302,6 @@ const Form: React.FC = () => {
           job_id: data.job_id,
           name: name.trim(),
           gender: gender.toLowerCase(),
-          job_type: jobType,
           book_id: bookId,
         }).toString(),
       });
@@ -331,7 +327,7 @@ const Form: React.FC = () => {
         if (remainingProgress <= 0 || remainingTime <= 0) {
           setLoadingProgress(100);
           router.push(
-            `/preview?job_id=${redirectPayload.jobId}&job_type=${redirectPayload.jobType}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
+            `/preview?job_id=${redirectPayload.jobId}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
           );
           return;
         }
@@ -359,7 +355,7 @@ const Form: React.FC = () => {
   useEffect(() => {
     if (loadingProgress === 100 && redirectData) {
       router.push(
-        `/preview?job_id=${redirectData.jobId}&job_type=${redirectData.jobType}&name=${encodeURIComponent(redirectData.name)}&gender=${redirectData.gender}&book_id=${redirectData.bookId}&approved=false&paid=false`
+        `/preview?job_id=${redirectData.jobId}&name=${encodeURIComponent(redirectData.name)}&gender=${redirectData.gender}&book_id=${redirectData.bookId}&approved=false&paid=false`
       );
     }
   }, [loadingProgress, redirectData, router]);
@@ -372,6 +368,129 @@ const Form: React.FC = () => {
       .join(' ');
 
   const openCropModal = (index: number) => setImageToCrop(index);
+
+  const handleTest = async () => {
+
+    if (!name.trim() || !email || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
+      setError("Please fill all fields correctly and confirm consent.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (!gender) {
+      showFormGuide("Please select your child's gender", 'warning');
+      return;
+    }
+
+    if (!email) {
+      showFormGuide("We need your email to send the preview", 'warning');
+      return;
+    }
+
+    if (images.length < 1 || images.length > 3) {
+      showFormGuide("Please upload between 1-3 photos of your child", 'warning');
+      return;
+    }
+
+    if (!isConfirmed) {
+      showFormGuide("Please confirm you have consent to use these photos", 'warning');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
+      formData.append("gender", gender.toLowerCase());
+      formData.append("email", email.trim().toLowerCase());
+      formData.append("book_id", bookId);
+      images.forEach(({ file }) => formData.append("images", file));
+      console.log("📤 Sending form data to /store-user-details");
+
+      const storeResponse = await fetch(`${apiBaseUrl}/store-user-details`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!storeResponse.ok) {
+        const errorData = await storeResponse.json();
+        throw new Error(errorData.detail || "Failed to upload images");
+      }
+
+      const data = await storeResponse.json();
+      const redirectPayload = {
+        jobId: data.job_id,
+        name,
+        gender,
+        email,
+        bookId,
+      };
+      setRedirectData(redirectPayload);
+
+      console.log("✅ User details stored:", data);
+      console.log("📤 Triggering workflow execution");
+
+      const workflowResponse = await fetch(`${apiBaseUrl}/execute-workflow-lock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          job_id: data.job_id,
+          name: name.trim(),
+          gender: gender.toLowerCase(),
+          book_id: bookId,
+        }).toString(),
+      });
+      if (!workflowResponse.ok) {
+        const errorText = await workflowResponse.text();
+        throw new Error(`Failed to start workflow: ${errorText}`);
+      }
+      console.log("✅ Workflow started successfully");
+
+      setShowContent(false);
+      setLoadingProgress(0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      let progress = 0;
+      const duration = 50000;
+      const startTime = Date.now();
+
+      const step = () => {
+        const elapsed = Date.now() - startTime;
+        const remainingTime = duration - elapsed;
+        const remainingProgress = 100 - progress;
+
+        if (remainingProgress <= 0 || remainingTime <= 0) {
+          setLoadingProgress(100);
+          router.push(
+            `/preview-lock?job_id=${redirectPayload.jobId}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
+          );
+          return;
+        }
+
+        const increment = Math.min(remainingProgress, Math.floor(Math.random() * 4) + 1);
+        progress += increment;
+        setLoadingProgress(progress);
+
+        const stepsLeft = Math.ceil(remainingProgress / 2);
+        const avgDelay = remainingTime / stepsLeft;
+        const jitteredDelay = avgDelay * (0.5 + Math.random());
+
+        setTimeout(step, jitteredDelay);
+      };
+
+      step();
+    } catch (error: any) {
+      console.error("❌ Submission error:", error);
+      setError(error.message || "An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const selectedBook = Cards.find((b) => b.bookKey === bookId) ?? Cards[0];
   const title = selectedBook?.title || "";
@@ -405,7 +524,7 @@ const Form: React.FC = () => {
                           width:clamp(12px, 4vw, 24px);
                           height:clamp(12px, 4vw, 24px);
                           background:url('/circle.png') no-repeat center center / contain;
-                          margin:0 6px;
+                          margin:0 3px;
                         ">
                       </span>
                     `;
@@ -413,22 +532,26 @@ const Form: React.FC = () => {
                   }}
                   className="w-full h-auto mx-auto relative"
                 >
-                  {[1, 2].map((num) => (
+                  {[1, 2,3,4, 5, 6, 7].map((num) => (
                     <SwiperSlide key={num}>
                       <img
                         src={`/${bookId}-book-${num}.avif`}
                         alt={`Diffrun personalized books - Book ${num}`}
-                        className="w-full h-auto mx-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
+                        className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
                       />
                     </SwiperSlide>
                   ))}
                 </Swiper>
-                <div className="flex justify-center lg:justify-start mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
+                <div className="flex justify-start mt-5 mb-6 lg:mb-0">
 
-                  <ul className="text-left text-sm sm:text-lg text-gray-700 md:text-base font-poppins">
+                  <ul className="text-left text-sm sm:text-lg text-gray-700 md:text-base font-poppins font-medium space-y-1">
                     <li className="flex items-center space-x-2">
                       <FiUser aria-hidden="true" />
-                      <span>Perfect for children aged 0 to 6</span>
+                      <span>Perfect for children aged {selectedBook.age}</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <FiImage aria-hidden="true" />
+                      <span>Personalize with your child’s special photo</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FiEye aria-hidden="true" />
@@ -436,11 +559,7 @@ const Form: React.FC = () => {
                     </li>
                     <li className="flex items-center space-x-2">
                       <FiTruck aria-hidden="true" />
-                      <span>Printed and shipped within 2–4 business days</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <FiImage aria-hidden="true" />
-                      <span>Personalize with your child’s special photo</span>
+                      <span>Printed and shipped within 7–8 business days</span>
                     </li>
                   </ul>
                 </div>
@@ -464,7 +583,7 @@ const Form: React.FC = () => {
                   Personalize your Child's Book
                 </h2>
 
-                <div className="flex flex-col md:flex-row gap-4 md:gap-12 mt-4">
+                <div className="flex flex-col md:flex-row gap-4 mt-4">
                   <div className="">
                     <input
                       type="text"
@@ -479,7 +598,7 @@ const Form: React.FC = () => {
                   </div>
 
                   <div className="">
-                    <div className="flex space-x-6">
+                    <div className="flex space-x-4">
                       <label className="flex items-center space-x-2 cursor-pointer">
                         <input
                           type="radio"
@@ -529,9 +648,10 @@ const Form: React.FC = () => {
                       }`}
                   >
                     <input {...getInputProps()} disabled={imageToCrop !== null} />
-                    <button className="">
-                      <span className="text-left font-medium ml-4">
-                        Upload upto 3 Images of Your Child
+                    <button className="flex items-center justify-center w-full gap-4 font-poppins">
+                      <IoCloudUploadOutline className="text-lg md:text-2xl text-blue-50 flex-shrink-0" />
+                      <span className="text-sm md:text-lg font-medium text-blue-50 text-center">
+                        Upload upto 3 Child Images
                       </span>
                     </button>
                     {imageToCrop !== null && (
@@ -591,7 +711,7 @@ const Form: React.FC = () => {
                   <img
                     src="/instructions.jpg"
                     alt="Diffrun personalized books - Instructions"
-                    className="w-auto h-60 border border-gray-200"
+                    className="w-auto h-70 border border-gray-200"
                   />
                   <button
                     type="button"
@@ -610,7 +730,7 @@ const Form: React.FC = () => {
                     checked={isConfirmed}
                     onChange={(e) => setIsConfirmed(e.target.checked)}
                     disabled={loading}
-                    className="mt-1 h-5 w-5 accent-pastel-purple"
+                    className="h-5 w-5 accent-pastel-purple"
                   />
                   <label htmlFor="confirmation" className="text-sm leading-5">
                     I confirm that I am at least 18 years old and have obtained consent from the child's parent or guardian to share this information for the purpose of creating a personalized storybook, in accordance with the{" "}
@@ -634,6 +754,16 @@ const Form: React.FC = () => {
                     }`}
                 >
                   {loading ? "Processing..." : "Preview your book"}
+                </button>
+
+                <button
+                  onClick={handleTest}
+                  type="button"
+                  className="fixed bottom-4 right-4 z-50 opacity-15 hover:opacity-100 hover:cursor-pointer transition-opacity duration-300 text-xs text-gray-500 bg-transparent"
+                  title="Secret Preview Lock"
+                  aria-label="Secret Preview Lock"
+                >
+                  🔒
                 </button>
 
                 <p className="text-zinc-700 text-center font-poppins flex items-center justify-center gap-2">

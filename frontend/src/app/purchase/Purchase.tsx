@@ -190,7 +190,7 @@ const Purchase = () => {
 
         {/* Options */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-          {(["hardcover", "paperback"] as const).map((format) => {
+          {(["paperback", "hardcover"] as const).map((format) => {
             const { price } = getFixedPriceByCountry(locale, format);
             return (
               <div

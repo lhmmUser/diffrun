@@ -1395,7 +1395,7 @@ const Preview: React.FC = () => {
                                         <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
                                         <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
                                       </div>
-                                      <p className="text-sm sm:text-base font-semibold text-gray-500">Regenerating...</p>
+                                      <p className="text-sm sm:text-base font-semibold text-gray-500">Refining...</p>
                                     </div>
                                   ) : (
                                     <>
@@ -1410,7 +1410,7 @@ const Preview: React.FC = () => {
                                         className="px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]"
                                         aria-label="Regenerate more options"
                                       >
-                                        Regenerate
+                                        Refine
                                       </button>
                                     </>
                                   )}
