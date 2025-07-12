@@ -239,130 +239,6 @@ const Form: React.FC = () => {
     disabled: imageToCrop !== null,
   });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!name.trim() || !email || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
-      setError("Please fill all fields correctly and confirm consent.");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (!gender) {
-      showFormGuide("Please select your child's gender", 'warning');
-      return;
-    }
-
-    if (!email) {
-      showFormGuide("We need your email to send the preview", 'warning');
-      return;
-    }
-
-    if (images.length < 1 || images.length > 3) {
-      showFormGuide("Please upload between 1-3 photos of your child", 'warning');
-      return;
-    }
-
-    if (!isConfirmed) {
-      showFormGuide("Please confirm you have consent to use these photos", 'warning');
-      return;
-    }
-
-    setError(null);
-    setLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
-      formData.append("gender", gender.toLowerCase());
-      formData.append("email", email.trim().toLowerCase());
-      formData.append("book_id", bookId);
-      images.forEach(({ file }) => formData.append("images", file));
-      console.log("📤 Sending form data to /store-user-details");
-
-      const storeResponse = await fetch(`${apiBaseUrl}/store-user-details`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!storeResponse.ok) {
-        const errorData = await storeResponse.json();
-        throw new Error(errorData.detail || "Failed to upload images");
-      }
-
-      const data = await storeResponse.json();
-      const redirectPayload = {
-        jobId: data.job_id,
-        name,
-        gender,
-        email,
-        bookId,
-      };
-      setRedirectData(redirectPayload);
-
-      console.log("✅ User details stored:", data);
-      console.log("📤 Triggering workflow execution");
-
-      const workflowResponse = await fetch(`${apiBaseUrl}/execute-workflow`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          job_id: data.job_id,
-          name: name.trim(),
-          gender: gender.toLowerCase(),
-          book_id: bookId,
-        }).toString(),
-      });
-      if (!workflowResponse.ok) {
-        const errorText = await workflowResponse.text();
-        throw new Error(`Failed to start workflow: ${errorText}`);
-      }
-      console.log("✅ Workflow started successfully");
-
-      setShowContent(false);
-      setLoadingProgress(0);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-
-      let progress = 0;
-      const duration = 50000;
-      const startTime = Date.now();
-
-      const step = () => {
-        const elapsed = Date.now() - startTime;
-        const remainingTime = duration - elapsed;
-        const remainingProgress = 100 - progress;
-
-        if (remainingProgress <= 0 || remainingTime <= 0) {
-          setLoadingProgress(100);
-          router.push(
-            `/preview?job_id=${redirectPayload.jobId}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
-          );
-          return;
-        }
-
-        const increment = Math.min(remainingProgress, Math.floor(Math.random() * 4) + 1);
-        progress += increment;
-        setLoadingProgress(progress);
-
-        const stepsLeft = Math.ceil(remainingProgress / 2);
-        const avgDelay = remainingTime / stepsLeft;
-        const jitteredDelay = avgDelay * (0.5 + Math.random());
-
-        setTimeout(step, jitteredDelay);
-      };
-
-      step();
-    } catch (error: any) {
-      console.error("❌ Submission error:", error);
-      setError(error.message || "An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (loadingProgress === 100 && redirectData) {
       router.push(
@@ -380,7 +256,9 @@ const Form: React.FC = () => {
 
   const openCropModal = (index: number) => setImageToCrop(index);
 
-  const handleTest = async () => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+
+    e.preventDefault();
 
     if (!name.trim() || !email || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
       setError("Please fill all fields correctly and confirm consent.");
@@ -478,7 +356,7 @@ const Form: React.FC = () => {
         if (remainingProgress <= 0 || remainingTime <= 0) {
           setLoadingProgress(100);
           router.push(
-            `/preview-lock?job_id=${redirectPayload.jobId}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
+            `/preview?job_id=${redirectPayload.jobId}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
           );
           return;
         }
@@ -765,16 +643,6 @@ const Form: React.FC = () => {
                     }`}
                 >
                   {loading ? "Processing..." : "Preview your book"}
-                </button>
-
-                <button
-                  onClick={handleTest}
-                  type="button"
-                  className="fixed bottom-4 right-4 z-50 opacity-15 hover:opacity-100 hover:cursor-pointer transition-opacity duration-300 text-xs text-gray-500 bg-transparent"
-                  title="Secret Preview Lock"
-                  aria-label="Secret Preview Lock"
-                >
-                  🔒
                 </button>
 
                 <p className="text-zinc-700 text-center font-poppins flex items-center justify-center gap-2">

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useRef, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Swiper, SwiperClass, SwiperSlide } from "swiper/react";
+import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -12,6 +12,7 @@ import LZString from "lz-string";
 import { motion } from "framer-motion";
 import { BsImages, BsArrowLeftRight } from "react-icons/bs";
 import { div } from "framer-motion/client";
+import { Swiper as SwiperType } from 'swiper/types';
 
 const Preview: React.FC = () => {
 
@@ -43,11 +44,7 @@ const Preview: React.FC = () => {
   const [jobType, setJobType] = useState<"story" | "comic">("story");
   const [approving, setApproving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingSelectionUpdates, setPendingSelectionUpdates] = useState<CarouselChange[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [completedWorkflows, setCompletedWorkflows] = useState<number[]>([]);
-  const [currentlyLoadingIndex, setCurrentlyLoadingIndex] = useState<number>(0);
-  const [remainingWorkflowsLoading, setRemainingWorkflowsLoading] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,20 +57,19 @@ const Preview: React.FC = () => {
   const isMountedRef = useRef(true);
   const regeneratingIndexesRef = useRef<number[]>([]);
   const regeneratingWorkflowRef = useRef<number[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const hasInitializedFromUrl = useRef(false);
   const lastUpdateRef = useRef<{ workflowIndex: number, index: number, timestamp: number } | null>(null);
   const previousCarouselLengths = useRef<number[]>([]);
   const syncInProgressRef = useRef(false);
-  const [activeRegenerationIndex, setActiveRegenerationIndex] = useState<number | null>(null);
-  const [totalWorkflows, setTotalWorkflows] = useState<number>(0);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [previewUrl, setPreviewUrl] = useState<string>("");
 
   type CarouselChange = {
     workflowIndex: number;
     previousLength: number;
     newLength: number;
   };
+
+  const [pendingSelectionUpdates, setPendingSelectionUpdates] = useState<CarouselChange[]>([]);
 
   const batchUpdateRef = useRef<{
     updates: Map<number, number>;
@@ -100,7 +96,7 @@ const Preview: React.FC = () => {
         JSON.stringify(currentSelections)
       );
 
-      const previewUrl = `${window.location.origin}/preview-lock?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
+      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
 
       console.log("💾 Saving state:", {
         selections: currentSelections.join(','),
@@ -151,7 +147,7 @@ const Preview: React.FC = () => {
       const newSearchParams = new URLSearchParams(window.location.search);
       const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selections));
       newSearchParams.set("selected", selectedParam);
-      const newUrl = `/preview-lock?${newSearchParams.toString()}`;
+      const newUrl = `/preview?${newSearchParams.toString()}`;
 
       console.log("🔄 Atomic state update:", {
         state: selections.join(','),
@@ -170,6 +166,22 @@ const Preview: React.FC = () => {
       pendingUpdateRef.current = null;
     });
   }, [router, jobId, saveCurrentState]);
+
+  const handleRegeneration = useCallback((workflowIndex: number) => {
+    if (regeneratingWorkflowRef.current.includes(workflowIndex)) {
+      console.log("⏳ Regeneration already in progress, queuing update");
+      return;
+    }
+
+    regeneratingWorkflowRef.current = [...regeneratingWorkflowRef.current, workflowIndex];
+
+    try {
+      console.log("🔄 Regenerating workflow", workflowIndex);
+
+    } finally {
+      regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => i !== workflowIndex);
+    }
+  }, []);
 
   const syncRef = useCallback((slides: number[]) => {
     if (syncInProgressRef.current) return;
@@ -331,20 +343,12 @@ const Preview: React.FC = () => {
         console.log("🧾 get-job-status response:", data);
         const backendPaid = data.paid || false;
         const backendApproved = data.approved || false;
-        if (data.name) setName(data.name);
-        if (data.email) setUserEmail(data.email);
-        if (data.preview_url) setPreviewUrl(data.preview_url);
 
         if (urlPaid !== backendPaid || urlApproved !== backendApproved) {
           const newSearchParams = new URLSearchParams(window.location.search);
           newSearchParams.set("paid", backendPaid.toString());
           newSearchParams.set("approved", backendApproved.toString());
-          router.replace(`/preview-lock?${newSearchParams.toString()}`, { scroll: false });
-        }
-
-        if (backendPaid && !backendApproved && data.total_workflows > 10) {
-          setRemainingWorkflowsLoading(true);
-          setCurrentlyLoadingIndex(10);
+          router.replace(`/preview?${newSearchParams.toString()}`, { scroll: false });
         }
 
         setPaid(backendPaid);
@@ -490,11 +494,10 @@ const Preview: React.FC = () => {
         regeneratingIndexes: regeneratingIndexesRef.current.join(','),
         regeneratingCount: regeneratingIndexesRef.current.length,
         env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString(),
-        currentlyLoadingIndex
+        timestamp: new Date().toISOString()
       });
 
-      const response = await fetch(`${apiBaseUrl}/poll-images-lock?job_id=${jobId}&t=${Date.now()}`);
+      const response = await fetch(`${apiBaseUrl}/poll-images?job_id=${jobId}&t=${Date.now()}`);
       const data = await response.json();
 
       console.log("📥 Poll response received:", {
@@ -505,16 +508,7 @@ const Preview: React.FC = () => {
         timestamp: new Date().toISOString()
       });
 
-      if (data.total_workflows) {
-        setTotalWorkflows(data.total_workflows);
-      }
-
       if (!isMountedRef.current) return;
-
-      if (data.completed) {
-        setLoading(false);
-        setWorkflowStatus("completed");
-      }
 
       if (!slidesLengthInitialized && data.carousels?.length > 0 && !hasInitializedFromUrl.current) {
         const length = data.carousels.length;
@@ -555,7 +549,6 @@ const Preview: React.FC = () => {
           const workflowMap = new Map<string, ImageType[]>();
           let hasNewImages = false;
           const newImageWorkflows = new Set<number>();
-          const newlyCompletedWorkflows: number[] = [];
 
           prev.forEach((c) => {
             workflowMap.set(c.workflow, c.images.filter(img =>
@@ -586,12 +579,6 @@ const Preview: React.FC = () => {
             if (newImgs.length > 0) {
               hasNewImages = true;
               newImageWorkflows.add(index);
-
-              // Check if this workflow just completed
-              if (!completedWorkflows.includes(index)) {
-                newlyCompletedWorkflows.push(index);
-              }
-
               console.log("🆕 New images detected:", {
                 workflowIndex: index,
                 newImagesCount: newImgs.length,
@@ -613,56 +600,6 @@ const Preview: React.FC = () => {
               });
             }
           });
-
-          // Update completed workflows if we found new ones
-          if (newlyCompletedWorkflows.length > 0) {
-            setCompletedWorkflows(prev => [...prev, ...newlyCompletedWorkflows]);
-
-            // Advance the loading index if the current one completed
-            if (newlyCompletedWorkflows.includes(currentlyLoadingIndex)) {
-              setCurrentlyLoadingIndex(prev => {
-                const nextIndex = prev + 1;
-                // Don't go beyond total workflows
-                return nextIndex < totalWorkflows ? nextIndex : prev;
-              });
-            }
-          }
-
-          // Handle regenerating indexes
-          const newRegeneratingIndexes = [...regeneratingIndexesRef.current];
-          const newRegeneratingWorkflows = [...regeneratingWorkflowRef.current];
-
-          workflowMap.forEach((images, workflow, idx) => {
-            const workflowIndex = Array.from(workflowMap.keys()).indexOf(workflow);
-            if (images.length > (imageCounts[workflowIndex] || 0)) {
-              // If we have new images, remove from regenerating indexes
-              const regeneratingIdx = newRegeneratingIndexes.indexOf(workflowIndex);
-              if (regeneratingIdx > -1) {
-                newRegeneratingIndexes.splice(regeneratingIdx, 1);
-              }
-
-              const regeneratingWorkflowIdx = newRegeneratingWorkflows.indexOf(workflowIndex);
-              if (regeneratingWorkflowIdx > -1) {
-                newRegeneratingWorkflows.splice(regeneratingWorkflowIdx, 1);
-              }
-            }
-          });
-
-          if (newRegeneratingIndexes.length !== regeneratingIndexesRef.current.length) {
-            setRegeneratingIndexes(newRegeneratingIndexes);
-            regeneratingIndexesRef.current = newRegeneratingIndexes;
-          }
-
-          if (newRegeneratingWorkflows.length !== regeneratingWorkflowRef.current.length) {
-            setRegeneratingWorkflow(newRegeneratingWorkflows);
-            regeneratingWorkflowRef.current = newRegeneratingWorkflows;
-          }
-
-          // Update image counts
-          const newImageCounts = Array.from(workflowMap.values()).map(images => images.length);
-          if (!deepEqual(newImageCounts, imageCounts)) {
-            setImageCounts(newImageCounts);
-          }
 
           const newCarousels = Array.from(workflowMap.entries()).map(([workflow, images]) => ({
             workflow,
@@ -688,31 +625,30 @@ const Preview: React.FC = () => {
                 (typeof img === "string" ? true : img.url)
               );
 
+              console.log(`🔍 Workflow ${workflowIndex} update check:`, {
+                totalImages: carousel.images.length,
+                validImages: validImages.length,
+                currentSelection: current,
+                wouldUpdateTo: validImages.length - 1,
+                env: process.env.NODE_ENV,
+                timestamp: new Date().toISOString()
+              });
+
+              if (validImages.length === 0) return current;
+
               const newIndex = validImages.length - 1;
+              if (current === newIndex) return current;
 
-              // ✅ NEW: prevent auto-slide if user is on regenerate and regen still in progress
-              const swiper = swiperRefs.current[workflowIndex];
-              const isOnRegenerate = swiper?.activeIndex === carousel.images.length;
-              const isRegenerating = regeneratingWorkflow.includes(workflowIndex);
-
-              if (isOnRegenerate && isRegenerating) {
-                console.log(`🕒 Staying on regenerate for workflow ${workflowIndex}`);
-                return current;
-              }
-
-              if (newIndex !== current) {
-                console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
-                  from: current,
-                  to: newIndex,
-                  reason: 'New images detected',
-                  env: process.env.NODE_ENV,
-                  timestamp: new Date().toISOString()
-                });
-              }
+              console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
+                from: current,
+                to: newIndex,
+                reason: 'New images detected',
+                env: process.env.NODE_ENV,
+                timestamp: new Date().toISOString()
+              });
 
               return newIndex;
             });
-
 
             if (!deepEqual(selectedSlides, updatedSelections)) {
               console.log("🔄 Applying selection updates:", {
@@ -728,14 +664,143 @@ const Preview: React.FC = () => {
             }
           }
 
-          return newCarousels;
+          if (regeneratingIndexesRef.current.length > 0) {
+            console.log("🔄 During poll - regeneratingIndexes:", regeneratingIndexesRef.current.length, "imageCounts:", imageCounts.length, "carousels:", carousels.length, {
+              regeneratingWorkflows: regeneratingIndexesRef.current.join(','),
+              currentSelections: selectedSlides.join(',')
+            });
+          }
+
+          const readyCount = newCarousels.filter(
+            (c) =>
+              c.images.length > 0 &&
+              !(c.images.length === 1 && c.images[0] === "loading-placeholder")
+          ).length;
+
+          setVisibleCarousels((prev) => Math.max(prev, readyCount));
+
+          if (regeneratingIndexesRef.current.length > 0 && imageCounts.length === carousels.length) {
+            const completed = regeneratingIndexesRef.current.filter(index => {
+              if (!carousels[index]) {
+                console.warn(`⚠️ Carousel not found at index ${index}, skipping`);
+                return false;
+              }
+
+              const workflow = carousels[index].workflow;
+              const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
+              const newImageCount = updatedCarousel?.images.length || 0;
+              const oldImageCount = imageCounts[index];
+              const isCompleted = newImageCount > oldImageCount;
+
+              return isCompleted;
+            });
+
+            if (completed.length > 0) {
+              setRegeneratingIndexes(prev => prev.filter(i => !completed.includes(i)));
+              regeneratingIndexesRef.current = regeneratingIndexesRef.current.filter(i => !completed.includes(i));
+
+              const completedWorkflows = completed.filter(index => regeneratingWorkflowRef.current.includes(index));
+              if (completedWorkflows.length > 0) {
+                setRegeneratingWorkflow(prev => prev.filter(i => !completedWorkflows.includes(i)));
+                regeneratingWorkflowRef.current = regeneratingWorkflowRef.current.filter(i => !completedWorkflows.includes(i));
+
+                setSelectedSlides(prev => {
+                  const updated = [...prev];
+                  completedWorkflows.forEach(index => {
+                    const workflow = carousels[index].workflow;
+                    const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
+                    if (updatedCarousel) {
+
+                      updated[index] = updatedCarousel.images.length - 2;
+                    }
+                  });
+                  return updated;
+                });
+              }
+
+              setImageCounts(prev => {
+                const updated = [...prev];
+                completed.forEach(i => {
+                  const workflow = carousels[i].workflow;
+                  const updatedCarousel = newCarousels.find(c => c.workflow === workflow);
+                  updated[i] = updatedCarousel?.images.length || prev[i];
+                });
+                return updated;
+              });
+            }
+          }
+
+          let needsClamp = false;
+          const clampedSelections = selectedSlides.map((sel, idx) => {
+            const maxIdx = (newCarousels[idx]?.images.length || 1) - 1;
+            if (sel > maxIdx) {
+              needsClamp = true;
+              console.warn(`Clamping selection for carousel ${idx}: was ${sel}, now ${maxIdx}`);
+              return maxIdx;
+            }
+            return sel;
+          });
+          if (needsClamp) {
+            setSelectedSlides(clampedSelections);
+          }
+
+          if (!deepEqual(prev, newCarousels)) {
+            return newCarousels;
+          }
+          return prev;
         });
-      }
 
-      setActiveRegenerationIndex(null);
+        if (slidesLengthInitialized && data.carousels?.length > 0 &&
+          data.carousels.length !== selectedSlides.length) {
 
-      if (isMountedRef.current) {
-        pollingRef.current = setTimeout(pollImages, 2000);
+          if (!isInitializingFromUrl.current) {
+            console.log("📏 Handling length mismatch:", {
+              currentLength: selectedSlides.length,
+              neededLength: data.carousels.length,
+              hasUrlSelections: !!parsedSelectionsRef.current
+            });
+
+            if (parsedSelectionsRef.current) {
+
+              const newSlides = Array(data.carousels.length).fill(0).map((_, i) => {
+
+                if (i < parsedSelectionsRef.current!.length) {
+                  const carousel = data.carousels[i];
+                  const maxIndex = (carousel.images?.length || 1) - 1;
+                  return Math.min(Math.max(0, parsedSelectionsRef.current![i]), maxIndex);
+                }
+                return 0;
+              });
+
+              if (isMountedRef.current) {
+                console.log("📏 Preserving URL selections while adjusting length");
+                setSelectedSlides(newSlides);
+              }
+            } else {
+              if (isMountedRef.current) {
+                console.log("📏 Initializing new slides array with zeros");
+                const newSlides = Array(data.carousels.length).fill(0);
+                setSelectedSlides(newSlides);
+              }
+            }
+          } else {
+            console.log("⏳ Skipping length adjustment during URL initialization");
+          }
+        }
+
+        const hasPlaceholders = Object.values(placeholders).some((count) => count > 0);
+
+        if (isMountedRef.current) {
+          pollingRef.current = setTimeout(pollImages, 2000);
+        }
+
+        if (data.completed && !hasPlaceholders && regeneratingIndexes.length === 0) {
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setLoading(false);
+            }
+          }, 1000);
+        }
       }
 
     } catch (err: any) {
@@ -750,57 +815,6 @@ const Preview: React.FC = () => {
       }
     }
   };
-
-  useEffect(() => {
-    if (!jobId) return;
-
-    const fetchJobStatus = async () => {
-      try {
-        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch job status.");
-        }
-
-        const data = await response.json();
-        const backendPaid = data.paid || false;
-        const backendApproved = data.approved || false;
-
-        if (urlPaid !== backendPaid || urlApproved !== backendApproved) {
-          const newSearchParams = new URLSearchParams(window.location.search);
-          newSearchParams.set("paid", backendPaid.toString());
-          newSearchParams.set("approved", backendApproved.toString());
-          router.replace(`/preview-lock?${newSearchParams.toString()}`, { scroll: false });
-        }
-
-        setPaid(backendPaid);
-        setApproved(backendApproved);
-        setWorkflowStatus(data.workflow_status);
-
-        if (backendPaid && !backendApproved && data.total_workflows > 10) {
-          setRemainingWorkflowsLoading(true);
-        }
-      } catch (err: any) {
-        console.error("Error fetching job status:", err.message);
-        setError(err.message || "An error occurred while fetching job status.");
-      }
-    };
-
-    fetchJobStatus();
-  }, [jobId, urlPaid, urlApproved, router]);
-
-  useEffect(() => {
-    if (!carousels.length) return;
-    if (visibleCarousels >= totalWorkflows) return;
-
-    const nextIndex = visibleCarousels;
-    if (!paid && nextIndex >= 10) return;
-
-    const nextCarousel = carousels[nextIndex];
-    if (nextCarousel && nextCarousel.images.length > 0) {
-      setVisibleCarousels((prev) => prev + 1);
-    }
-  }, [carousels, visibleCarousels, totalWorkflows, paid]);
-
 
   useEffect(() => {
     if (!jobId) return;
@@ -858,6 +872,26 @@ const Preview: React.FC = () => {
     });
   }, [encodedSelections, carousels.length]);
 
+  const captureVisibleState = useCallback(() => {
+    const currentState = carousels.map((carousel, index) => {
+      const currentSelection = selectedSlides[index] || 0;
+      return {
+        workflowIndex: index,
+        selectedImage: currentSelection,
+        totalImages: carousel.images.length
+      };
+    });
+
+    console.log("📸 State comparison:", {
+      synchronized: selectedSlides.join(','),
+      visible: currentState.map(s => s.selectedImage).join(','),
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
+    return currentState;
+  }, [carousels, selectedSlides]);
+
   useEffect(() => {
     if (isInitializingFromUrl.current || !jobId || !carousels.length) return;
 
@@ -875,6 +909,31 @@ const Preview: React.FC = () => {
       }
     };
   }, [selectedSlides, carousels, saveCurrentState, jobId]);
+
+  useEffect(() => {
+    const saveInitialPreviewUrl = async () => {
+      if (!jobId) return;
+
+      const currentParams = new URLSearchParams(window.location.search);
+      const previewUrl = `${window.location.origin}/preview?${currentParams.toString()}`;
+
+      try {
+        await fetch(`${apiBaseUrl}/update-preview-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            job_id: jobId,
+            preview_url: previewUrl,
+          }),
+        });
+        console.log("✅ Initial preview URL saved:", previewUrl);
+      } catch (err) {
+        console.error("Failed to save initial preview URL:", err);
+      }
+    };
+
+    saveInitialPreviewUrl();
+  }, [jobId, apiBaseUrl]);
 
   const handleSubmit = useCallback(async () => {
     try {
@@ -911,7 +970,7 @@ const Preview: React.FC = () => {
         JSON.stringify(selectedSlides)
       );
 
-      const previewUrl = `${window.location.origin}/preview-lock?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
+      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
 
       if (previewUrl && previewUrl.startsWith("http")) {
         console.log("📤 Sending preview URL to backend:", previewUrl);
@@ -1025,12 +1084,14 @@ const Preview: React.FC = () => {
         gender,
       });
 
+      //window.location.href = `/preview?${newSearchParams.toString()}`;
+      //window.location.href = `/after-payment?${newSearchParams.toString()}`
       window.location.href = `/approved?${newSearchParams.toString()}`
 
     } catch (err: any) {
       console.error("Error approving:", err.message);
     } finally {
-      setApproving(false);
+      setApproving(false); // Re-enable if needed
     }
   };
 
@@ -1062,14 +1123,6 @@ const Preview: React.FC = () => {
       env: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     });
-
-    const swiper = swiperRefs.current[workflowIndex];
-    if (swiper) {
-      swiper.slideTo(carousels[workflowIndex].images.length); // Last slide is regenerate slide
-      swiper.allowTouchMove = false; // Disable swiping
-    }
-
-    setActiveRegenerationIndex(workflowIndex);
 
     try {
       console.log("🔄 Regenerating workflow", workflowIndex + 1);
@@ -1107,7 +1160,7 @@ const Preview: React.FC = () => {
       regeneratingWorkflowRef.current = [...regeneratingWorkflowRef.current, workflowIndex];
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      const response = await fetch(`${apiBaseUrl}/regenerate-workflow-lock`, {
+      const response = await fetch(`${apiBaseUrl}/regenerate-workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -1141,13 +1194,6 @@ const Preview: React.FC = () => {
         timestamp: new Date().toISOString()
       });
       setRegeneratingIndexes(prev => prev.filter(i => i !== workflowIndex));
-    } finally {
-      // Re-enable swiping when done
-      const swiper = swiperRefs.current[workflowIndex];
-      if (swiper) {
-        swiper.allowTouchMove = true;
-      }
-      setActiveRegenerationIndex(null);
     }
   };
 
@@ -1187,39 +1233,12 @@ const Preview: React.FC = () => {
     queueSelectionUpdate(workflowIndex, Math.max(0, index));
   }, [selectedSlides, queueSelectionUpdate, isInitializingFromUrl]);
 
-  useEffect(() => {
-    if (!jobId || workflowStatus === "completed") {
-      setLoading(false);
-      return;
-    }
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.workflow_status === "completed") {
-            setWorkflowStatus("completed");
-            setLoading(false);
-            clearInterval(interval);
-          }
-        }
-      } catch (err) {
-        console.warn("Workflow status check failed:", err);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [jobId, workflowStatus]);
-
   const formatName = (name: string) =>
     name
       .trim()
       .split(/\s+/)
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
-
-  const swiperRefs = useRef<(SwiperClass | null)[]>([]);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -1235,11 +1254,25 @@ const Preview: React.FC = () => {
               `${formatName(name)}'s Finalized Book`
             ) : paid ? (
               `Finalize ${name.charAt(0).toUpperCase() + name.slice(1)}'s Book`
+            ) : jobType === "comic" ? (
+              "Your Comic Preview"
             ) : (
               `${formatName(name)}'s Preview Book`
 
             )}
           </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="text-lg sm:text-xl font-poppins text-[#454545] inline-block"
+          >
+            {loading
+              ? jobType === "comic"
+                ? "Assembling comic panels..."
+                : "Creating storybook magic..."
+              : error || (jobType === "comic" ? "Comic is ready!" : "Storybook is ready!")}
+          </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1247,332 +1280,274 @@ const Preview: React.FC = () => {
             className="mt-10 text-base sm:text-lg text-gray-600 space-y-1 flex flex-col items-center"
           >
             <div className="flex items-center gap-2">
-              <BsImages size={20} className="text-blue-900 font-poppins" />
+              <BsImages size={20} className="text-indigo-600 font-poppins" />
               <p>Watch the story come alive one page at a time!</p>
             </div>
             <div className="flex items-center gap-2">
-              <BsArrowLeftRight size={20} className="text-blue-900 font-poppins" />
+              <BsArrowLeftRight size={20} className="text-indigo-600 font-poppins" />
               <p>Slide left or right to pick the best moment</p>
             </div>
           </motion.div>
         </header>
 
         <div className="flex-1 w-full my-4 overflow-y-auto">
-          <div className="max-w-md mx-auto space-y-12">
-
-            {Array.from({ length: totalWorkflows }).map((_, index) => {
-              const carousel = carousels[index];
-              const isGenerated = carousel?.images?.length > 0;
-              const first10Rendered = carousels.slice(0, 10).every((c) => c?.images?.length > 0);
-
-              let workflowState = 'preparing';
-              if (isGenerated) workflowState = 'ready';
-              else if (!paid && index >= 10) workflowState = 'locked';
-              else if (index === visibleCarousels) workflowState = 'loading';
-
-              if (workflowState === 'locked' && !remainingWorkflowsLoading && first10Rendered) {
-                return (
-                  <div key={`locked-${index}`} className="w-full max-w-md mx-auto mb-12 relative">
-                    <div className="w-full text-center mb-2 flex justify-end">
-                      <div className="inline-block px-3 py-1 text-sm font-poppins text-gray-800 bg-gray-100 rounded-full">
-                        {index === 0 ? "Book Cover" : `Page ${index}`}
-                      </div>
-                    </div>
-                    <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
-                      <div className="flex flex-col justify-center items-center w-full h-full">
-                        <img src="/lock-page.webp" alt="Locked" className="h-full w-full object-cover" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (index > visibleCarousels) return null;
-
-              if (!carousel || !carousel.images || carousel.images.length === 0) {
-                if (!paid && index >= 10) return null;
-                return (
-                  <div key={`placeholder-${index}`} className="w-full max-w-md mx-auto mb-12 relative">
-                    <div className="w-full text-center mb-2 flex justify-end">
-                      <div className="inline-block px-3 py-1 text-sm font-poppins text-gray-800 bg-gray-100 rounded-full">
-                        Page {index}
-                      </div>
-                    </div>
-                    <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
-                      <div className="flex flex-col justify-center items-center w-full h-full">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
-                        <p className="text-sm text-gray-700 mt-4 font-poppins">
-                          Generating page {index} of {totalWorkflows}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={`carousel-${index}`} className="w-full max-w-md mx-auto mb-12 relative">
-                  <div className="w-full text-center mb-2 flex justify-end">
-                    <div className="inline-block px-3 py-1 text-sm font-poppins text-gray-800 bg-gray-100 rounded-full">
-                      {index === 0 ? "Book Cover" : `Page ${index}`}
-                    </div>
-                  </div>
-
-                  <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.2)] bg-white flex flex-col justify-center items-center">
-                    <div
-                      ref={(el) => { paginationRefs.current[index] = el; }}
-                      className="swiper-pagination"
-                    />
-                    {paginationRefs.current[index] && (() => (
-                      <Swiper
-                        key={`swiper-${index}`}
-                        modules={[Navigation, Pagination, EffectFade]}
-                        slidesPerView={1}
-                        effect="fade"
-                        fadeEffect={{ crossFade: true }}
-                        allowTouchMove={activeRegenerationIndex !== index}
-                        preventInteractionOnTransition={true}
-                        speed={300}
-                        watchSlidesProgress={true}
-                        simulateTouch={false}
-                        touchRatio={1}
-                        longSwipesRatio={0.2}
-                        onSwiper={(swiper) => {
-                          swiperRefs.current[index] = swiper;
-                        }}
-                        navigation={{
-                          nextEl: `.next-${index}`,
-                          prevEl: `.prev-${index}`,
-                        }}
-                        pagination={{
-                          el: paginationRefs.current[index],
-                          clickable: true,
-                          bulletClass: 'swiper-pagination-bullet inline-block w-3 h-3 mx-1 rounded-full bg-black opacity-30',
-                          bulletActiveClass: 'swiper-pagination-bullet-active !opacity-100 !bg-yellow-300',
-                          renderBullet: (bulletIndex, className) => {
-                            const isRegenerate = bulletIndex === carousel.images.length;
-                            if (isRegenerate && !approved) return '';
-                            return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
-                          }
-                        }}
-                        onSlideChange={(swiper) => {
-                          if (!swiper.animating && !isInitializingFromUrl.current) {
-                            const lastIndex = carousel.images.length;
-
-                            // Force stay on regenerate slide during regeneration
-                            if (activeRegenerationIndex === index) {
-                              swiper.slideTo(lastIndex);
-                              return;
-                            }
-
-                            const isRegenerateSlide = swiper.activeIndex === lastIndex;
-
-                            if (isRegenerateSlide && swiper.swipeDirection && !approved) {
-                              swiper.slideTo(lastIndex - 1);
-                              return;
-                            }
-
-                            if (!isRegenerateSlide && swiper.activeIndex !== selectedSlides[index]) {
-                              requestAnimationFrame(() => {
-                                updateSelectedSlide(index, swiper.activeIndex);
-                              });
-                            }
-                          }
-                        }}
-                        onInit={(swiper) => {
-                          const currentIndex = selectedSlides[index];
-
-                          const isRegenerating = regeneratingWorkflow.includes(index);
-                          const isOnRegenerate = currentIndex === carousel.images.length;
-
-                          if (isOnRegenerate && isRegenerating) {
-                            console.log("🚫 Skipping slideTo on init — still regenerating");
-                            return;
-                          }
-
-                          if (currentIndex !== undefined && currentIndex !== swiper.activeIndex) {
-                            swiper.slideTo(currentIndex, 0, false);
-                          }
-                        }}
-                        className="w-full h-full pb-8"
-                        noSwiping={activeRegenerationIndex === index}
-                        noSwipingClass="swiper-no-swiping"
-                      >
-                        {carousel.images.map((image: any, imgIndex: number) => (
-                          <SwiperSlide key={imgIndex}>
-                            {image === "loading-placeholder" ? (
-                              <div className="flex justify-center items-center h-full">
-                                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4" />
-                              </div>
-                            ) : (
-                              <img
-                                src={typeof image === "string" ? image : image.url}
-                                alt={`Page ${index}`}
-                                className="w-full h-full object-cover"
-                              />
-                            )}
-                          </SwiperSlide>
-                        ))}
-
-                        {!approved && (
-                          <SwiperSlide key="generate-more">
-                            <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
-                              {regeneratingWorkflow.includes(index) ? (
-                                <div className="flex flex-col items-center justify-center h-full w-full">
-                                  <div className="flex space-x-1 mb-2">
-                                    <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-orange-400 rounded-full animate-bounce"></span>
-                                    <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                                    <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
-                                  </div>
-                                  <p className="text-sm sm:text-base font-semibold text-gray-500">Refining...</p>
-                                </div>
-                              ) : (
-                                <>
-                                  <h3 className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-12 text-center font-poppins">
-                                    Not Happy with the Previously Generated Image?
-                                  </h3>
-                                  <p className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-6 text-center font-poppins">
-                                    Generate More Options
-                                  </p>
-                                  <button
-                                    onClick={async () => {
-                                      const swiper = swiperRefs.current[index];
-                                      if (swiper) {
-                                        swiper.slideTo(carousel.images.length);
-                                        swiper.allowTouchMove = false;
-                                      }
-
-                                      await handleRegenerate(index);
-                                    }}
-                                    disabled={regeneratingWorkflow.includes(index)}
-                                    className={`px-6 py-2 text-sm sm:text-lg font-medium font-poppins rounded-xl transition-all duration-200 ${regeneratingWorkflow.includes(index)
-                                      ? 'bg-gray-300 cursor-not-allowed'
-                                      : 'bg-yellow-300 hover:bg-yellow-400 hover:cursor-pointer'
-                                      } text-black`}
-                                    aria-label="Regenerate more options"
-                                  >
-                                    {regeneratingWorkflow.includes(index) ? 'Refining...' : 'Refine'}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </SwiperSlide>
-                        )}
-
-                        <div className={`prev-${index} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
-                          <button className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition" aria-label="Previous slide">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                              <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className={`next-${index} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
-                          <button className="bg-white/80 border-black border hover:bg-white hover:cursor-pointer text-black p-2 rounded-full shadow transition" aria-label="Next slide">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                            </svg>
-                          </button>
-                        </div>
-                      </Swiper>
-
-                    ))()}
+          <div className="max-w-md w-full mx-auto space-y-12">
+            {carousels.slice(0, visibleCarousels).map((carousel, workflowIndex) => (
+              <div key={workflowIndex} className="w-full max-w-md mx-auto mb-12 relative">
+                <div className="w-full text-center mb-2 flex justify-end">
+                  <div className="inline-block px-3 py-1 text-sm font-medium text-gray-800 bg-gray-100 rounded-full">
+                    {workflowIndex === 0 ? "Book Cover" : `Page ${workflowIndex}`}
                   </div>
                 </div>
-              );
-            })}
+                <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
+                  {carousel.images.length === 0 || (carousel.images.length === 1 && carousel.images[0] === "loading-placeholder") ? (
+                    <div className="flex flex-col justify-center items-center w-full h-full">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+                      <p className="text-sm text-gray-700 mt-4 font-poppins">
+                        Generating image {workflowIndex + 1} of {carousels.length}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      {paginationRefs.current[workflowIndex] && (() => {
+                        const initialSlideIndex = selectedSlides[workflowIndex] !== undefined
+                          ? Math.max(0, Math.min(selectedSlides[workflowIndex], carousel.images.length - 1))
+                          : 0;
 
+                        return (
+                          <Swiper
+                            modules={[Navigation, Pagination, EffectFade]}
+                            slidesPerView={1}
+                            effect="fade"
+                            fadeEffect={{ crossFade: true }}
+                            allowTouchMove={true}
+                            preventInteractionOnTransition={true}
+                            speed={300}
+                            watchSlidesProgress={true}
+                            simulateTouch={false}
+                            touchRatio={1}
+                            longSwipesRatio={0.2}
+                            navigation={{
+                              nextEl: `.next-${workflowIndex}`,
+                              prevEl: `.prev-${workflowIndex}`,
+                            }}
+                            pagination={{
+                              el: paginationRefs.current[workflowIndex] || undefined,
+                              clickable: true,
+                              bulletClass: 'swiper-pagination-bullet',
+                              bulletActiveClass: 'swiper-pagination-bullet-active',
+                              renderBullet: (index, className) => {
+                                const isRegenerate = index === carousel.images.length;
+                                if (isRegenerate && !approved) {
+                                  return '';
+                                }
+                                return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" alt="Diffrun personalized books - circlular pagination" />`;
+                              }
+                            }}
+                            initialSlide={initialSlideIndex}
+                            onSlideChange={(swiper) => {
+                              if (!swiper.animating && !isInitializingFromUrl.current) {
+                                const lastIndex = carousel.images.length;
+                                const isRegenerateSlide = swiper.activeIndex === lastIndex;
+
+                                if (isRegenerateSlide && swiper.swipeDirection && !approved) {
+                                  swiper.slideTo(lastIndex - 1);
+                                  return;
+                                }
+
+                                if (!isRegenerateSlide && swiper.activeIndex !== selectedSlides[workflowIndex]) {
+                                  requestAnimationFrame(() => {
+                                    updateSelectedSlide(workflowIndex, swiper.activeIndex);
+                                  });
+                                }
+                              }
+                            }}
+                            onInit={(swiper) => {
+                              const currentIndex = selectedSlides[workflowIndex];
+                              if (currentIndex !== undefined && currentIndex !== swiper.activeIndex) {
+                                swiper.slideTo(currentIndex, 0, false);
+                              }
+                            }}
+                            className="w-full h-full pb-8"
+                          >
+                            {carousel.images.map((image, imgIndex) => (
+                              <SwiperSlide key={imgIndex}>
+                                {image === "loading-placeholder" ? (
+                                  <div className="flex items-center justify-center aspect-square w-full h-full bg-white">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500"></div>
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={typeof image === "string" ? image : image.url}
+                                    alt={`Diffrun personalized books - story page ${imgIndex + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                              </SwiperSlide>
+                            ))}
+                            {!approved && (
+                              <SwiperSlide key="generate-more">
+                                <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border-4 border-gray-900 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+                                  {regeneratingWorkflow.includes(workflowIndex) ? (
+                                    <div className="flex flex-col items-center justify-center h-full w-full">
+                                      <div className="flex space-x-1 mb-2">
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-orange-400 rounded-full animate-bounce"></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                                        <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                                      </div>
+                                      <p className="text-sm sm:text-base font-semibold text-gray-500">Refining...</p>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <h3 className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-6 text-center font-poppins">
+                                        Not Happy with the Previously Generated Image?
+                                      </h3>
+                                      <p className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-6 text-center font-poppins">
+                                        Generate More Options
+                                      </p>
+                                      <button
+                                        onClick={() => handleRegenerate(workflowIndex)}
+                                        className="px-6 py-2 text-sm sm:text-lg font-bold rounded-xl transition-all duration-200 bg-yellow-400 text-black hover:bg-yellow-500 active:bg-yellow-600 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] active:translate-x-[2px] active:translate-y-[2px]"
+                                        aria-label="Regenerate more options"
+                                      >
+                                        Refine
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </SwiperSlide>
+                            )}
+                            <div className={`prev-${workflowIndex} absolute left-3 top-1/2 -translate-y-1/2 z-10`}>
+                              <button
+                                className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                                aria-label="Previous slide"
+                              >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                  <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                </svg>
+                              </button>
+                            </div>
+                            <div className={`next-${workflowIndex} absolute right-3 top-1/2 -translate-y-1/2 z-10`}>
+                              <button
+                                className="bg-white/80 border-black border hover:bg-white text-black p-2 rounded-full shadow transition"
+                                aria-label="Next slide"
+                              >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                  <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                </svg>
+                              </button>
+                            </div>
+
+                            <div className="swiper-pagination absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"></div>
+                          </Swiper>
+                        );
+                      })()}
+                      <div
+                        className="swiper-pagination mt-4"
+                        ref={(el) => {
+                          paginationRefs.current[workflowIndex] = el;
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {carousel.images.length === 0 ||
+                    (carousel.images.length === 1 && carousel.images[0] === "loading-placeholder") ? (
+                    <p className="text-center text-sm text-gray-500 mt-8 italic font-poppins">
+                      Waiting for page {workflowIndex + 1} to be generated...
+                    </p>
+                  ) : null}
+
+                </div>
+              </div>
+            ))}
+
+            {carousels.length > visibleCarousels && (
+              <div key="placeholder" className="w-full max-w-md mx-auto mb-12 relative">
+                <div className="w-full text-center mb-2 flex justify-end">
+                  <div className="inline-block px-3 py-1 text-sm font-poppins text-gray-800 bg-gray-100 rounded-full">
+                    Page {visibleCarousels}
+                  </div>
+                </div>
+                <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
+                  <div className="flex flex-col justify-center items-center w-full h-full">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+                    <p className="text-sm text-gray-700 mt-4 font-poppins">
+                      Generating image {visibleCarousels} of {carousels.length}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-center text-sm text-gray-500 mt-8 italic font-poppins">
+                  Waiting for page {visibleCarousels} to be generated...
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {loading &&
-          workflowStatus !== "completed" &&
-          !approved &&
-          !paid &&
-          carousels.length > 0 &&
-          carousels.length < 10 && (
-            <div
-              className="max-w-xs md:max-w-md fixed z-50 bottom-30 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-4 md:p-6 rounded-lg shadow-brutalist text-center"
-              style={{
-                boxShadow: "8px 8px 0px rgba(0, 0, 0, 0.1)",
+        {loading && workflowStatus !== "completed" && !approved && !paid && carousels.length > 0 && (
+          <div
+            className="w-60 sm:w-72 md:max-w-md fixed z-50 bottom-8 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-4 md:p-6 rounded-lg text-center shadow-xl"
+          >
+            <p className="text-gray-800 font-poppins mb-4 text-lg sm:text-xl animate-fade-in">
+              Don&apos;t want to wait?
+            </p>
+
+            <button
+              onClick={() => {
+                const query = new URLSearchParams({
+                  job_id: jobId || "",
+                  name,
+                  gender,
+                  book_id: bookId,
+                  selected: LZString.compressToEncodedURIComponent(
+                    JSON.stringify(selectedSlides)
+                  ),
+                });
+                router.push(`/user-details?${query.toString()}`);
               }}
+              className="bg-[#5784ba] rounded-xl hover:cursor-pointer text-white py-2.5 px-5 font-poppins  text-xs md:text-sm"
             >
-              <p className="text-gray-800 font-poppins mb-4 text-lg sm:text-xl animate-fade-in">
-                Don&apos;t want to wait?
-              </p>
+              Email Preview Link & Continue
+            </button>
+          </div>
+        )}
 
-              <button
-                onClick={() => {
-                  const query = new URLSearchParams({
-                    job_id: jobId || "",
-                    name,
-                    gender,
-                    book_id: bookId,
-                    selected: LZString.compressToEncodedURIComponent(
-                      JSON.stringify(selectedSlides)
-                    ),
-                  });
-                  router.push(`/user-details?${query.toString()}`);
-                }}
-                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-2.5 px-5 font-poppins border border-gray-900 shadow-[3px_3px_0px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-gray-900 text-xs md:text-sm"
-              >
-                Email Preview Link
-              </button>
-            </div>
-          )}
-
-        <section className="w-full p-4 sm:p-6">
-          <div className="max-w-xl mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
+        <footer className="w-full p-2 sm:p-6">
+          <div className="max-w-md mx-auto flex flex-col gap-2 sm:gap-4 justify-center">
             {!paid && !approved && (
-              <p className="text-center text-sm sm:text-base text-gray-600 mb-2 font-poppins">
+              <p className="text-center text-sm sm:text-sm md:text-base text-gray-600 mb-2 font-poppins">
                 You can continue refining your book even after this step — regenerate images and finalize later at your convenience.
               </p>
             )}
             {!paid && !approved && (
-              <div
-                className="w-72 md:w-96 fixed z-50 bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-3 md:p-6 rounded-lg shadow-2xl text-center">
-                <p className="text-gray-800 font-poppins mb-4 text-sm sm:text-base animate-fade-in">
-                  Full Preview is available on Purchase
-                </p>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!jobId || loading || submitting || regeneratingIndexes.length > 0}
-                  className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-colors duration-200
-                ${!jobId || loading || submitting || regeneratingIndexes.length > 0
-                      ? 'bg-indigo-400 cursor-not-allowed opacity-75'
-                      : 'bg-[#5784ba] hover:bg-[#5784bc] active:bg-[#5784bd] shadow-md cursor-pointer'
-                    }`}
-                >
-                  {submitting
-                    ? "Saving..."
-                    : regeneratingIndexes.length > 0
-                      ? "Regenerating..."
-                      : loading
-                        ? "Loading..."
-                        : "Continue to Purchase"}
-                </button>
-              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={!jobId || loading || carousels.length < 2 || submitting || regeneratingIndexes.length > 0}
+                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white
+                ${carousels.length >= 2 && !submitting && regeneratingIndexes.length === 0
+                    ? 'bg-[#5784ba] hover:bg-[#5784bc] active:bg-[#5784bd] shadow-md'
+                    : 'bg-gray-300 cursor-not-allowed'}`}
+              >
+                {submitting ? "Saving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Save Preview and Continue"}
+              </button>
             )}
 
             {paid && !approved && (
-              <div className="w-72 md:w-96 fixed z-50 bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-3 md:p-6 rounded-lg shadow-2xl text-center">
-                <p className="text-gray-800 font-poppins mb-4 text-sm sm:text-base animate-fade-in">
-                  Your book will be delivered in 7 days
-                </p>
               <button
                 onClick={handleApprove}
-                disabled={approving || !jobId || loading || regeneratingIndexes.length > 0 || carousels.length < totalWorkflows}
-                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-all duration-200 ${!approving && regeneratingIndexes.length === 0
-                  ? 'bg-[#5784ba] hover:bg-[#516f93] active:bg-[#295288] shadow-md cursor-pointer'
-                  : 'bg-indigo-400 opacity-75 cursor-not-allowed'
+                disabled={approving || !jobId || loading || carousels.length < 2 || regeneratingIndexes.length > 0}
+                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-lg font-bold text-white transition-all duration-200 ${carousels.length >= 2 && !approving && regeneratingIndexes.length === 0
+                  ? 'bg-indigo-500 hover:bg-indigo-600 active:bg-[#33aaaa] shadow-[3px_3px_0px_#454545]'
+                  : 'bg-gray-300 opacity-50 cursor-not-allowed'
                   }`}
               >
                 {approving ? "Approving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Approve for printing"}
               </button>
-              </div>
             )}
 
           </div>
-        </section>
+        </footer>
 
         {isSaving && (
           <div className="fixed bottom-4 right-4 bg-black/80 text-white px-3 py-1 rounded-full text-sm z-50">

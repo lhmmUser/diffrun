@@ -1393,6 +1393,7 @@ def run_workflow_in_background(
                 status_code=400, detail="Invalid workflow filename format")
 
         page_num = int(match.group(1))
+        is_preview_workflow = page_num < 10
         expected_filename = f"{page_num:02d}_{book_id}_{gender}.json"
 
         workflow_path = os.path.join(
@@ -1466,41 +1467,71 @@ def run_workflow_in_background(
 
         # ✅ Mark as completed in DB
         workflow_key = f"workflow_pg{page_num}"
-        user_details_collection.update_one(
+        update_result = user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {f"workflows.{workflow_key}.status": "completed"}}
         )
+        
+        logger.info(f"✅ Updated workflow status for {workflow_key} in DB")
+        
+        # Get the current state of all workflows
+        user = user_details_collection.find_one({"job_id": job_id})
+        if not user:
+            logger.error(f"❌ User record not found for job_id={job_id}")
+            return
 
-        # ✅ Now check if all workflows are completed
-        updated_user = user_details_collection.find_one({"job_id": job_id})
-        all_statuses = [
-            wf.get("status") for wf in updated_user.get("workflows", {}).values()
-        ]
-        if all(status == "completed" for status in all_statuses):
-            logger.info(f"✅ All workflows completed for job_id={job_id}")
+        workflows = user.get("workflows", {})
+        logger.info(f"📊 Current workflows status: {workflows}")
 
-            # 🔄 Mark overall workflow_status = completed
-            user_details_collection.update_one(
-                {"job_id": job_id},
-                {"$set": {"workflow_status": "completed"}}
-            )
+        # Check if all first 10 workflows are completed AND email hasn't been sent yet
+        all_completed = True
+        for i in range(10):  # Check pg0 to pg9
+            workflow_key = f"workflow_pg{i}"
+            if workflows.get(workflow_key, {}).get("status") != "completed":
+                all_completed = False
+                logger.info(f"⏳ Workflow {workflow_key} not completed yet")
+                break
 
-            # 📧 Trigger preview email
-            name = updated_user.get("name", "")
-            email = updated_user.get("email", "")
-            preview_url = updated_user.get("preview_url", "")
-
-            if name and email and preview_url:
-                try:
-                    logger.info(f"📧 Triggering preview email for job_id={job_id}")
-                    preview_email(name, email, preview_url)
-                    logger.info(f"📧 Preview email sent for job_id={job_id}")
-                except Exception as e:
-                    logger.exception(f"📨 Failed to send preview email for job_id={job_id}")
-
+        if all_completed and not user.get("preview_email_sent", False):
+            logger.info("🎉 All 10 workflows completed and email not sent yet!")
+            
+            preview_url = user.get("preview_url", "")
+            email = user.get("email")
+            
+            if not email:
+                logger.error("❌ No email found in user record")
+                return
+                
+            if not preview_url:
+                logger.error("❌ No preview_url found in user record")
+                return
+                
+            try:
+                logger.info(f"📧 Preparing to send preview email to {email}")
+                preview_email_lock(
+                    name=user.get("name", ""),
+                    email=email,
+                    preview_url=preview_url
+                )
+                logger.info("✅ Preview email sent successfully")
+                
+                # Mark that email was sent to prevent duplicates
+                user_details_collection.update_one(
+                    {"job_id": job_id},
+                    {"$set": {"preview_email_sent": True}}
+                )
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to send preview email: {str(e)}")
+                raise
+                
+        elif all_completed and user.get("preview_email_sent", False):
+            logger.info("ℹ️ All workflows completed but email already sent")
+        else:
+            logger.info("🔄 Not all workflows completed yet")
+            
     except Exception as e:
-        logger.exception(
-            f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
+        logger.exception(f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
         workflow_key = f"workflow_{workflow_filename.replace('.json', '')}"
         user_details_collection.update_one(
             {"job_id": job_id},
@@ -1531,6 +1562,7 @@ def run_workflow_in_background_lock(
                 status_code=400, detail="Invalid workflow filename format")
 
         page_num = int(match.group(1))
+        is_preview_workflow = page_num < 10 
         expected_filename = f"{page_num:02d}_{book_id}_{gender}.json"
 
         workflow_path = os.path.join(
@@ -1609,61 +1641,71 @@ def run_workflow_in_background_lock(
             {"$set": {f"workflows.{workflow_key}.status": "completed"}}
         )
         
-        logger.info(f"✅ Updated workflow status for {workflow_key} in DB", update_result)
+        logger.info(f"✅ Updated workflow status for {workflow_key} in DB")
         
-        # Get the current state of all workflows
-        user = user_details_collection.find_one({"job_id": job_id})
-        if not user:
-            logger.error(f"❌ User record not found for job_id={job_id}")
-            return
-
-        workflows = user.get("workflows", {})
-        logger.info(f"📊 Current workflows status: {workflows}")
-
-        # Check if all first 10 workflows are completed
-        all_completed = True
-        for i in range(10):  # Check pg0 to pg9
-            workflow_key = f"workflow_pg{i}"
-            if workflows.get(workflow_key, {}).get("status") != "completed":
-                all_completed = False
-                logger.info(f"⏳ Workflow {workflow_key} not completed yet")
-                break
-
-        if all_completed:
-            logger.info("🎉 All 10 workflows completed!")
-            
-            preview_url = user.get("preview_url", "")
-            email = user.get("email")
-            
-            if not email:
-                logger.error("❌ No email found in user record")
+        # Only check for preview completion if this is a preview workflow
+        if is_preview_workflow:
+            # Get the current state of all workflows
+            user = user_details_collection.find_one({"job_id": job_id})
+            if not user:
+                logger.error(f"❌ User record not found for job_id={job_id}")
                 return
+
+            workflows = user.get("workflows", {})
+            logger.info(f"📊 Current workflows status: {workflows}")
+
+            # Check if all first 10 workflows are completed AND email hasn't been sent
+            all_preview_completed = True
+            for i in range(10):  # Check pg0 to pg9
+                workflow_key = f"workflow_pg{i}"
+                if workflows.get(workflow_key, {}).get("status") != "completed":
+                    all_preview_completed = False
+                    logger.info(f"⏳ Workflow {workflow_key} not completed yet")
+                    break
+
+            if all_preview_completed and not user.get("preview_email_sent", False):
+                logger.info("🎉 All 10 preview workflows completed!")
                 
-            if not preview_url:
-                logger.error("❌ No preview_url found in user record")
-                return
+                preview_url = user.get("preview_url", "")
+                email = user.get("email")
                 
-            try:
-                logger.info(f"📧 Preparing to send preview email to {email}")
-                preview_email_lock(
-                    name=user.get("name", ""),
-                    email=email,
-                    preview_url=preview_url
-                )
-                logger.info("✅ Preview email sent successfully")
-                
-                # Mark that email was sent to prevent duplicates
-                user_details_collection.update_one(
-                    {"job_id": job_id},
-                    {"$set": {"preview_email_sent": True}}
-                )
-                
-            except Exception as e:
-                logger.error(f"❌ Failed to send preview email: {str(e)}")
-                raise
-                
+                if not email:
+                    logger.error("❌ No email found in user record")
+                    return
+                    
+                if not preview_url:
+                    logger.error("❌ No preview_url found in user record")
+                    return
+                    
+                try:
+                    logger.info(f"📧 Preparing to send preview email to {email}")
+                    preview_email_lock(
+                        name=user.get("name", ""),
+                        email=email,
+                        preview_url=preview_url
+                    )
+                    logger.info("✅ Preview email sent successfully")
+                    
+                    # Mark that email was sent to prevent duplicates
+                    user_details_collection.update_one(
+                        {"job_id": job_id},
+                        {
+                            "$set": {
+                                "preview_email_sent": True,
+                                "preview_email_sent_at": datetime.utcnow()
+                            }
+                        }
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"❌ Failed to send preview email: {str(e)}")
+                    raise
+            elif all_preview_completed:
+                logger.info("ℹ️ All preview workflows completed but email already sent")
+            else:
+                logger.info("🔄 Not all preview workflows completed yet")
         else:
-            logger.info("🔄 Not all workflows completed yet")
+            logger.info(f"ℹ️ Workflow pg{page_num} completed (not a preview workflow)")
             
     except Exception as e:
         logger.exception(f"🔥 Workflow {workflow_filename} failed for job_id={job_id}: {e}")
@@ -2437,12 +2479,12 @@ def preview_email_lock(name: str, email: str, preview_url: str):
         raise HTTPException(
             status_code=500, detail="Failed to send preview email.")
 
-def preview_email(payload: PreviewEmailRequest):
+def preview_email(name: str, email: str, preview_url: str):
     try:
-        name = payload.name.capitalize()
-        username = payload.username.capitalize()
-        preview_url = payload.preview_url
-        email = payload.email
+        name = name.capitalize()
+        username = username.capitalize()
+        preview_url = preview_url
+        email = email
 
         # ✅ Log all the critical values
         print("📩 Sending Preview Email:")
