@@ -2420,8 +2420,8 @@ def preview_email_lock(name: str, email: str, preview_url: str):
         """
 
         msg = EmailMessage()
-        msg["Subject"] = f"{name}'s Magical Book is ready!"
-        msg["From"] = EMAIL_USER
+        msg["Subject"] = f"{name}'s Diffrun Storybook Preview is here!"
+        msg["From"] = "Team Diffrun <support@diffrun.com>"
         msg["To"] = email
         msg.set_content("This email contains HTML content.")
         msg.add_alternative(html_content, subtype="html")
@@ -2486,7 +2486,7 @@ def preview_email(payload: PreviewEmailRequest):
 
         msg = EmailMessage()
         msg["Subject"] = f"{name}'s Magical Book Is Being Crafted!"
-        msg["From"] = EMAIL_USER
+        msg["From"] = "Team Diffrun <support@diffrun.com>"
         msg["To"] = email
         msg.set_content("This email contains HTML content.")
         msg.add_alternative(html_content, subtype="html")
@@ -2587,7 +2587,7 @@ async def payment_done_email(username: str, child_name: str, email: str, preview
 
         msg = EmailMessage()
         msg["Subject"] = str(Header(f"{child_name}'s Storybook Order Confirmation ✨", 'utf-8'))
-        msg["From"] = EMAIL_USER
+        msg["From"] = "Team Diffrun <support@diffrun.com>"
         msg["To"] = email
         msg.set_content("This email contains HTML content.")
         msg.add_alternative(html_content, subtype="html")
@@ -2686,7 +2686,7 @@ async def payment_done_email_lock(username: str, child_name: str, email: str, pr
 
         msg = EmailMessage()
         msg["Subject"] = f"{child_name}'s Storybook Order Confirmation ✨"
-        msg["From"] = EMAIL_USER
+        msg["From"] = "Team Diffrun <support@diffrun.com>"
         msg["To"] = email
         msg.set_content("This email contains HTML content.")
         msg.add_alternative(html_content, subtype="html")
@@ -2722,7 +2722,7 @@ def approval_confirmation_email(username: str, child_name: str, email: str):
 
         msg = EmailMessage()
         msg["Subject"] = f"{child_name}'s Storybook Is Now Being Printed! 🎉"
-        msg["From"] = EMAIL_USER
+        msg["From"] = "Team Diffrun <support@diffrun.com>"
         msg["To"] = email
         msg.set_content("This email contains HTML content.")
         msg.add_alternative(html_content, subtype="html")

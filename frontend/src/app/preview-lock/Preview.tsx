@@ -11,6 +11,7 @@ import { Navigation, Pagination, EffectFade } from "swiper/modules";
 import LZString from "lz-string";
 import { motion } from "framer-motion";
 import { BsImages, BsArrowLeftRight } from "react-icons/bs";
+import { div } from "framer-motion/client";
 
 const Preview: React.FC = () => {
 
@@ -1553,16 +1554,21 @@ const Preview: React.FC = () => {
             )}
 
             {paid && !approved && (
+              <div className="w-72 md:w-96 fixed z-50 bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-3 md:p-6 rounded-lg shadow-2xl text-center">
+                <p className="text-gray-800 font-poppins mb-4 text-sm sm:text-base animate-fade-in">
+                  Your book will be delivered in 7 days
+                </p>
               <button
                 onClick={handleApprove}
                 disabled={approving || !jobId || loading || regeneratingIndexes.length > 0 || carousels.length < totalWorkflows}
-                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base fixed z-50 bottom-10 self-center font-medium text-white transition-all duration-200 ${!approving && regeneratingIndexes.length === 0
+                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-all duration-200 ${!approving && regeneratingIndexes.length === 0
                   ? 'bg-[#5784ba] hover:bg-[#516f93] active:bg-[#295288] shadow-md cursor-pointer'
                   : 'bg-indigo-400 opacity-75 cursor-not-allowed'
                   }`}
               >
                 {approving ? "Approving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Approve for printing"}
               </button>
+              </div>
             )}
 
           </div>

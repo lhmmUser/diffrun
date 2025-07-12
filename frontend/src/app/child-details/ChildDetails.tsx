@@ -94,6 +94,17 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => (
   </div>
 );
 
+const pastelTags = [
+  "bg-pink-100 text-pink-700",
+  "bg-green-100 text-green-700",
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-purple-100 text-purple-700",
+  "bg-orange-100 text-orange-700",
+  "bg-rose-100 text-rose-700",
+  "bg-lime-100 text-lime-700",
+];
+
 const Form: React.FC = () => {
 
   const router = useRouter();
@@ -532,7 +543,7 @@ const Form: React.FC = () => {
                   }}
                   className="w-full h-auto mx-auto relative"
                 >
-                  {[1, 2,3,4, 5, 6, 7].map((num) => (
+                  {[1, 2, 3, 4, 5, 6, 7].map((num) => (
                     <SwiperSlide key={num}>
                       <img
                         src={`/${bookId}-book-${num}.avif`}
@@ -779,30 +790,87 @@ const Form: React.FC = () => {
             <h2 className="text-3xl font-libre font-medium mb-6 text-gray-800 text-left">
               Explore More Books
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Cards.filter(book => book.bookKey !== bookId).map((book, index) => (
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
+              {Cards.map((card, index) => (
                 <div
                   key={index}
-                  className="bg-white overflow-hidden"
+                  className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                 >
-                  <img
-                    src={book.imageSrc}
-                    alt={book.title}
-                    width={400}
-                    height={400}
-                    className="w-full h-64 object-cover object-left"
-                  />
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-medium font-libre text-gray-800 my-2">{book.title}</h3>
-                    <p className="text-sm text-gray-600 font-poppins my-2">Age : {book.age}</p>
-                    <p className="text-gray-700 font-poppins my-2 text-sm">{book.description}</p>
-                    <Link
-                      href={`/child-details?book_id=${book.bookKey}&job_type=story`}
-                      className="inline-block mb-4 text-indigo-600 font-play font-medium"
-                    >
-                      Personalize this book →
-                    </Link>
-                  </div>
+                  <Link
+                    href={`/child-details?job_type=story&book_id=${card.bookKey}`}
+                    aria-label={`Personalize ${card.title} story for ages ${card.age}`}
+                    className="flex flex-col h-full"
+                  >
+                    <div className="relative w-full pt-[75%] overflow-hidden">
+                      <img
+                        src={card.imageSrc}
+                        alt={card.title}
+                        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                        loading="lazy"
+                      />
+
+                      <img
+                        src={card.hoverImageSrc || card.imageSrc}
+                        alt={`${card.title} hover`}
+                        className="absolute inset-0 w-full h-full object-cover transform scale-100 transition-transform duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100 opacity-0"
+                        loading="lazy"
+                      />
+                    </div>
+
+                    <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
+                      <div className="flex justify-between items-center flex-wrap gap-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(card.category) && card.category.length > 0 ? (
+                            card.category.map((tag, i) => (
+                              <span
+                                key={i}
+                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                  } whitespace-nowrap`}
+                              >
+                                {tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span
+                              className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
+                                }`}
+                            >
+                              Storybook
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                          Ages {card.age}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900 mt-2">
+                        {card.title}
+                      </h3>
+
+                      <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                        {card.description}
+                      </p>
+
+                      <div className="flex items-center justify-between mt-auto pt-4">
+                        <span className="text-lg font-semibold text-gray-800">
+                          From {card.prices?.IN?.paperback?.price || '₹499'}
+                        </span>
+
+                        <button
+                          className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.href = `/child-details?job_type=story&book_id=${card.bookKey}`;
+                          }}
+                        >
+                          Personalize
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               ))}
             </div>
