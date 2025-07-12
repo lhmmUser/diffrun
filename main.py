@@ -214,215 +214,152 @@ async def create_order(request: Request):
     }
 
 @app.post("/verify-razorpay")
-async def verify_signature(request: Request):
-    data = await request.json()
-
-    razorpay_order_id = data.get("razorpay_order_id")
-    razorpay_payment_id = data.get("razorpay_payment_id")
-    razorpay_signature = data.get("razorpay_signature")
-    job_id = data.get("job_id")
-
-    # Pricing fields sent directly from frontend (safe)
-    actual_price = data.get("actual_price")
-    discount_percentage = data.get("discount_percentage")
-    discount_amount = data.get("discount_amount")
-    shipping_price = data.get("shipping_price")
-    taxes = data.get("taxes")
-    final_amount = data.get("final_amount")
-
-    # Verify signature
-    body = razorpay_order_id + "|" + razorpay_payment_id
-    generated_signature = hmac.new(
-        bytes(RAZORPAY_KEY_SECRET, 'utf-8'),
-        bytes(body, 'utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-
-    if generated_signature != razorpay_signature:
-        return {"success": False, "error": "Signature verification failed"}
-
-    payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
-    notes = payment_details.get("notes", {})
-    payer_name = notes.get("name", "")
-    payer_email = notes.get("email", "")
-    payer_contact = notes.get("contact", "")
-    discount_code = notes.get("discount_code", "")
-    currency_code = payment_details.get("currency")
-    processed_at = payment_details.get("created_at")
-
-    shipping_info = {
-        "name": payer_name,
-        "address1": notes.get("address1", ""),
-        "address2": notes.get("address2", ""),
-        "city": notes.get("city", ""),
-        "province": notes.get("province", ""),
-        "zip": notes.get("zip", ""),
-        "country": notes.get("country", "India"),
-        "phone": payer_contact
-    }
-
-    latest_order = user_details_collection.find_one(
-        {"order_id": {"$regex": "^#\\d+"}}, sort=[("order_id", -1)]
-    )
-    if latest_order and latest_order.get("order_id"):
-        latest_number = int(latest_order["order_id"].replace("#", ""))
-        new_order_id = f"#{latest_number + 1}"
-    else:
-        new_order_id = "#1200"
-
-    user_record = user_details_collection.find_one({"job_id": job_id})
-    if not user_record:
-        return {"success": False, "error": "Job ID not found in database"}
-
-    user_details_collection.update_one(
-        {"job_id": job_id},
-        {"$set": {
-            "paid": True,
-            "order_id": new_order_id,
-            "transaction_id": razorpay_payment_id,
-            "customer_email": payer_email,
-            "discount_code": discount_code,
-            "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
-            "currency": currency_code,
-            "total_price": final_amount,
-            "shipping_address": shipping_info,
-            "actual_price": actual_price,
-            "discount_percentage": discount_percentage,
-            "discount_amount": discount_amount,
-            "shipping_price": shipping_price,
-            "taxes": taxes,
-            "updated_at": datetime.now(timezone.utc)
-        }}
-    )
-
-    payment_done_email(
-        username=user_record.get("user_name", ""),
-        child_name=user_record.get("name", ""),
-        email=user_record.get("email", ""),
-        preview_url=user_record.get("preview_url", ""),
-        order_id=new_order_id,
-        total_price=final_amount,
-        currency_code=currency_code,
-        discount_code=discount_code,
-        payment_id=razorpay_payment_id,
-        shipping_info=shipping_info,
-        discount_amount=discount_amount,
-        shipping_price=shipping_price,
-        taxes=taxes
-    )
-
-    logger.info(
-        f"✅ Razorpay payment captured successfully for job_id={job_id}")
-    return {"success": True}
-
-@app.post("/verify-razorpay-lock")
 async def verify_signature(request: Request, background_tasks: BackgroundTasks):
-    data = await request.json()
+    try:
+        data = await request.json()
 
-    razorpay_order_id = data.get("razorpay_order_id")
-    razorpay_payment_id = data.get("razorpay_payment_id")
-    razorpay_signature = data.get("razorpay_signature")
-    job_id = data.get("job_id")
+        razorpay_order_id = data.get("razorpay_order_id")
+        razorpay_payment_id = data.get("razorpay_payment_id")
+        razorpay_signature = data.get("razorpay_signature")
+        job_id = data.get("job_id")
 
-    # Pricing fields sent directly from frontend (safe)
-    actual_price = data.get("actual_price")
-    discount_percentage = data.get("discount_percentage")
-    discount_amount = data.get("discount_amount")
-    shipping_price = data.get("shipping_price")
-    taxes = data.get("taxes")
-    final_amount = data.get("final_amount")
+        actual_price = data.get("actual_price")
+        discount_percentage = data.get("discount_percentage")
+        discount_amount = data.get("discount_amount")
+        shipping_price = data.get("shipping_price")
+        taxes = data.get("taxes")
+        final_amount = data.get("final_amount")
 
-    # Verify signature
-    body = razorpay_order_id + "|" + razorpay_payment_id
-    generated_signature = hmac.new(
-        bytes(RAZORPAY_KEY_SECRET, 'utf-8'),
-        bytes(body, 'utf-8'),
-        hashlib.sha256
-    ).hexdigest()
+        logger.info(f"🧾 Starting Razorpay verification for job_id={job_id}")
 
-    if generated_signature != razorpay_signature:
-        return {"success": False, "error": "Signature verification failed"}
+        # Step 1: Signature verification
+        body = razorpay_order_id + "|" + razorpay_payment_id
+        generated_signature = hmac.new(
+            bytes(RAZORPAY_KEY_SECRET, 'utf-8'),
+            bytes(body, 'utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
-    payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
-    notes = payment_details.get("notes", {})
-    payer_name = notes.get("name", "")
-    payer_email = notes.get("email", "")
-    payer_contact = notes.get("contact", "")
-    discount_code = notes.get("discount_code", "")
-    currency_code = payment_details.get("currency")
-    processed_at = payment_details.get("created_at")
+        if generated_signature != razorpay_signature:
+            logger.warning(f"❌ Signature verification failed for job_id={job_id}")
+            return {"success": False, "error": "Signature verification failed"}
 
-    shipping_info = {
-        "name": payer_name,
-        "address1": notes.get("address1", ""),
-        "address2": notes.get("address2", ""),
-        "city": notes.get("city", ""),
-        "province": notes.get("province", ""),
-        "zip": notes.get("zip", ""),
-        "country": notes.get("country", "India"),
-        "phone": payer_contact
-    }
+        logger.info(f"✅ Signature verified for job_id={job_id}, fetching payment details...")
 
-    latest_order = user_details_collection.find_one(
-        {"order_id": {"$regex": "^#\\d+"}}, sort=[("order_id", -1)]
-    )
-    if latest_order and latest_order.get("order_id"):
-        latest_number = int(latest_order["order_id"].replace("#", ""))
-        new_order_id = f"#{latest_number + 1}"
-    else:
-        new_order_id = "#1200"
+        # Step 2: Fetch payment + user details
+        payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
+        notes = payment_details.get("notes", {})
+        currency_code = payment_details.get("currency")
+        processed_at = payment_details.get("created_at")
 
-    user_record = user_details_collection.find_one({"job_id": job_id})
-    if not user_record:
-        return {"success": False, "error": "Job ID not found in database"}
+        payer_name = notes.get("name", "")
+        payer_email = notes.get("email", "")
+        payer_contact = notes.get("contact", "")
+        discount_code = notes.get("discount_code", "")
 
-    user_details_collection.update_one(
-        {"job_id": job_id},
-        {"$set": {
-            "paid": True,
-            "order_id": new_order_id,
-            "transaction_id": razorpay_payment_id,
-            "customer_email": payer_email,
-            "discount_code": discount_code,
-            "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
-            "currency": currency_code,
-            "total_price": final_amount,
-            "shipping_address": shipping_info,
-            "actual_price": actual_price,
-            "discount_percentage": discount_percentage,
-            "discount_amount": discount_amount,
-            "shipping_price": shipping_price,
-            "taxes": taxes,
-            "updated_at": datetime.now(timezone.utc)
-        }}
-    )
+        shipping_info = {
+            "name": payer_name,
+            "address1": notes.get("address1", ""),
+            "address2": notes.get("address2", ""),
+            "city": notes.get("city", ""),
+            "province": notes.get("province", ""),
+            "zip": notes.get("zip", ""),
+            "country": notes.get("country", "India"),
+            "phone": payer_contact
+        }
 
-    logger.info(f"📧 Preparing to send order confirmation email to {payer_email} for job_id={job_id}")
+        # Step 3: Generate new order_id
+        latest_order = user_details_collection.find_one(
+            {"order_id": {"$regex": "^#\\d+"}}, sort=[("order_id", -1)]
+        )
+        new_order_id = (
+            f"#{int(latest_order['order_id'].replace('#', '')) + 1}"
+            if latest_order and latest_order.get("order_id") else "#1200"
+        )
 
-    await payment_done_email_lock(
-        username=user_record.get("user_name", ""),
-        child_name=user_record.get("name", ""),
-        email=user_record.get("email", ""),
-        preview_url=user_record.get("preview_url", ""),
-        order_id=new_order_id,
-        total_price=final_amount,
-        currency_code=currency_code,
-        discount_code=discount_code,
-        payment_id=razorpay_payment_id,
-        shipping_info=shipping_info,
-        discount_amount=discount_amount,
-        shipping_price=shipping_price,
-        taxes=taxes,
-        actual_price=float(actual_price)
-    )
+        user = user_details_collection.find_one({"job_id": job_id})
+        if not user:
+            logger.error(f"❌ No user found for job_id={job_id}")
+            return {"success": False, "error": "Job ID not found"}
 
-    logger.info(f"✅ Order confirmation email sent for job_id={job_id} to {payer_email}")
+        logger.info(f"👤 User record found for job_id={job_id}, updating DB...")
 
-    background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=10)
+        # Step 4: Save payment & shipping data to MongoDB
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {
+                "paid": True,
+                "order_id": new_order_id,
+                "transaction_id": razorpay_payment_id,
+                "customer_email": payer_email,
+                "discount_code": discount_code,
+                "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
+                "currency": currency_code,
+                "total_price": final_amount,
+                "shipping_address": shipping_info,
+                "actual_price": actual_price,
+                "discount_percentage": discount_percentage,
+                "discount_amount": discount_amount,
+                "shipping_price": shipping_price,
+                "taxes": taxes,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
 
-    logger.info(
-        f"✅ Razorpay payment captured successfully for job_id={job_id}")
-    return {"success": True}
+        # Step 5: Determine lock vs full preview
+        workflows = user.get("workflows", {})
+        workflow_keys = list(workflows.keys())
+        total_workflows = user.get("total_workflows", 0)
+
+        if len(workflow_keys) == 10:
+            logger.info(f"🔐 LOCKED preview detected (10 workflows). Sending locked email for job_id={job_id}")
+
+            await payment_done_email_lock(
+                username=user.get("user_name", ""),
+                child_name=user.get("name", ""),
+                email=user.get("email", ""),
+                preview_url=user.get("preview_url", ""),
+                order_id=new_order_id,
+                total_price=final_amount,
+                currency_code=currency_code,
+                discount_code=discount_code,
+                payment_id=razorpay_payment_id,
+                shipping_info=shipping_info,
+                discount_amount=discount_amount,
+                shipping_price=shipping_price,
+                taxes=taxes,
+                actual_price=actual_price
+            )
+
+            logger.info(f"📨 payment_done_email_lock sent for job_id={job_id}, triggering remaining workflows...")
+            background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=10)
+
+        else:
+            logger.info(f"📖 Full preview detected (len={len(workflow_keys)}). Sending standard email for job_id={job_id}")
+
+            await payment_done_email(
+                username=user.get("user_name", ""),
+                child_name=user.get("name", ""),
+                email=user.get("email", ""),
+                preview_url=user.get("preview_url", ""),
+                order_id=new_order_id,
+                total_price=final_amount,
+                currency_code=currency_code,
+                discount_code=discount_code,
+                payment_id=razorpay_payment_id,
+                shipping_info=shipping_info,
+                discount_amount=discount_amount,
+                shipping_price=shipping_price,
+                taxes=taxes,
+                actual_price=actual_price
+            )
+
+        logger.info(f"✅ Razorpay payment captured successfully for job_id={job_id}")
+        return {"success": True}
+
+    except Exception as e:
+        logger.exception(f"❌ Exception during /verify-razorpay: {e}")
+        return {"success": False, "error": "Internal server error"}
 
 @app.post("/save-user-details")
 async def save_user_details_endpoint(request: SaveUserDetailsRequest):
@@ -2040,13 +1977,13 @@ def regenerate_workflow(
 
         if job_type.lower() == "comic":
             thread = LoggedThread(target=run_workflow_in_background, args=(
-                job_id, name, gender, saved_filenames, job_type, book_id, workflow_filename
+                job_id, name, gender, saved_filenames, book_id, workflow_filename
             ))
             thread.start()
         else:
             background_tasks.add_task(
                 run_workflow_in_background,
-                job_id, name, gender, saved_filenames, job_type, book_id, workflow_filename
+                job_id, name, gender, saved_filenames, book_id, workflow_filename
             )
 
         return {"status": "regenerating", "workflow": workflow_number}
@@ -2375,11 +2312,11 @@ def run_coverpage_workflow_in_background(
             status_code=500, detail=f"Coverpage workflow failed: {str(e)}")
 
 @app.post("/preview-email")
-async def preview_email(payload: PreviewEmailRequest):
+async def preview_email(name: str, email: str, preview_url: str):
     try:
-        name = payload.name.capitalize()
-        preview_url = payload.preview_url
-        email = payload.email
+        name = name.capitalize()
+        preview_url = preview_url
+        email = email
 
         # ✅ Log all the critical values
         print("📩 Sending Preview Email:")
