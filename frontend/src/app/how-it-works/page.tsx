@@ -7,23 +7,33 @@ const HowItWorks = () => {
   const steps = [
     {
       number: 1,
-      title: 'Upload Child’s Photos',
-      description: 'Easily upload your child’s photos which will be used to create personalized storybooks.',
+      title: 'Tell us about your child',
+      description: 'Share their name, gender, and a few clear photos to get started.',
     },
     {
       number: 2,
-      title: 'Advanced Face Detection & Analysis',
-      description: 'We analyze facial landmarks, head orientation, and identity embeddings to accurately map your child’s face onto storybook characters.',
+      title: 'Smart face recreation',
+      description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
     },
     {
       number: 3,
-      title: 'AI Image Generation with ComfyUI',
-      description: 'Using advanced AI workflows on our own servers, we seamlessly blend your child’s face into fantasy scenes — creating unique, high-quality storybook pages.',
+      title: 'Instant sample preview',
+      description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
     },
     {
       number: 4,
-      title: 'Privacy-First Processing',
-      description: 'All processing is done locally on our servers without any external API. Uploaded images are automatically deleted after 3 days. Your child\'s images are never used for model training.',
+      title: 'Unlock and refine',
+      description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
+    },
+    {
+      number: 5,
+      title: 'Approve for print',
+      description: 'Review the complete book and approve it when you’re fully satisfied.',
+    },
+    {
+      number: 6,
+      title: 'Delivered to your door',
+      description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
     }
   ];
 
@@ -40,12 +50,12 @@ const HowItWorks = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mx-auto max-w-2xl text-center"
+          className="mx-auto"
         >
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-gray-900 font-libre">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight text-gray-900 font-libre">
             How It Works
           </h1>
-          <p className="mt-4 text-base sm:text-lg text-gray-600 font-poppins">
+          <p className="text-base sm:text-lg text-gray-600 font-poppins">
             A simple guide to getting started and making the most of our platform.
           </p>
         </motion.div>
@@ -58,7 +68,7 @@ const HowItWorks = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="w-full lg:w-1/2"
           >
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-4">
               {steps.map((step, index) => (
                 <motion.div
                   key={step.number}
@@ -73,11 +83,19 @@ const HowItWorks = () => {
                     </div>
                     {step.title}
                   </dt>
-                  <dd className="mt-2 text-sm sm:text-base font-poppins text-gray-600">
+                  <dd className="text-sm sm:text-base font-poppins text-gray-600">
                     {step.description}
                   </dd>
                 </motion.div>
               ))}
+            </div>
+            <div className='p-4 mt-8 ml-8'>
+              <Link
+              href="/books"
+              className="px-8 py-2.5 rounded-xl bg-[#5784ba] text-sm sm:text-base font-medium text-white shadow-sm hover:bg-[#4a6f8f] transition-colors"
+            >
+              Get Started
+            </Link>
             </div>
           </motion.div>
 
@@ -97,28 +115,6 @@ const HowItWorks = () => {
             />
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-16 text-center"
-        >
-          <h2 className="text-xl sm:text-2xl font-semibold font-libre text-gray-900">
-            Ready to get started?
-          </h2>
-          <p className="mt-2 text-sm sm:text-base text-gray-600 font-poppins">
-            Join thousands of users who are already transforming their workflow.
-          </p>
-          <div className="mt-6">
-            <Link
-              href="/books"
-              className="inline-flex items-center rounded-xl bg-[#5784ba] px-6 sm:px-8 py-3 text-sm sm:text-base font-medium text-white shadow-sm hover:bg-[#4a6f8f] transition-colors"
-            >
-              Get Started
-            </Link>
-          </div>
-        </motion.div>
         
       </div>
     </motion.section>

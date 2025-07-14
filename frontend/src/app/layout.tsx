@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/custom/Header";
 import Footer from "@/components/custom/Footer";
 import Script from "next/script";
+import AnnouncementCarousel from "@/components/animated/AnnouncementCarousel";
 
 const poppins = Poppins({
   variable: "--font-play",
@@ -193,9 +194,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript> */}
         {/* End Google Tag Manager (noscript) */}
-        <p className="bg-[#5784ba] text-xs sm:text-sm md:text-lg text-white flex items-center font-libre font-thin justify-center py-2">
-          Printing and Delivery across Canada, India, UK and US
-        </p>
+        <AnnouncementCarousel />
         <Header />
         {children}
         <Footer />

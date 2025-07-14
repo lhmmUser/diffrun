@@ -1426,7 +1426,7 @@ const Preview: React.FC = () => {
 
                         {!approved && (
                           <SwiperSlide key="generate-more">
-                            <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 border shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+                            <div className="flex flex-col items-center justify-center aspect-square w-full h-full bg-white p-6 sm:p-8 shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
                               {regeneratingWorkflow.includes(index) ? (
                                 <div className="flex flex-col items-center justify-center h-full w-full">
                                   <div className="flex space-x-1 mb-2">
@@ -1434,16 +1434,13 @@ const Preview: React.FC = () => {
                                     <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
                                     <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
                                   </div>
-                                  <p className="text-sm sm:text-base font-semibold text-gray-500">Refining...</p>
+                                  <p className="text-sm sm:text-base font-semibold text-gray-800">Regenerating...</p>
                                 </div>
                               ) : (
                                 <>
-                                  <h3 className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-12 text-center font-poppins">
-                                    Not Happy with the Previously Generated Image?
+                                  <h3 className="text-base sm:text-xl text-gray-800 mb-4 text-center font-poppins leading-tight">
+                                    Generate more options
                                   </h3>
-                                  <p className="text-sm sm:text-base text-gray-800 mb-4 sm:mb-6 text-center font-poppins">
-                                    Generate More Options
-                                  </p>
                                   <button
                                     onClick={async () => {
                                       const swiper = swiperRefs.current[index];
@@ -1457,11 +1454,11 @@ const Preview: React.FC = () => {
                                     disabled={regeneratingWorkflow.includes(index)}
                                     className={`px-6 py-2 text-sm sm:text-lg font-medium font-poppins rounded-xl transition-all duration-200 ${regeneratingWorkflow.includes(index)
                                       ? 'bg-gray-300 cursor-not-allowed'
-                                      : 'bg-yellow-300 hover:bg-yellow-400 hover:cursor-pointer'
-                                      } text-black`}
+                                      : 'bg-[#5784ba] shadow-lg hover:bg-[#9ac8eb] hover:cursor-pointer'
+                                      } text-white`}
                                     aria-label="Regenerate more options"
                                   >
-                                    {regeneratingWorkflow.includes(index) ? 'Refining...' : 'Refine'}
+                                    {regeneratingWorkflow.includes(index) ? 'Regenerating...' : 'Refine'}
                                   </button>
                                 </>
                               )}
