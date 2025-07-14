@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Cards } from "@/data/data";
 import FAQClient from "./faq/faq-client";
-import { faqData } from '@/data/data'
+import { faqData, step } from '@/data/data'
 import { steps } from "@/data/steps";
 import CookieConsent from "@/components/custom/CookieConsent";
 import { motion } from 'framer-motion'
@@ -48,45 +48,12 @@ export default function Home() {
         "bg-lime-100 text-lime-700",
     ];
 
-    const step = [
-        {
-            number: 1,
-            title: 'Tell us about your child',
-            description: 'Share their name, gender, and a few clear photos to get started.',
-        },
-        {
-            number: 2,
-            title: 'Smart face recreation',
-            description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
-        },
-        {
-            number: 3,
-            title: 'Instant sample preview',
-            description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
-        },
-        {
-            number: 4,
-            title: 'Unlock and refine',
-            description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
-        },
-        {
-            number: 5,
-            title: 'Approve for print',
-            description: 'Review the complete book and approve it when you’re fully satisfied.',
-        },
-        {
-            number: 6,
-            title: 'Delivered to your door',
-            description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
-        }
-    ];
-
     return (
         <>
             <CookieConsent />
             <main className="w-full min-h-screen relative overflow-hidden space-y-2 md:space-y-12 px-0 md:px-16 lg:px-40 xl:px-60">
 
-                <div className="hidden md:flex w-full h-[400px]">
+                <section className="hidden md:flex w-full h-[400px]">
                     <div className="w-1/2 bg-[#f7f6cf] flex items-center justify-start px-8">
                         <div className="max-w-sm space-y-6 text-left px-6 md:px-12">
                             <h2 className="text-2xl lg:text-3xl xl:text-4xl font-libre font-medium text-gray-900 leading-tight">
@@ -127,9 +94,9 @@ export default function Home() {
                         />
                     </div>
 
-                </div>
+                </section>
 
-                <div className="block md:hidden w-full">
+                <section className="block md:hidden w-full">
                     <img
                         src="/mobile-banner.avif"
                         alt="Diffrun personalized books - Mobile Banner Diffrun"
@@ -160,9 +127,9 @@ export default function Home() {
                             </p>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div className="flex flex-col px-4 sm:px-6 md:px-0 mt-4 md:mt-10">
+                <section className="flex flex-col px-4 sm:px-6 md:px-0 mt-4 md:mt-10">
                     <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
                         Choose your story and start personalizing
                     </p>
@@ -260,11 +227,11 @@ export default function Home() {
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                <div className="w-full my-10 md:my-20 px-3 md:px-0">
+                <section className="w-full my-10 md:my-20 px-3 md:px-0">
                     <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
-                </div>
+                </section>
 
                 <section className="w-full my-10 md:my-20 px-3 md:px-0">
                     <motion.div
@@ -324,11 +291,12 @@ export default function Home() {
                         >
                             <iframe
                                 className="w-full h-full"
-                                src="https://youtube.com/embed/eDfK4Xyl69A?si=-xBJa3z3DXsQ2_z3"
+                                src="https://www.youtube-nocookie.com/embed/eDfK4Xyl69A?si=-xBJa3z3DXsQ2_z3"
                                 title="Diffrun | How It Works Guide Video"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
                                 referrerPolicy="strict-origin-when-cross-origin"
+                                loading='lazy'
                             />
                         </motion.div>
                     </div>

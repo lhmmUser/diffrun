@@ -2,40 +2,9 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { step } from '@/data/data'
 
 const HowItWorks = () => {
-  const steps = [
-    {
-      number: 1,
-      title: 'Tell us about your child',
-      description: 'Share their name, gender, and a few clear photos to get started.',
-    },
-    {
-      number: 2,
-      title: 'Smart face recreation',
-      description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
-    },
-    {
-      number: 3,
-      title: 'Instant sample preview',
-      description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
-    },
-    {
-      number: 4,
-      title: 'Unlock and refine',
-      description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
-    },
-    {
-      number: 5,
-      title: 'Approve for print',
-      description: 'Review the complete book and approve it when you’re fully satisfied.',
-    },
-    {
-      number: 6,
-      title: 'Delivered to your door',
-      description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
-    }
-  ];
 
   return (
     <motion.section
@@ -69,7 +38,7 @@ const HowItWorks = () => {
             className="w-full lg:w-1/2"
           >
             <div className="flex flex-col gap-4">
-              {steps.map((step, index) => (
+              {step.map((step, index) => (
                 <motion.div
                   key={step.number}
                   initial={{ x: -20, opacity: 0 }}
@@ -107,11 +76,12 @@ const HowItWorks = () => {
           >
             <iframe
               className="w-full h-full"
-              src="https://youtube.com/embed/eDfK4Xyl69A?si=-xBJa3z3DXsQ2_z3"
+              src="https://www.youtube-nocookie.com/embed/eDfK4Xyl69A?si=-xBJa3z3DXsQ2_z3"
               title="Diffrun | How It Works Guide Video"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               referrerPolicy="strict-origin-when-cross-origin"
+              loading='lazy'
             />
           </motion.div>
         </div>

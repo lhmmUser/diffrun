@@ -249,3 +249,36 @@ export const bookDetails: Record<string, { title: string; description: string }>
       "A magical journey through imagination—soar above clouds, tame dragons, and dive into a world where anything is possible and every dream feels real.",
   }
 };
+
+export const step = [
+        {
+            number: 1,
+            title: 'Tell us about your child',
+            description: 'Share their name, gender, and a few clear photos to get started.',
+        },
+        {
+            number: 2,
+            title: 'Smart face recreation',
+            description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
+        },
+        {
+            number: 3,
+            title: 'Instant sample preview',
+            description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
+        },
+        {
+            number: 4,
+            title: 'Unlock and refine',
+            description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
+        },
+        {
+            number: 5,
+            title: 'Approve for print',
+            description: 'Review the complete book and approve it when you’re fully satisfied.',
+        },
+        {
+            number: 6,
+            title: 'Delivered to your door',
+            description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
+        }
+    ];
