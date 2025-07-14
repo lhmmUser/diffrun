@@ -1916,6 +1916,7 @@ async def execute_workflow_lock(
                 "email": None,
                 "paid": False,
                 "approved": False,
+                "print_approval": False,
                 "workflows": {},
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc),
@@ -2777,6 +2778,31 @@ def approval_confirmation_email(username: str, child_name: str, email: str):
 
     except Exception as e:
         logger.error(f"❌ Failed to send delivery email: {e}")
+
+@app.post("/api/update-print-approval")
+async def update_print_approval(request: Request):
+    try:
+        data = await request.json()
+        job_id = data.get("job_id")
+        
+        if not job_id:
+            raise HTTPException(status_code=400, detail="Job ID is required")
+       
+        result = user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"print_approval": True}}
+        )
+        
+        if result.modified_count == 0:
+            logger.warning(f"No document found with job_id={job_id}")
+            return {"status": "not_found", "message": "Job ID not found"}
+            
+        logger.info(f"✅ Updated print_approval for job_id={job_id}")
+        return {"status": "success", "message": "Print approval updated"}
+        
+    except Exception as e:
+        logger.error(f"❌ Error updating print approval: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/about")
 async def serve_about():
