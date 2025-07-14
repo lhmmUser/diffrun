@@ -227,5 +227,5 @@ body {
     transparent 100%
   );
   transform: rotate(25deg);
-  animation: shine-sweep 2.5s infinite;
+  animation: shine-sweep 5s infinite;
 }

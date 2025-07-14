@@ -32,7 +32,7 @@ const Header = () => {
               <Link
                 key={index}
                 href={item.href}
-                className="relative group text-gray-700 hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200 "
+                className="relative group text-gray-700 text-base lg:text-lg hover:text-indigo-500 transition-colors duration-300 px-4 py-2 rounded-lg hover:bg-gray-200 "
               >
                 {item.label}
                 <span

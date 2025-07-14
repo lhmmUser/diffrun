@@ -1221,6 +1221,16 @@ const Preview: React.FC = () => {
 
   const swiperRefs = useRef<(SwiperClass | null)[]>([]);
 
+  const allWorkflowsCompleted = useMemo(() => {
+    return carousels.length === totalWorkflows &&
+      carousels.every(c => c?.images?.length > 0);
+  }, [carousels, totalWorkflows]);
+
+  const first10WorkflowsCompleted = useMemo(() => {
+    return carousels.length >= 10 &&
+      carousels.slice(0, 10).every(c => c?.images?.length > 0);
+  }, [carousels]);
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8" style={{ backgroundImage: "url('/background-grid.jpg')" }} >
@@ -1535,9 +1545,18 @@ const Preview: React.FC = () => {
                 </p>
                 <button
                   onClick={handleSubmit}
-                  disabled={!jobId || loading || submitting || regeneratingIndexes.length > 0}
-                  className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-colors duration-200
-                ${!jobId || loading || submitting || regeneratingIndexes.length > 0
+                  disabled={
+                    !jobId ||
+                    loading ||
+                    submitting ||
+                    regeneratingIndexes.length > 0 ||
+                    !first10WorkflowsCompleted
+                  }
+                  className={`relative overflow-hidden shine px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-colors duration-200 ${!jobId ||
+                      loading ||
+                      submitting ||
+                      regeneratingIndexes.length > 0 ||
+                      !first10WorkflowsCompleted
                       ? 'bg-indigo-400 cursor-not-allowed opacity-75'
                       : 'bg-[#5784ba] hover:bg-[#5784bc] active:bg-[#5784bd] shadow-md cursor-pointer'
                     }`}
@@ -1548,26 +1567,35 @@ const Preview: React.FC = () => {
                       ? "Regenerating..."
                       : loading
                         ? "Loading..."
-                        : "Continue to Purchase"}
+                        : !first10WorkflowsCompleted
+                          ? "Generating preview..."
+                          : "Continue to Purchase"}
                 </button>
               </div>
             )}
 
             {paid && !approved && (
-              <div className="w-72 md:w-96 fixed z-50 bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-3 md:p-6 rounded-lg shadow-2xl text-center">
-                <p className="text-gray-800 font-poppins mb-4 text-sm sm:text-base animate-fade-in">
+              <div className="w-72 md:w-80 fixed z-50 bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-3 md:p-6 rounded-xl shadow-2xl text-center space-y-4">
+
+                <button
+                  onClick={handleApprove}
+                  disabled={approving || !jobId || loading || regeneratingIndexes.length > 0 || !allWorkflowsCompleted}
+                  className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-all duration-200 ${!approving && regeneratingIndexes.length === 0 && allWorkflowsCompleted
+                    ? 'bg-[#5784ba] hover:bg-[#516f93] active:bg-[#295288] shadow-md cursor-pointer'
+                    : 'bg-indigo-400 opacity-75 cursor-not-allowed'
+                    }`}
+                >
+                  {approving
+                    ? "Approving..."
+                    : regeneratingIndexes.length > 0
+                      ? "Regenerating..."
+                      : !allWorkflowsCompleted
+                        ? "Generating full preview..."
+                        : "Approve for printing"}
+                </button>
+                <p className="text-gray-800 font-poppins text-sm">
                   Your book will be delivered in 7 days
                 </p>
-              <button
-                onClick={handleApprove}
-                disabled={approving || !jobId || loading || regeneratingIndexes.length > 0 || carousels.length < totalWorkflows}
-                className={`px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-all duration-200 ${!approving && regeneratingIndexes.length === 0
-                  ? 'bg-[#5784ba] hover:bg-[#516f93] active:bg-[#295288] shadow-md cursor-pointer'
-                  : 'bg-indigo-400 opacity-75 cursor-not-allowed'
-                  }`}
-              >
-                {approving ? "Approving..." : regeneratingIndexes.length > 0 ? "Regenerating..." : "Approve for printing"}
-              </button>
               </div>
             )}
 

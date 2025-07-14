@@ -7,6 +7,7 @@ import FAQClient from "./faq/faq-client";
 import { faqData } from '@/data/data'
 import { steps } from "@/data/steps";
 import CookieConsent from "@/components/custom/CookieConsent";
+import { motion } from 'framer-motion'
 
 export default function Home() {
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -45,6 +46,29 @@ export default function Home() {
         "bg-orange-100 text-orange-700",
         "bg-rose-100 text-rose-700",
         "bg-lime-100 text-lime-700",
+    ];
+
+    const step = [
+        {
+            number: 1,
+            title: 'Upload Child’s Photos',
+            description: 'Easily upload your child’s photos which will be used to create personalized storybooks.',
+        },
+        {
+            number: 2,
+            title: 'Advanced Face Detection & Analysis',
+            description: 'We analyze facial landmarks, head orientation, and identity embeddings to accurately map your child’s face onto storybook characters.',
+        },
+        {
+            number: 3,
+            title: 'AI Image Generation with ComfyUI',
+            description: 'Using advanced AI workflows on our own servers, we seamlessly blend your child’s face into fantasy scenes — creating unique, high-quality storybook pages.',
+        },
+        {
+            number: 4,
+            title: 'Privacy-First Processing',
+            description: 'All processing is done locally on our servers without any external API. Uploaded images are automatically deleted after 3 days. Your child\'s images are never used for model training.',
+        }
     ];
 
     return (
@@ -232,6 +256,56 @@ export default function Home() {
                     <div className="elfsight-app-29870a34-63ec-4b12-8726-598d2c8c614c" data-elfsight-app-lazy></div>
                 </div>
 
+                <section className="w-full my-10 md:my-20 px-3 md:px-0">
+                    <div className="mt-12 flex flex-col-reverse lg:flex-row gap-10 items-center">
+
+                        <motion.div
+                            initial={{ x: -50, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ duration: 0.5, delay: 0.3 }}
+                            className="w-full lg:w-1/2"
+                        >
+                            <div className="flex flex-col gap-8">
+                                {step.map((step, index) => (
+                                    <motion.div
+                                        key={step.number}
+                                        initial={{ x: -20, opacity: 0 }}
+                                        animate={{ x: 0, opacity: 1 }}
+                                        transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
+                                        className="relative pl-14 px-4"
+                                    >
+                                        <dt className="text-lg sm:text-xl font-medium font-libre text-gray-800">
+                                            <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#5784ba] text-white">
+                                                {step.number}
+                                            </div>
+                                            {step.title}
+                                        </dt>
+                                        <dd className="mt-2 text-sm sm:text-base font-poppins text-gray-600">
+                                            {step.description}
+                                        </dd>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ x: 50, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ duration: 0.5, delay: 0.4 }}
+                            className="w-full md:ml-0 lg:ml-30 max-w-sm sm:max-w-lg aspect-[1/1] rounded-xl overflow-hidden shadow-lg lg:w-1/2"
+                        >
+                            <iframe
+                                className="w-full h-full"
+                                src="https://youtube.com/embed/eDfK4Xyl69A?si=-xBJa3z3DXsQ2_z3"
+                                title="Diffrun | How It Works Guide Video"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                referrerPolicy="strict-origin-when-cross-origin"
+                            />
+                        </motion.div>
+                    </div>
+                </section>
+
                 <section className="bg-[#f7f6cf] py-10 px-4 my-10 md:my-20">
                     <div className="mx-auto text-center space-y-8">
                         <h2 className="text-2xl lg:text-3xl xl:text-4xl font-libre font-medium text-gray-900 leading-tight">
@@ -252,7 +326,7 @@ export default function Home() {
                 </section>
 
             </main>
-            
+
             <div className="px-4 md:px-16 lg:px-40 xl:px-60">
                 <FAQClient items={faqData} />
             </div>

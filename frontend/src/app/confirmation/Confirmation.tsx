@@ -146,13 +146,11 @@ export default function Confirmation() {
           Once you're happy with the final result, please click the <strong>"Approve for printing"</strong> button on the preview page. This step is essential to finalize your book and prepare it for printing.
         </p>
 
-        <h3 className="text-lg font-bold mb-6">📖 Preview & Refine Your Book:</h3>
-
         <a
           href={jobData.preview_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block px-6 py-3 bg-[#5784ba] text-white font-medium mb-6 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"
+          className="inline-block px-6 py-3 rounded-xl bg-[#5784ba] text-white font-medium mb-6 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"
         >
           View & Refine Storybook
         </a>
