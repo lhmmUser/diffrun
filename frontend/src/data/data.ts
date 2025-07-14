@@ -112,8 +112,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,550", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹2,050", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -163,9 +163,9 @@ export const Cards: CardProps[] = [
   },
   {
      bookKey: "sports",
-    title: "Amaira is a born Sportstar",
+    title: "Game On Amaira",
     imageSrc: "/sports-book.avif",
-    hoverImageSrc: "sports-book-5.avif",
+    hoverImageSrc: "sports-book-2.avif",
     age: "4 - 10",
     description:
      "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
