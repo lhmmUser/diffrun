@@ -1290,7 +1290,7 @@ const Preview: React.FC = () => {
                     </div>
                     <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
                       <div className="flex flex-col justify-center items-center w-full h-full">
-                        <img src="/lock-page.webp" alt="Locked" className="h-full w-full object-cover" />
+                        <img src="/lock.avif" alt="Locked" className="h-full w-full object-cover" />
                       </div>
                     </div>
                   </div>
