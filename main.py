@@ -1471,8 +1471,7 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
 
         
         # --- Cover Page Upload from S3 ---
-        exterior_index = selected[0]
-        variant_str = str(exterior_index + 1).zfill(3)  
+        exterior_index = selected[0]  # 0 for first image, 1 for second, etc.
         book_id = user.get("book_id")
         book_style = user.get("book_style")
 
@@ -1482,16 +1481,25 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         if "Contents" not in s3_exterior_result:
             raise Exception(f"No exterior images found for job_id={job_id} in S3")
 
-        matched_exterior_key = None
+        # Extract all keys matching the pattern and extract timestamps
+        timestamped_keys = []
+        pattern = re.compile(rf"{re.escape(job_id)}_pg0_(\d+)_001\.png$")
+
         for obj in s3_exterior_result["Contents"]:
             key = obj["Key"]
-            if f"{job_id}_pg0" in key and key.endswith(f"_{variant_str}.png"):
-                matched_exterior_key = key
-                break
+            match = pattern.search(key)
+            if match:
+                timestamp = int(match.group(1))
+                timestamped_keys.append((timestamp, key))
 
-        if not matched_exterior_key:
-            raise Exception(f"❌ No exterior match found in S3 for variant {variant_str}")
+        # Sort by timestamp
+        timestamped_keys.sort(key=lambda x: x[0])
 
+        # Select the desired variant by index
+        try:
+            _, matched_exterior_key = timestamped_keys[exterior_index]
+        except IndexError:
+            raise Exception(f"❌ Only {len(timestamped_keys)} exterior images found; no match for index {exterior_index}")
 
         # Download from S3 to local cover_inputs/
         cover_input_dir = Path(INPUT_FOLDER) / "cover_inputs" / job_id
