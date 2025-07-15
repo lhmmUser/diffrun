@@ -1470,31 +1470,38 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
         interior_url = f"https://storyprints.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{s3_key}"
 
         
-        # --- Cover Page Upload ---
+        # --- Cover Page Upload from S3 ---
         exterior_index = selected[0]
         variant_str = str(exterior_index + 1).zfill(5)
         book_id = user.get("book_id")
         book_style = user.get("book_style")
 
-        cover_src_pattern = f"*{job_id}_{book_id}_{variant_str}*"
-        cover_exterior_dir = Path(OUTPUT_FOLDER) / job_id / "exterior"
+        s3_exterior_prefix = f"output/{job_id}/exterior/"
+        s3_exterior_result = s3.list_objects_v2(Bucket="replicacomfy", Prefix=s3_exterior_prefix)
+
+        if "Contents" not in s3_exterior_result:
+            raise Exception(f"No exterior images found for job_id={job_id} in S3")
+
+        # Match pattern: must include 'pg0' and variant like '_00001.png'
+        matched_exterior_key = None
+        for obj in s3_exterior_result["Contents"]:
+            key = obj["Key"]
+            if f"{job_id}_pg0" in key and f"_{variant_str}.png" in key:
+                matched_exterior_key = key
+                break
+
+        if not matched_exterior_key:
+            raise Exception(f"❌ No exterior match found in S3 for variant {variant_str}")
+
+        # Download from S3 to local cover_inputs/
         cover_input_dir = Path(INPUT_FOLDER) / "cover_inputs" / job_id
         cover_input_dir.mkdir(parents=True, exist_ok=True)
+        cover_input_filename = Path(matched_exterior_key).name
+        cover_dest = cover_input_dir / cover_input_filename
 
-        cover_matches = list(cover_exterior_dir.glob(cover_src_pattern))
-        if not cover_matches:
-            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
-            raise Exception(f"Cover image not found for pattern: {cover_src_pattern}")
-        cover_dest = cover_input_dir / cover_matches[0].name
-        shutil.copy(cover_matches[0], cover_dest)
-        cover_input_filename = cover_matches[0].name
-        logger.info(f"✅ Copied cover image: {cover_matches[0]} → {cover_dest}")
+        s3.download_file("replicacomfy", matched_exterior_key, str(cover_dest))
+        logger.info(f"✅ Downloaded exterior image from S3: {matched_exterior_key} → {cover_dest}")
 
-
-        # --- Kick off cover workflow ---
-        s3_cover_key = f"input/cover_inputs/{job_id}/{cover_input_filename}"
-        s3.upload_file(str(cover_dest), "replicacomfy", s3_cover_key)
-        logger.info(f"📤 Uploaded cover to S3: {s3_cover_key}")
 
         # --- Kick off cover workflow ---
         run_coverpage_workflow_in_background(
