@@ -31,7 +31,7 @@ import shutil
 from threading import Thread
 from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
-from models import PreviewEmailRequest, BookStylePayload
+from models import ItemShippedPayload, BookStylePayload
 from pathlib import Path
 import glob
 from dotenv import load_dotenv
@@ -2803,6 +2803,87 @@ async def update_print_approval(request: Request):
     except Exception as e:
         logger.error(f"❌ Error updating print approval: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/api/item_shipped")
+async def item_shipped(payload: ItemShippedPayload, request: Request):
+    logger.info(f"📦 Received Cloudprinter webhook: {payload.dict()}")
+
+    expected_api_key = os.getenv("CLOUDPRINTER_WEBHOOK_KEY")
+    if payload.apikey != expected_api_key:
+        logger.warning("❌ Invalid webhook API key")
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
+    existing = user_details_collection.find_one({
+        "order_id": payload.order_reference,
+        "tracking_code": payload.tracking
+    })
+    if existing:
+        logger.info(f"🔁 Duplicate tracking info already exists for order {payload.order_reference}")
+        return {"status": "already_processed"}
+
+    result = user_details_collection.update_one(
+        {"order_id": payload.order_reference},
+        {
+            "$set": {
+                "tracking_code": payload.tracking,
+                "shipping_option": payload.shipping_option,
+                "shipped_at": payload.datetime
+            }
+        }
+    )
+
+    if result.modified_count:
+        logger.info(f"✅ Order {payload.order_reference} updated with tracking info")
+        send_tracking_email(payload.order_reference)
+        return {"status": "success"}
+    else:
+        logger.warning(f"⚠️ Order not found for reference: {payload.order_reference}")
+        return {"status": "not_found"}
+
+def send_tracking_email(order_id: str):
+    order = user_details_collection.find_one({"order_id": order_id})
+    if not order:
+        logger.error(f"❌ No order found for tracking email: {order_id}")
+        return
+
+    recipient = order.get("email")
+    name = order.get("name", "").title()
+    user_name = order.get("user_name", "")
+    tracking_code = order.get("tracking_code", "")
+    shipping_option = order.get("shipping_option", "")
+    carrier = shipping_option.lower().replace(" ", "-")
+    tracking_link = f"https://track.aftership.com/{carrier}/{tracking_code}"
+
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif;">
+        <h2>📦 Your storybook has been shipped!</h2>
+        <p>Hi {user_name},</p>
+        <p>We're excited to let you know that <strong>{name}'s storybook</strong> is on its way.</p>
+        <p><strong>Tracking ID:</strong> {tracking_code}</p>
+        <p><strong>Carrier:</strong> {shipping_option}</p>
+        <p>You can track your shipment here:</p>
+        <p><a href="{tracking_link}" target="_blank">{tracking_link}</a></p>
+        <br/>
+        <p>Thank you for choosing Diffrun!</p>
+      </body>
+    </html>
+    """
+
+    msg = EmailMessage()
+    msg["Subject"] = f"{name}'s Storybook is on the way! 📬"
+    msg["From"] = f"Team Diffrun <{os.getenv('EMAIL_ADDRESS')}>"
+    msg["To"] = recipient
+    msg.set_content("This email contains HTML content.")
+    msg.add_alternative(html_content, subtype="html")
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_USER, EMAIL_PASS)
+            smtp.send_message(msg)
+            logger.info(f"✅ Tracking email sent to {recipient}")
+    except Exception as e:
+        logger.error(f"❌ Failed to send tracking email: {e}")
 
 @app.get("/about")
 async def serve_about():

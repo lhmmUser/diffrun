@@ -29,3 +29,14 @@ class PreviewEmailRequest(BaseModel):
 class BookStylePayload(BaseModel):
     job_id: str
     book_style: str
+
+class ItemShippedPayload(BaseModel):
+    apikey: str
+    type: str
+    order: str
+    item: str
+    order_reference: str
+    item_reference: str
+    tracking: str
+    shipping_option: str
+    datetime: str
