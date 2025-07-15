@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, ChangeEvent } from "react";
+import { useState, useEffect, useMemo, ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Select, { SingleValue } from 'react-select';
 import Script from 'next/script';
@@ -33,7 +33,7 @@ const extractNumericValue = (value: string): number => {
 };
 
 const VALID_COUPONS: Record<string, number> = {
-  LHMM: 99.91,
+  LHMM: 99.93,
   NEWUSER: 50,
   SPECIAL50: 50,
 };
@@ -59,7 +59,6 @@ const INDIAN_STATES = [
   "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir",
   "Ladakh", "Lakshadweep", "Puducherry"
 ];
-
 const stateOptions: StateOption[] = INDIAN_STATES.map((state) => ({ value: state, label: state }));
 
 export default function Checkout() {
@@ -67,53 +66,67 @@ export default function Checkout() {
   const jobId = searchParams.get("job_id") || "";
 
   const [formData, setFormData] = useState<FormData>({
-    email: "",
-    firstName: "",
-    lastName: "",
-    address: "",
-    apartment: "",
-    city: "",
-    state: "",
-    pincode: "",
-    contact: ""
+    email: "", firstName: "", lastName: "", address: "",
+    apartment: "", city: "", state: "", pincode: "", contact: ""
   });
+
   const [bookStyle, setBookStyle] = useState<"hardcover" | "paperback" | null>(null);
-  const [bookKey, setBookKey] = useState<string>("astro");
+  const [bookKey, setBookKey] = useState<string>("");
   const [appliedCoupon, setAppliedCoupon] = useState<string>("");
   const [discountCode, setDiscountCode] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    const fetchJobDetails = async () => {
-      if (!jobId) return;
-      try {
-        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-        const data = await response.json();
-        if (data.book_style === "hardcover" || data.book_style === "paperback") {
-          setBookStyle(data.book_style);
-        } else {
-          setBookStyle("paperback");
-        }
-        if (data.book_id) setBookKey(data.book_id);
-      } catch (err) {
-        console.error("Error fetching job status:", err);
+  const fetchJobDetails = async () => {
+    const urlBookId = searchParams.get("book_id"); // ✅ fallback
+    if (!jobId) return;
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+      const data = await response.json();
+
+      if (data.book_style === "hardcover" || data.book_style === "paperback") {
+        setBookStyle(data.book_style);
+      } else {
         setBookStyle("paperback");
       }
+
+      if (data.book_id) {
+        setBookKey(data.book_id);
+      } else if (urlBookId) {
+        setBookKey(urlBookId); // ✅ use from URL if not present in DB
+      }
+
+    } catch (err) {
+      console.error("Error fetching job status:", err);
+      setBookStyle("paperback");
+
+      if (urlBookId) {
+        setBookKey(urlBookId); // ✅ fallback during error
+      }
+    }
+  };
+
+  fetchJobDetails();
+}, [jobId, searchParams]);
+
+  const {
+    price, shipping, taxes, numericPrice, numericShipping, numericTaxes
+  } = useMemo(() => {
+    if (!bookStyle || !bookKey) return {
+      price: "", shipping: "", taxes: "",
+      numericPrice: 0, numericShipping: 0, numericTaxes: 0
     };
-    fetchJobDetails();
-  }, [jobId]);
+    const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle, bookKey);
+    return {
+      price, shipping, taxes,
+      numericPrice: extractNumericValue(price),
+      numericShipping: extractNumericValue(shipping),
+      numericTaxes: extractNumericValue(taxes)
+    };
+  }, [bookStyle, bookKey]);
 
-  if (!bookStyle) {
-    return <div className="flex justify-center items-center min-h-screen">
-      <p className="text-lg font-semibold">Loading checkout...</p>
-    </div>;
-  }
-
-  const { price, shipping, taxes } = getFixedPriceByCountry("IN", bookStyle, bookKey);
-  const numericPrice = extractNumericValue(price);
-  const numericShipping = extractNumericValue(shipping);
-  const numericTaxes = extractNumericValue(taxes);
   const discountPercentage = VALID_COUPONS[appliedCoupon] || 0;
   const discountAmount = numericPrice * (discountPercentage / 100);
   const finalAmount = numericPrice - discountAmount;
@@ -199,6 +212,12 @@ export default function Checkout() {
     if (!pincodeRegex.test(formData.pincode)) { setError("Please enter valid 6-digit PIN code."); return false; }
     setError(""); return true;
   };
+
+  if (!bookStyle || !bookKey) {
+    return <div className="flex justify-center items-center min-h-screen">
+      <p className="text-lg font-semibold">Loading checkout...</p>
+    </div>;
+  }
 
   return (
     <>
