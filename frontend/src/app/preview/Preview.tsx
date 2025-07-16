@@ -1312,7 +1312,7 @@ const Preview: React.FC = () => {
                       <div className="flex flex-col justify-center items-center w-full h-full">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
                         <p className="text-sm text-gray-700 mt-4 font-poppins">
-                          Generating page {index} of {totalWorkflows}
+                          Generating page {index} of {totalWorkflows - 1}
                         </p>
                       </div>
                     </div>
