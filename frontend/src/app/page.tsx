@@ -9,33 +9,107 @@ import { steps } from "@/data/steps";
 import CookieConsent from "@/components/custom/CookieConsent";
 import { motion } from 'framer-motion'
 
+type CountryCode = 'US' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
+
 export default function Home() {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const GEO = process.env.GEO;
-    const [locale, setLocale] = useState<string>("");
+
+    const GEO = process.env.NEXT_PUBLIC_GEO;
+    const [locale, setLocale] = useState<CountryCode>("");
+    const [isLocaleLoading, setIsLocaleLoading] = useState(true);
 
     useEffect(() => {
-        const fetchCountry = async () => {
+        const determineLocale = async () => {
+            setIsLocaleLoading(true);
+
             try {
-                const res = await fetch(`https://ipapi.co/json?token=${GEO}`);
-                const data = await res.json();
-                const userLocale = data.country || "";
+                const ipapiRes = await fetch(`https://ipapi.co/json?token=${GEO || "tryit"}`);
+                if (ipapiRes.ok) {
+                    const ipapiData = await ipapiRes.json();
 
-                localStorage.setItem("userLocale", userLocale);
-                setLocale(userLocale);
+                    if (ipapiData.country && isValidCountryCode(ipapiData.country)) {
+                        const normalized = normalizeCountryCode(ipapiData.country);
+                        setLocale(normalized);
+                        localStorage.setItem("userLocale", normalized);
+                        return;
+                    }
+                }
 
-                await fetch(`${apiBaseUrl}/update-country`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ locale: userLocale }),
-                });
-            } catch (err) {
-                console.error("🌐 Failed to fetch locale:", err);
+                console.log("[Geo] Falling back to ip-api.com");
+                const ipApiRes = await fetch('http://ip-api.com/json/?fields=countryCode');
+                if (ipApiRes.ok) {
+                    const ipApiData = await ipApiRes.json();
+
+
+                    if (ipApiData.countryCode && isValidCountryCode(ipApiData.countryCode)) {
+                        const normalized = normalizeCountryCode(ipApiData.countryCode);
+                        setLocale(normalized);
+                        localStorage.setItem("userLocale", normalized);
+                        return;
+                    }
+                }
+
+                console.log("[Geo] Falling back to browser language");
+                const browserLang = navigator.language.split('-')[1];
+                if (browserLang && isValidCountryCode(browserLang)) {
+                    const normalized = normalizeCountryCode(browserLang);
+                    setLocale(normalized);
+                    localStorage.setItem("userLocale", normalized);
+                    return;
+                }
+
+                throw new Error("All methods failed");
+
+            } catch (error) {
+                setLocale("IN");
+                localStorage.setItem("userLocale", "IN");
+            } finally {
+                setIsLocaleLoading(false);
             }
         };
 
-        fetchCountry();
-    }, []);
+        determineLocale();
+    }, [GEO]);
+
+    const isValidCountryCode = (code: string): boolean => {
+        const validCodes = ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'];
+        const isValid = validCodes.includes(code);
+        return isValid;
+    };
+
+    const normalizeCountryCode = (code: string): CountryCode => {
+        if (!code) return 'IN';
+        const upperCode = code.toUpperCase();
+        return upperCode;
+    };
+
+    const formatPrice = (card: typeof Cards[0], bookType: 'paperback' | 'hardcover') => {
+        if (isLocaleLoading) {
+            return <span className="h-4 w-20 bg-gray-200 animate-pulse rounded"></span>;
+        }
+
+        const countryKey = Object.keys(card.prices).find(
+            key => key.toUpperCase() === locale.toUpperCase()
+        ) as keyof typeof card.prices || 'IN';
+
+        const countryPrices = card.prices[countryKey] || card.prices.IN;
+        const priceData = countryPrices[bookType];
+
+        const currencyMatch = priceData.price.match(/[A-Z]{2,3}$/);
+        const currencyCode = currencyMatch ? currencyMatch[0] :
+            countryKey === 'US' ? 'USD' :
+                countryKey === 'GB' ? 'GBP' :
+                    countryKey === 'CA' ? 'CAD' :
+                        countryKey === 'AU' ? 'AUD' :
+                            countryKey === 'NZ' ? 'NZD' : 'INR';
+
+        return (
+            <span>
+                From {priceData.price.includes(currencyCode)
+                    ? priceData.price
+                    : `${priceData.price} ${currencyCode}`}
+            </span>
+        );
+    };
 
     const pastelTags = [
         "bg-pink-100 text-pink-700",
@@ -207,8 +281,8 @@ export default function Home() {
                                         </p>
 
                                         <div className="flex items-center justify-between mt-auto pt-4">
-                                            <span className="text-lg font-semibold text-gray-800">
-                                                From {card.prices?.IN?.paperback?.price || '₹499'}
+                                            <span className="text-base md:text-lg font-medium text-gray-800">
+                                                {formatPrice(card, 'paperback')}
                                             </span>
 
                                             <button
@@ -302,7 +376,7 @@ export default function Home() {
                     </div>
                 </section>
 
-                <section className="bg-[#f7f6cf] py-10 px-4 my-10 md:my-20">
+                <section className="bg-[#f7f6cf] py-10 px-4">
                     <div className="mx-auto ml-4 space-y-8 text-center">
                         <h2 className="text-2xl lg:text-3xl xl:text-4xl font-libre font-medium text-gray-900 leading-tight">
                             Meaningful gifts, made in minutes
@@ -323,7 +397,7 @@ export default function Home() {
 
             </main>
 
-            <div className="px-4 md:px-16 lg:px-40 xl:px-60">
+            <div className="px-4 md:px-16 lg:px-40 xl:px-60 mt-6 md:mt-0">
                 <FAQClient items={faqData} />
             </div>
         </>

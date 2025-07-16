@@ -55,15 +55,6 @@ const Purchase = () => {
     );
   };
 
-  const parseCurrency = (priceStr: string): { currency: string; amount: number } => {
-    const match = priceStr.match(/^([^\d\s.,]+)?\s?([\d,]+(?:\.\d+)?)/);
-    if (!match) return { currency: "", amount: 0 };
-
-    const currency = match[1] || "";
-    const amount = parseFloat(match[2].replace(/,/g, ""));
-    return { currency, amount };
-  };
-
   const calculateFinalAmount = (
     basePrice: string,
     shipping: string,
@@ -129,7 +120,7 @@ const Purchase = () => {
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckoutShopify = async () => {
     if (!selectedOption) return;
     const variantId = selectedOption === "hardcover" ? "41626628128902" : "41626628161670";
 

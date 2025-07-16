@@ -31,7 +31,7 @@ export const Cards: CardProps[] = [
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
         hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
+      GB: {
         paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
         hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
       },
@@ -67,7 +67,7 @@ export const Cards: CardProps[] = [
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
         hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
+      GB: {
         paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
         hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
       },
@@ -103,7 +103,7 @@ export const Cards: CardProps[] = [
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
         hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
+      GB: {
         paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
         hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
       },
@@ -139,7 +139,7 @@ export const Cards: CardProps[] = [
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
         hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
+      GB: {
         paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
         hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
       },
@@ -175,7 +175,7 @@ export const Cards: CardProps[] = [
         paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
         hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
+      GB: {
         paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
         hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
       },

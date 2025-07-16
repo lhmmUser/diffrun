@@ -34,6 +34,8 @@ interface FormGuide {
   type: 'info' | 'success' | 'warning';
 }
 
+type CountryCode = 'US' | 'UK' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
+
 const TypingCycle: React.FC = () => {
   const texts = [
     "Good things take a few seconds... Great things take a little longer!",
@@ -140,34 +142,145 @@ const Form: React.FC = () => {
   };
 
   const [imageToCrop, setImageToCrop] = useState<number | null>(null);
+  const [locale, setLocale] = useState<CountryCode>("IN");
+  const [isLocaleLoading, setIsLocaleLoading] = useState(true);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const GEO = process.env.GEO;
 
-  useEffect(() => {
-    const fetchCountry = async () => {
-      try {
-        const res = await fetch(`https://ipapi.co/json?token=${GEO}`);
-        const data = await res.json();
-        const locale = data.country || "";
+  const isValidCountryCode = (code: string): boolean => {
+    return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(code);
+  };
 
-        if (locale && redirectData?.jobId) {
-          await fetch(`${apiBaseUrl}/update-country`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              job_id: redirectData.jobId,
-              locale,
-            }),
-          });
-          console.log("✅ Locale sent:", locale);
+  const normalizeCountryCode = (code: string): CountryCode => {
+    if (!code) return 'IN';
+    const upperCode = code.toUpperCase();
+    return upperCode;
+  };
+
+  const getClientSideCountry = async (): Promise<string> => {
+    const apis = [
+      {
+        name: "ipapi.co",
+        fn: () => fetch(`https://ipapi.co/json?token=${GEO}`).then(res => res.json()),
+        extract: (data: any) => data.country
+      },
+      {
+        name: "api.country.is",
+        fn: () => fetch('https://api.country.is').then(res => res.json()),
+        extract: (data: any) => data.country
+      },
+      {
+        name: "geolocation-db.com",
+        fn: () => fetch('https://geolocation-db.com/json/').then(res => res.json()),
+        extract: (data: any) => data.country_code
+      }
+    ];
+
+    for (const api of apis) {
+      try {
+        console.log(`[Geo] Trying ${api.name} API`);
+        const response = await api.fn();
+        const countryCode = api.extract(response);
+        
+        if (countryCode && isValidCountryCode(countryCode)) {
+          console.log(`[Geo] Success with ${api.name}:`, countryCode);
+          return countryCode;
         }
-      } catch (err) {
-        console.error("🌐 Failed to fetch locale:", err);
+      } catch (e) {
+        console.error(`[Geo] Failed with ${api.name}:`, e);
+        continue;
+      }
+    }
+    throw new Error("[Geo] All geolocation APIs failed");
+  };
+
+  const updateBackendLocale = async (locale: string, jobId?: string) => {
+    if (!apiBaseUrl) return;
+    
+    try {
+      const payload = jobId ? { locale, job_id: jobId } : { locale };
+      console.log("[Geo] Updating backend with:", payload);
+      
+      await fetch(`${apiBaseUrl}/update-country`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error("[Geo] Backend update failed:", err);
+    }
+  };
+
+  // Initialize locale detection
+  useEffect(() => {
+    const determineLocale = async () => {
+      setIsLocaleLoading(true);
+      console.log("[Geo] Starting locale detection");
+      
+      try {
+        // 1. Check localStorage first
+        const cachedLocale = localStorage.getItem("userLocale");
+        if (cachedLocale && isValidCountryCode(cachedLocale)) {
+          const normalized = normalizeCountryCode(cachedLocale);
+          setLocale(normalized);
+          await updateBackendLocale(normalized);
+          setIsLocaleLoading(false);
+          return;
+        }
+
+        // 2. Try geolocation APIs
+        const countryCode = await getClientSideCountry();
+        const normalized = normalizeCountryCode(countryCode);
+        
+        setLocale(normalized);
+        localStorage.setItem("userLocale", normalized);
+        await updateBackendLocale(normalized);
+      } catch (error) {
+        console.error("[Geo] Geolocation failed, using default IN", error);
+        setLocale("IN");
+      } finally {
+        setIsLocaleLoading(false);
       }
     };
 
-    fetchCountry();
-  }, [redirectData]);
+    determineLocale();
+  }, []);
+
+  // Update locale when job is created
+  useEffect(() => {
+    if (redirectData?.jobId && locale) {
+      updateBackendLocale(locale, redirectData.jobId);
+    }
+  }, [redirectData, locale]);
+
+  const formatPrice = (card: typeof Cards[0], bookType: 'paperback' | 'hardcover') => {
+        if (isLocaleLoading) {
+            return <span className="h-4 w-20 bg-gray-200 animate-pulse rounded"></span>;
+        }
+        
+        const countryKey = Object.keys(card.prices).find(
+            key => key.toUpperCase() === locale.toUpperCase()
+        ) as keyof typeof card.prices || 'IN';
+        
+        const countryPrices = card.prices[countryKey] || card.prices.IN;
+        const priceData = countryPrices[bookType];
+     
+        const currencyMatch = priceData.price.match(/[A-Z]{2,3}$/);
+        const currencyCode = currencyMatch ? currencyMatch[0] : 
+                           countryKey === 'US' ? 'USD' :
+                           countryKey === 'GB' ? 'GBP' :
+                           countryKey === 'CA' ? 'CAD' :
+                           countryKey === 'AU' ? 'AUD' :
+                           countryKey === 'NZ' ? 'NZD' : 'INR';
+    
+        return (
+            <span>
+                From {priceData.price.includes(currencyCode) 
+                    ? priceData.price 
+                    : `${priceData.price} ${currencyCode}`}
+            </span>
+        );
+    };
 
   const handleFileProcessing = async (file: File): Promise<{ file: File } | null> => {
     if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
@@ -654,7 +767,7 @@ const Form: React.FC = () => {
 
           </div>
 
-          <div className="w-full max-w-5xl mx-auto px-4 py-8">
+          <div className="w-full max-w-7xl mx-auto px-4 py-8">
             <h2 className="text-3xl font-libre font-medium mb-6 text-gray-800 text-left">
               Explore More Books
             </h2>
@@ -722,8 +835,8 @@ const Form: React.FC = () => {
                       </p>
 
                       <div className="flex items-center justify-between mt-auto pt-4">
-                        <span className="text-lg font-semibold text-gray-800">
-                          From {card.prices?.IN?.paperback?.price || '₹499'}
+                        <span className="text-base md:text-lg font-medium text-gray-800">
+                          {formatPrice(card, 'paperback')}
                         </span>
 
                         <button
