@@ -255,7 +255,10 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         payer_name = notes.get("name", "")
         payer_email = notes.get("email", "")
         payer_contact = notes.get("contact", "")
-        discount_code = notes.get("discount_code", "")
+        discount_code = notes.get("discount_code") or data.get("discount_code", "")
+        discount_code = discount_code.upper()
+
+        logger.info(f"💡 Final resolved discount_code for job_id={job_id}: '{discount_code}'")
 
         shipping_info = {
             "name": payer_name,
@@ -269,13 +272,44 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         }
 
         # Step 3: Generate new order_id
-        latest_order = user_details_collection.find_one(
-            {"order_id": {"$regex": "^#\\d+"}}, sort=[("order_id", -1)]
-        )
-        new_order_id = (
-            f"#{int(latest_order['order_id'].replace('#', '')) + 1}"
-            if latest_order and latest_order.get("order_id") else "#1200"
-        )
+        try:
+            coupon_prefix = discount_code.upper()
+            logger.info(f"🎟️ Discount code received: {discount_code} → normalized to: {coupon_prefix}")
+
+            if coupon_prefix == "TEST":
+                logger.info("🧪 TEST coupon used. Generating TEST-prefixed order_id...")
+                test_orders = list(user_details_collection.find(
+                    {"order_id": {"$regex": "^TEST#\\d+$"}},
+                    sort=[("order_id", -1)]
+                ))
+
+                if test_orders:
+                    # Extract number part and increment
+                    last_order_id = test_orders[0]["order_id"]
+                    last_number = int(last_order_id.split("#")[1])
+                    new_order_id = f"TEST#{last_number + 1}"
+                else:
+                    new_order_id = "TEST#1"
+
+                logger.info(f"🧪 Generated test order_id: {new_order_id}")
+
+            else:
+                logger.info("🔢 Generating standard sequential order_id...")
+                latest_order = user_details_collection.find_one(
+                    {"order_id": {"$regex": "^#\\d+"}},
+                    sort=[("order_id", -1)]
+                )
+
+                new_order_id = (
+                    f"#{int(latest_order['order_id'].replace('#', '')) + 1}"
+                    if latest_order and latest_order.get("order_id") else "#1200"
+                )
+
+                logger.info(f"✅ Generated regular order_id: {new_order_id}")
+
+        except Exception as e:
+            logger.exception("❌ Failed to generate order_id:")
+            return {"success": False, "error": "Failed to generate order ID"}
 
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
@@ -2073,7 +2107,7 @@ def regenerate_workflow_lock(
 
 @app.get("/poll-images")
 async def poll_images(job_id: str = Query(...)):
-    logger.info("🔍 Handling /poll-images request for job_id=%s", job_id)
+    # logger.info("🔍 Handling /poll-images request for job_id=%s", job_id)
     workflow_groups = {}
 
     try:
@@ -2090,13 +2124,11 @@ async def poll_images(job_id: str = Query(...)):
             if re.match(r"^workflow_pg\d+$", key)
         ]
 
-        logger.debug(f"🧠 Expecting workflows: {expected_suffixes}")
+        # logger.debug(f"🧠 Expecting workflows: {expected_suffixes}")
 
         response = s3.list_objects_v2(
             Bucket=S3_DIFFRUN_GENERATIONS, Prefix=f"{S3_JPG_PREFIX}/{job_id}_")
         s3_files = response.get("Contents", [])
-        logger.info("📂 Found %d files in S3 path %s/",
-                    len(s3_files), S3_JPG_PREFIX)
 
         for obj in s3_files:
             key = obj["Key"]
@@ -2112,7 +2144,7 @@ async def poll_images(job_id: str = Query(...)):
             match = re.match(
                 rf"{re.escape(job_id)}_(pg\d+|\d+)_\d+_\d+\.jpg", file)
             if not match:
-                logger.debug("⚠️ Skipping unmatched filename: %s", file)
+                # logger.debug("⚠️ Skipping unmatched filename: %s", file)
                 continue
 
             workflow_id = match.group(1)
@@ -2162,9 +2194,6 @@ async def poll_images(job_id: str = Query(...)):
                         preview_email(name, email, preview_url)
                     except Exception as e:
                         logger.exception(f"📨 Failed to send preview email for job_id={job_id}")
-
-        logger.info("✅ Polling complete: %d workflows found, completed=%s", len(
-            carousels), completed)
 
         return {
             "carousels": carousels,

@@ -132,8 +132,8 @@ export default function Confirmation() {
   console.log("🎉 Rendering confirmation UI for job:", jobData.job_id);
 
   return (
-    <div className="w-full min-h-[80vh] bg-white flex flex-col text-center items-center py-20">
-      <div className="max-w-3xl bg-gray-100 shadow-md rounded-md p-8 overflow-hidden px-2">
+    <div className="w-full min-h-[80vh] bg-white flex flex-col text-center items-center py-20 px-4">
+      <div className="max-w-3xl bg-gray-100 shadow-md rounded-md p-8 overflow-hidden px-2 mt-0 md:mt-10">
         <p className="mb-6 font-poppins">
           Thank you for your order! <strong>{jobData.child_name}</strong>'s magical storybook is now ready for your review. ✨
         </p>

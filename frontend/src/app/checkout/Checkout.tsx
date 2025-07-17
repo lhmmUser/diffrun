@@ -34,8 +34,8 @@ const extractNumericValue = (value: string): number => {
 
 const VALID_COUPONS: Record<string, number> = {
   LHMM: 99.93,
-  NEWUSER: 50,
   SPECIAL10: 10,
+  TEST: 99.93
 };
 
 const DEFAULT_COUNTRY = "IN";
@@ -189,7 +189,7 @@ export default function Checkout() {
       handler: async function (response: any) {
         await fetch(`${apiBaseUrl}/verify-razorpay`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...response, job_id: jobId, actual_price: numericPrice, discount_percentage: discountPercentage, discount_amount: discountAmount, shipping_price: numericShipping, taxes: numericTaxes, final_amount: finalAmount })
+          body: JSON.stringify({ ...response, job_id: jobId, actual_price: numericPrice, discount_percentage: discountPercentage, discount_amount: discountAmount, shipping_price: numericShipping, taxes: numericTaxes, final_amount: finalAmount, discount_code: appliedCoupon })
         });
         const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
         window.location.href = `${frontendUrl}/confirmation?${new URLSearchParams(window.location.search).toString()}`;

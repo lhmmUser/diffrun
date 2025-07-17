@@ -11,7 +11,7 @@ import { Navigation, Pagination, EffectFade } from "swiper/modules";
 import LZString from "lz-string";
 import { motion } from "framer-motion";
 import { BsImages, BsArrowLeftRight } from "react-icons/bs";
-import { div } from "framer-motion/client";
+import TextSwipe from "@/components/animated/TextSwipe";
 
 const Preview: React.FC = () => {
 
@@ -101,7 +101,7 @@ const Preview: React.FC = () => {
       );
 
       const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
-
+      
       console.log("💾 Saving state:", {
         selections: currentSelections.join(','),
         url: previewUrl,
@@ -911,20 +911,7 @@ const Preview: React.FC = () => {
         JSON.stringify(selectedSlides)
       );
 
-      const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=story&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
-
-      if (previewUrl && previewUrl.startsWith("http")) {
-        console.log("📤 Sending preview URL to backend:", previewUrl);
-        const updateResponse = await fetch(`${apiBaseUrl}/update-preview-url`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ job_id: jobId, preview_url: previewUrl }),
-        });
-
-        if (!updateResponse.ok) {
-          console.error("Failed to update preview URL:", updateResponse.status);
-        }
-      }
+      await saveCurrentState();
 
       const queryParams = new URLSearchParams({
         job_id: jobId,
@@ -966,10 +953,11 @@ const Preview: React.FC = () => {
 
   const handleApprove = async () => {
     try {
+      await saveCurrentState();
 
       if (!jobId) throw new Error("Job ID is missing.");
 
-      console.log("selectedslides, carousal", selectedSlides.length, carousels.length)
+      console.log("selectedslides, carousal", selectedSlides.length, carousels.length);
 
 
       if (selectedSlides.length !== carousels.length) {
@@ -1262,7 +1250,7 @@ const Preview: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <BsArrowLeftRight size={20} className="text-blue-900 font-poppins" />
-              <p>Slide left or right to pick the best moment</p>
+              <p>Slide left or right to pick the best image</p>
             </div>
           </motion.div>
         </header>
@@ -1538,7 +1526,7 @@ const Preview: React.FC = () => {
               <div
                 className="w-72 md:w-96 fixed z-50 bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 p-3 md:p-6 rounded-lg shadow-2xl text-center">
                 <p className="text-gray-800 font-poppins mb-4 text-sm sm:text-base animate-fade-in">
-                  Full Preview is available on Purchase
+                  {!first10WorkflowsCompleted ? <TextSwipe name={name} /> : "Full Preview is available on Purchase"}
                 </p>
                 <button
                   onClick={handleSubmit}
