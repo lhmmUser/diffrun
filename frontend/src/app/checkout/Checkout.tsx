@@ -35,7 +35,7 @@ const extractNumericValue = (value: string): number => {
 const VALID_COUPONS: Record<string, number> = {
   LHMM: 99.93,
   NEWUSER: 50,
-  SPECIAL50: 50,
+  SPECIAL10: 10,
 };
 
 const DEFAULT_COUNTRY = "IN";
