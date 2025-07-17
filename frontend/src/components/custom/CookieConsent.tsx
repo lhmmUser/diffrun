@@ -101,19 +101,19 @@ export default function CookieConsent() {
   };
 
   useEffect(() => {
-  if (showConsent) {
-    document.body.style.overflow = 'hidden';
-    document.body.style.pointerEvents = 'none';
-  } else {
-    document.body.style.overflow = '';
-    document.body.style.pointerEvents = '';
-  }
+    if (showConsent) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.pointerEvents = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+    }
 
-  return () => {
-    document.body.style.overflow = '';
-    document.body.style.pointerEvents = '';
-  };
-}, [showConsent]);
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+    };
+  }, [showConsent]);
 
   useEffect(() => {
     let isMounted = true;
@@ -166,18 +166,24 @@ export default function CookieConsent() {
   if (!showConsent || isLocaleLoading) return null;
 
   return (
-    <div className="fixed bottom-0 z-50 bg-[#5784ba] text-white p-4 w-full text-center" style={{ pointerEvents: 'auto' }}>
-      <p>This site uses cookies for analytics. Accept?</p>
-      <div className="mt-2 space-x-4">
+    <div className="fixed bottom-0 z-50 bg-[#f4cfde] text-gray-800 p-4 w-full text-center" style={{ pointerEvents: 'auto' }}>
+      <p className="text-sm md:text-base">
+        We use cookies to enhance your experience, show you relevant offers, and help us improve. Your choice matters.
+      </p>
+      <p className="text-xs md:text-sm mt-2 text-gray-700">
+        Learn more in our <a href="/cookie-policy" className="underline">Cookie Policy</a>.
+      </p>
+
+      <div className="mt-2 space-x-8">
         <button
           onClick={() => handleConsent(true)}
-          className="bg-white text-black cursor-pointer px-4 py-2 rounded"
+          className="bg-white text-gray-800 cursor-pointer px-4 py-2 rounded-xl hover:scale-105 text-xs md:text-sm shadow-md"
         >
-          Accept
+          Accept All
         </button>
         <button
           onClick={() => handleConsent(false)}
-          className="bg-gray-800 text-white cursor-pointer px-4 py-2 rounded"
+          className="bg-white text-gray-800 cursor-pointer px-4 py-2 rounded-xl hover:scale-105 text-xs md:text-sm shadow-md"
         >
           Reject
         </button>
