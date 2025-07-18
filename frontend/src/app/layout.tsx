@@ -83,13 +83,13 @@ export const metadata: Metadata = {
         url: "/diffrun-meta.png",
         width: 1200,
         height: 630,
-        alt: "Diffrun - Create personalized storybooks for children",
+        alt: "Diffrun™ | Personalised Books that say — You're the Hero",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Diffrun | Personalised books that say — you're the hero",
+    title: "Diffrun™ | Personalised Books that say — You're the Hero",
     description:
       "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
     site: "@diffrun",
@@ -135,7 +135,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <meta name="image" property="og:image" content="https://diffrun.com/diffrun-meta.png" />
         <meta name="twitter:image" content="https://diffrun.com/diffrun-meta.png" />
         <meta property="og:type" content="website" />
-        <meta name="title" content="Diffrun | Personalised books that say — you're the hero" />
+        <meta name="title" content="DDiffrun™ | Personalised Books that say — You're the Hero" />
 
         <Script
           id="structured-data"
