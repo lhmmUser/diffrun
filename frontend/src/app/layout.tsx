@@ -21,7 +21,7 @@ const DavidLibre = David_Libre({
 });
 
 export const metadata: Metadata = {
-  title: "Diffrun | Personalised books that say — you're the hero",
+  title: "Diffrun™ | Personalised Books that say — You're the Hero",
   description:
     "Create personalized storybooks where your child is the hero. Diffrun lets you turn their photo into a magical adventure — the perfect gift they'll never forget",
   keywords: [
