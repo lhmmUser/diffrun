@@ -35,7 +35,8 @@ const extractNumericValue = (value: string): number => {
 const VALID_COUPONS: Record<string, number> = {
   LHMM: 99.93,
   SPECIAL10: 10,
-  TEST: 99.93
+  TEST: 99.93,
+  COLLAB: 99.93
 };
 
 const DEFAULT_COUNTRY = "IN";
@@ -293,7 +294,7 @@ export default function Checkout() {
             <div className="flex">
               <div className="flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50">
                 <img
-                  src="/india.png"
+                  src="/global/india.png"
                   alt="India Flag"
                   className="w-5 h-4 object-cover mr-1"
                 />

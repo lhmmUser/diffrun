@@ -271,44 +271,63 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
             "phone": payer_contact
         }
 
-        # Step 3: Generate new order_id
+        # Step 3: Generate new order_id with robust incrementing logic
         try:
-            coupon_prefix = discount_code.upper()
-            logger.info(f"🎟️ Discount code received: {discount_code} → normalized to: {coupon_prefix}")
+            # Define order ID patterns and defaults
+            order_patterns = {
+                "TEST": {
+                    "regex": r"^TEST#(\d+)$",
+                    "default": "TEST#0",
+                    "prefix": "TEST#"
+                },
+                "COLLAB": {
+                    "regex": r"^COLLAB#(\d+)$",
+                    "default": "COLLAB#0",
+                    "prefix": "COLLAB#"
+                },
+                "DEFAULT": {
+                    "regex": r"^#(\d+)$",
+                    "default": "#1199",
+                    "prefix": "#"
+                }
+            }
 
-            if coupon_prefix == "TEST":
-                logger.info("🧪 TEST coupon used. Generating TEST-prefixed order_id...")
-                test_orders = list(user_details_collection.find(
-                    {"order_id": {"$regex": "^TEST#\\d+$"}},
-                    sort=[("order_id", -1)]
-                ))
+            # Determine which pattern to use
+            pattern_key = "DEFAULT"
+            if discount_code == "TEST":
+                pattern_key = "TEST"
+            elif discount_code == "COLLAB":
+                pattern_key = "COLLAB"
 
-                if test_orders:
-                    # Extract number part and increment
-                    last_order_id = test_orders[0]["order_id"]
-                    last_number = int(last_order_id.split("#")[1])
-                    new_order_id = f"TEST#{last_number + 1}"
-                else:
-                    new_order_id = "TEST#1"
+            pattern = order_patterns[pattern_key]
+            logger.info(f"🎟️ Using order ID pattern: {pattern_key}")
 
-                logger.info(f"🧪 Generated test order_id: {new_order_id}")
+            # Find the highest existing order number for this pattern
+            pipeline = [
+                {"$match": {"order_id": {"$regex": pattern['regex']}}},
+                {"$project": {
+                    "order_num": {
+                        "$toInt": {
+                            "$arrayElemAt": [
+                                {"$split": ["$order_id", "#"]},
+                                1
+                            ]
+                        }
+                    }
+                }},
+                {"$sort": {"order_num": -1}},
+                {"$limit": 1}
+            ]
 
-            else:
-                logger.info("🔢 Generating standard sequential order_id...")
-                latest_order = user_details_collection.find_one(
-                    {"order_id": {"$regex": "^#\\d+"}},
-                    sort=[("order_id", -1)]
-                )
+            result = list(user_details_collection.aggregate(pipeline))
+            highest_num = result[0]["order_num"] if result else int(pattern['default'].split("#")[1])
+            new_num = highest_num + 1
+            new_order_id = f"{pattern['prefix']}{new_num}"
 
-                new_order_id = (
-                    f"#{int(latest_order['order_id'].replace('#', '')) + 1}"
-                    if latest_order and latest_order.get("order_id") else "#1200"
-                )
-
-                logger.info(f"✅ Generated regular order_id: {new_order_id}")
+            logger.info(f"🔢 Generated new order ID: {new_order_id} (Previous highest: {highest_num})")
 
         except Exception as e:
-            logger.exception("❌ Failed to generate order_id:")
+            logger.exception(f"❌ Failed to generate order_id: {str(e)}")
             return {"success": False, "error": "Failed to generate order ID"}
 
         user = user_details_collection.find_one({"job_id": job_id})
@@ -319,25 +338,27 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         logger.info(f"👤 User record found for job_id={job_id}, updating DB...")
 
         # Step 4: Save payment & shipping data to MongoDB
+        update_data = {
+            "paid": True,
+            "order_id": new_order_id,
+            "transaction_id": razorpay_payment_id,
+            "customer_email": payer_email,
+            "discount_code": discount_code,
+            "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
+            "currency": currency_code,
+            "total_price": final_amount,
+            "shipping_address": shipping_info,
+            "actual_price": actual_price,
+            "discount_percentage": discount_percentage,
+            "discount_amount": discount_amount,
+            "shipping_price": shipping_price,
+            "taxes": taxes,
+            "updated_at": datetime.now(timezone.utc)
+        }
+
         user_details_collection.update_one(
             {"job_id": job_id},
-            {"$set": {
-                "paid": True,
-                "order_id": new_order_id,
-                "transaction_id": razorpay_payment_id,
-                "customer_email": payer_email,
-                "discount_code": discount_code,
-                "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
-                "currency": currency_code,
-                "total_price": final_amount,
-                "shipping_address": shipping_info,
-                "actual_price": actual_price,
-                "discount_percentage": discount_percentage,
-                "discount_amount": discount_amount,
-                "shipping_price": shipping_price,
-                "taxes": taxes,
-                "updated_at": datetime.now(timezone.utc)
-            }}
+            {"$set": update_data}
         )
 
         # Step 5: Determine lock vs full preview
@@ -392,7 +413,7 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         return {"success": True}
 
     except Exception as e:
-        logger.exception(f"❌ Exception during /verify-razorpay: {e}")
+        logger.exception(f"❌ Exception during /verify-razorpay: {str(e)}")
         return {"success": False, "error": "Internal server error"}
 
 @app.post("/save-user-details")
