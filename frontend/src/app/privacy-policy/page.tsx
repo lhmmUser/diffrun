@@ -120,25 +120,6 @@ const PrivacyPolicy = () => {
           </p>
         </section>
 
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold border-l-4 border-black pl-4">11. Contact Us</h2>
-          <p>
-            Questions, concerns, or requests related to this Privacy Policy can be sent to:
-          </p>
-          <p>
-            <strong>Email:</strong>{" "}
-            <a
-              href="mailto:support@diffrun.com"
-              className="underline decoration-[3px] underline-offset-4 text-blue-700 hover:text-blue-900"
-            >
-              support@diffrun.com
-            </a>
-            <br />
-            <strong>Company:</strong> Diffrun<br />
-            <strong>Address:</strong> Bangalore, India
-          </p>
-        </section>
-
         <p className="text-sm mt-12 text-gray-500 text-center">Effective Date: March 7, 2025</p>
       </div>
     </motion.main>

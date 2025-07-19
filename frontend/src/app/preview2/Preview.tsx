@@ -1341,7 +1341,7 @@ const Preview: React.FC = () => {
                                 if (isRegenerate && !approved) {
                                   return '';
                                 }
-                                return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" alt="Diffrun personalized books - circlular pagination" />`;
+                                return `<img src="/global/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" alt="Diffrun personalized books - circlular pagination" />`;
                               }
                             }}
                             initialSlide={initialSlideIndex}

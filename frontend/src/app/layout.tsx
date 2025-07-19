@@ -135,7 +135,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <meta name="image" property="og:image" content="https://diffrun.com/diffrun-meta.png" />
         <meta name="twitter:image" content="https://diffrun.com/diffrun-meta.png" />
         <meta property="og:type" content="website" />
-        <meta name="title" content="DDiffrun™ | Personalised Books that say — You're the Hero" />
+        <meta name="title" content="Diffrun™ | Personalised Books that say — You're the Hero" />
 
         <Script
           id="structured-data"
@@ -153,6 +153,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               "@type": "Person",
               name: "Husain Jafar"
             },
+            datePublished: "2025-06-01",
             sameAs: [
               "https://twitter.com/diffrun"
             ],

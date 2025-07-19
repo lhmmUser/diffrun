@@ -25,7 +25,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-12">
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex" aria-label="Go to Diffrun homepage">
-              <img src="/logo.png" alt="Diffrun personalized books - logo" className="w-24 md:w-32 h-auto object-contain" />
+              <img src="/global/logo.png" alt="Diffrun personalized books - logo" className="w-24 md:w-32 h-auto object-contain" />
             </Link>
             <p className="text-gray-800 my-4">
               Creating magical stories for curious minds. Personalized books that grow with your child's imagination.

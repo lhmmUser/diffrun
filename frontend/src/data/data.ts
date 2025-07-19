@@ -20,7 +20,7 @@ export const Cards: CardProps[] = [
   {
     bookKey: "wigu",
     title: "When Sara Grows Up",
-    imageSrc: "/wigu-book.avif",
+    imageSrc: "books/wigu/wigu-book.avif",
     hoverImageSrc: "/wigu-book-1.avif",
     age: "3 - 7",
     description:
@@ -56,8 +56,8 @@ export const Cards: CardProps[] = [
   {
     bookKey: "dream",
     title: "Many Dreams of Zohaan",
-    imageSrc: "/dream-book.png",
-    hoverImageSrc: "/dream-book-5.avif",
+    imageSrc: "/books/dream/dream-book.png",
+    hoverImageSrc: "/dream-book-1.avif",
     age: "2 - 6",
     description:
       "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests.",
@@ -92,7 +92,7 @@ export const Cards: CardProps[] = [
   {
     bookKey: "astro",
     title: "Zoey's Space Adventure",
-    imageSrc: "/astronaut-book.avif",
+    imageSrc: "/books/astro/astro-book.avif",
     hoverImageSrc: "/astro-book-1.avif",
     age: "4 - 10",
     description:
@@ -128,7 +128,7 @@ export const Cards: CardProps[] = [
   {
     bookKey: "abcd",
     title: "Max meets ABC",
-    imageSrc: "/abcd-book.avif",
+    imageSrc: "/books/abcd/abcd-book.avif",
     hoverImageSrc: "/abcd-book-1.avif",
     age: "2 - 4",
     description:
@@ -164,8 +164,8 @@ export const Cards: CardProps[] = [
   {
      bookKey: "sports",
     title: "Game On Amaira",
-    imageSrc: "/sports-book.avif",
-    hoverImageSrc: "sports-book-2.avif",
+    imageSrc: "books/sports/sports-book.avif",
+    hoverImageSrc: "/sports-book-2.avif",
     age: "4 - 10",
     description:
      "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",

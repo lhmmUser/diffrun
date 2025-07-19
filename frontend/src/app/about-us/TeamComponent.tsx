@@ -107,7 +107,7 @@ export default function TeamComponent() {
                 transition={{ duration: 0.3 }}
                 className="relative mb-6 mx-auto w-32 h-32 sm:w-36 sm:h-36"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                <div className="absolute rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
                 <img
                   src={member.image || "/placeholder.svg"}
                   alt={`Diffrun personalized books - ${member.name}`}

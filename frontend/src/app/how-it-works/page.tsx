@@ -72,7 +72,7 @@ const HowItWorks = () => {
             initial={{ x: 50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="w-full max-w-sm sm:max-w-md md:max-w-lg aspect-[1/1] rounded-xl overflow-hidden shadow-lg lg:w-1/2"
+            className="w-full max-w-lg md:max-w-xl aspect-[1/1] rounded-xl overflow-hidden shadow-lg lg:w-1/2 md:mb-10"
           >
             <iframe
               className="w-full h-full"

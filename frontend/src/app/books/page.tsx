@@ -117,97 +117,113 @@ export default function Books() {
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
-                        {Cards.map((card, index) => (
-                            <div
-                                key={index}
-                                className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
-                            >
-                                <Link
-                                    href={`/child-details?job_type=story&book_id=${card.bookKey}`}
-                                    aria-label={`Personalize ${card.title} story for ages ${card.age}`}
-                                    className="flex flex-col h-full"
+                        {Cards.map((card, index) => {
+                            const supportedCountries = ["IN", "US", "GB"];
+                            const countryFolder = supportedCountries.includes(locale) ? locale : "US";
+                            const basePath = `/books/${card.bookKey}/${countryFolder}`;
+                            const mainImage = `${basePath}/${card.bookKey}-book.avif`;
+                            const hoverImage = `/books/${card.bookKey}/${countryFolder}/${card.hoverImageSrc}`;
+
+                            return (
+                                <div
+                                    key={index}
+                                    className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                                 >
-                                    <div className="relative w-full pt-[75%] overflow-hidden">
+                                    <Link
+                                        href={`/child-details?job_type=story&book_id=${card.bookKey}`}
+                                        aria-label={`Personalize ${card.title} story for ages ${card.age}`}
+                                        className="flex flex-col h-full"
+                                    >
+                                        <div className="relative w-full pt-[75%] overflow-hidden">
+                                            {/* Desktop - Default */}
+                                            <img
+                                                src={mainImage}
+                                                alt={card.title}
+                                                className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 lg:group-hover:opacity-0 lg:opacity-100 hidden md:block"
+                                                loading="lazy"
+                                                onError={(e) =>
+                                                    (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book.avif`)
+                                                }
+                                            />
 
-                                        <img
-                                            src={card.imageSrc}
-                                            alt={card.title}
-                                            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 lg:group-hover:opacity-0 lg:opacity-100 hidden md:block"
-                                            loading="lazy"
-                                        />
+                                            <img
+                                                src={hoverImage}
+                                                alt={`${card.title} hover`}
+                                                className="absolute inset-0 w-full h-full object-cover hidden md:block opacity-0 transition-opacity duration-500 lg:group-hover:opacity-100"
+                                                loading="lazy"
+                                                onError={(e) =>
+                                                    (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.hoverImageSrc || `${card.bookKey}-book.avif`}`)
+                                                }
+                                            />
 
-                                        <img
-                                            src={card.hoverImageSrc || card.imageSrc}
-                                            alt={`${card.title} hover`}
-                                            className="absolute inset-0 w-full h-full object-cover hidden md:block opacity-0 transition-opacity duration-500 lg:group-hover:opacity-100"
-                                            loading="lazy"
-                                        />
+                                            <img
+                                                src={hoverImage}
+                                                alt={`${card.title} mobile`}
+                                                className="absolute inset-0 w-full h-full object-cover md:hidden"
+                                                loading="lazy"
+                                                onError={(e) =>
+                                                    (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.hoverImageSrc || `${card.bookKey}-book.avif`}`)
+                                                }
+                                            />
+                                        </div>
 
-                                        <img
-                                            src={card.hoverImageSrc || card.imageSrc}
-                                            alt={`${card.title} mobile`}
-                                            className="absolute inset-0 w-full h-full object-cover md:hidden"
-                                            loading="lazy"
-                                        />
-                                    </div>
-
-
-                                    <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
-                                        <div className="flex justify-between items-center flex-wrap gap-y-1">
-                                            <div className="flex flex-wrap gap-1">
-                                                {Array.isArray(card.category) && card.category.length > 0 ? (
-                                                    card.category.map((tag, i) => (
+                                        <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
+                                            <div className="flex justify-between items-center flex-wrap gap-y-1">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {Array.isArray(card.category) && card.category.length > 0 ? (
+                                                        card.category.map((tag, i) => (
+                                                            <span
+                                                                key={i}
+                                                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                                                    } whitespace-nowrap`}
+                                                            >
+                                                                {tag}
+                                                            </span>
+                                                        ))
+                                                    ) : (
                                                         <span
-                                                            key={i}
-                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                                                } whitespace-nowrap`}
+                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
+                                                                }`}
                                                         >
-                                                            {tag}
+                                                            Storybook
                                                         </span>
-                                                    ))
-                                                ) : (
-                                                    <span
-                                                        className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
-                                                            }`}
-                                                    >
-                                                        Storybook
-                                                    </span>
-                                                )}
+                                                    )}
+                                                </div>
+
+                                                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                                                    Ages {card.age}
+                                                </span>
                                             </div>
 
-                                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                                                Ages {card.age}
-                                            </span>
+                                            <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900 mt-2">
+                                                {card.title}
+                                            </h3>
+
+                                            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                                                {card.description}
+                                            </p>
+
+                                            <div className="flex items-center justify-between mt-auto pt-4">
+                                                <span className="text-base md:text-lg font-medium text-gray-800">
+                                                    {formatPrice(card, "paperback")}
+                                                </span>
+
+                                                <button
+                                                    className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        window.location.href = `/child-details?job_type=story&book_id=${card.bookKey}`;
+                                                    }}
+                                                >
+                                                    Personalize
+                                                </button>
+                                            </div>
                                         </div>
-
-                                        <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900 mt-2">
-                                            {card.title}
-                                        </h3>
-
-                                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
-                                            {card.description}
-                                        </p>
-
-                                        <div className="flex items-center justify-between mt-auto pt-4">
-                                            <span className="text-base md:text-lg font-medium text-gray-800">
-                                                {formatPrice(card, 'paperback')}
-                                            </span>
-
-                                            <button
-                                                className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    window.location.href = `/child-details?job_type=story&book_id=${card.bookKey}`;
-                                                }}
-                                            >
-                                                Personalize
-                                            </button>
-                                        </div>
-                                    </div>
-                                </Link>
-                            </div>
-                        ))}
+                                    </Link>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 

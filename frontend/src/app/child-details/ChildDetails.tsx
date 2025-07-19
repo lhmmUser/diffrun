@@ -107,6 +107,20 @@ const pastelTags = [
   "bg-lime-100 text-lime-700",
 ];
 
+const fallbackOrder = ["GB", "US", "IN"];
+
+const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  const currentIndex = parseInt(img.dataset.fallbackIndex || "0");
+  const nextIndex = currentIndex + 1;
+
+  if (nextIndex < fallbackOrder.length) {
+    const nextCountry = fallbackOrder[nextIndex];
+    img.src = `/books/${img.dataset.bookKey}/${nextCountry}/${img.dataset.fileName}`;
+    img.dataset.fallbackIndex = nextIndex.toString();
+  }
+};
+
 const Form: React.FC = () => {
 
   const router = useRouter();
@@ -181,7 +195,7 @@ const Form: React.FC = () => {
         console.log(`[Geo] Trying ${api.name} API`);
         const response = await api.fn();
         const countryCode = api.extract(response);
-        
+
         if (countryCode && isValidCountryCode(countryCode)) {
           console.log(`[Geo] Success with ${api.name}:`, countryCode);
           return countryCode;
@@ -196,11 +210,11 @@ const Form: React.FC = () => {
 
   const updateBackendLocale = async (locale: string, jobId?: string) => {
     if (!apiBaseUrl) return;
-    
+
     try {
       const payload = jobId ? { locale, job_id: jobId } : { locale };
       console.log("[Geo] Updating backend with:", payload);
-      
+
       await fetch(`${apiBaseUrl}/update-country`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -211,14 +225,12 @@ const Form: React.FC = () => {
     }
   };
 
-  // Initialize locale detection
   useEffect(() => {
     const determineLocale = async () => {
       setIsLocaleLoading(true);
       console.log("[Geo] Starting locale detection");
-      
+
       try {
-        // 1. Check localStorage first
         const cachedLocale = localStorage.getItem("userLocale");
         if (cachedLocale && isValidCountryCode(cachedLocale)) {
           const normalized = normalizeCountryCode(cachedLocale);
@@ -228,10 +240,9 @@ const Form: React.FC = () => {
           return;
         }
 
-        // 2. Try geolocation APIs
         const countryCode = await getClientSideCountry();
         const normalized = normalizeCountryCode(countryCode);
-        
+
         setLocale(normalized);
         localStorage.setItem("userLocale", normalized);
         await updateBackendLocale(normalized);
@@ -246,7 +257,6 @@ const Form: React.FC = () => {
     determineLocale();
   }, []);
 
-  // Update locale when job is created
   useEffect(() => {
     if (redirectData?.jobId && locale) {
       updateBackendLocale(locale, redirectData.jobId);
@@ -254,33 +264,33 @@ const Form: React.FC = () => {
   }, [redirectData, locale]);
 
   const formatPrice = (card: typeof Cards[0], bookType: 'paperback' | 'hardcover') => {
-        if (isLocaleLoading) {
-            return <span className="h-4 w-20 bg-gray-200 animate-pulse rounded"></span>;
-        }
-        
-        const countryKey = Object.keys(card.prices).find(
-            key => key.toUpperCase() === locale.toUpperCase()
-        ) as keyof typeof card.prices || 'IN';
-        
-        const countryPrices = card.prices[countryKey] || card.prices.IN;
-        const priceData = countryPrices[bookType];
-     
-        const currencyMatch = priceData.price.match(/[A-Z]{2,3}$/);
-        const currencyCode = currencyMatch ? currencyMatch[0] : 
-                           countryKey === 'US' ? 'USD' :
-                           countryKey === 'GB' ? 'GBP' :
-                           countryKey === 'CA' ? 'CAD' :
-                           countryKey === 'AU' ? 'AUD' :
-                           countryKey === 'NZ' ? 'NZD' : 'INR';
-    
-        return (
-            <span>
-                From {priceData.price.includes(currencyCode) 
-                    ? priceData.price 
-                    : `${priceData.price} ${currencyCode}`}
-            </span>
-        );
-    };
+    if (isLocaleLoading) {
+      return <span className="h-4 w-20 bg-gray-200 animate-pulse rounded"></span>;
+    }
+
+    const countryKey = Object.keys(card.prices).find(
+      key => key.toUpperCase() === locale.toUpperCase()
+    ) as keyof typeof card.prices || 'IN';
+
+    const countryPrices = card.prices[countryKey] || card.prices.IN;
+    const priceData = countryPrices[bookType];
+
+    const currencyMatch = priceData.price.match(/[A-Z]{2,3}$/);
+    const currencyCode = currencyMatch ? currencyMatch[0] :
+      countryKey === 'US' ? 'USD' :
+        countryKey === 'GB' ? 'GBP' :
+          countryKey === 'CA' ? 'CAD' :
+            countryKey === 'AU' ? 'AUD' :
+              countryKey === 'NZ' ? 'NZD' : 'INR';
+
+    return (
+      <span>
+        From {priceData.price.includes(currencyCode)
+          ? priceData.price
+          : `${priceData.price} ${currencyCode}`}
+      </span>
+    );
+  };
 
   const handleFileProcessing = async (file: File): Promise<{ file: File } | null> => {
     if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
@@ -495,6 +505,7 @@ const Form: React.FC = () => {
   }
 
   const selectedBook = Cards.find((b) => b.bookKey === bookId) ?? Cards[0];
+  const otherBooks = Cards.filter((b) => b.bookKey !== selectedBook.bookKey);
   const title = selectedBook?.title || "";
   const description = selectedBook?.description || "";
 
@@ -514,35 +525,50 @@ const Form: React.FC = () => {
                   spaceBetween={20}
                   slidesPerView={1}
                   loop={true}
-                  autoplay={{ delay: 5000, disableOnInteraction: false }}
+                  autoplay={{ delay: 4000, disableOnInteraction: false }}
                   pagination={{
                     clickable: true,
-                    renderBullet: (index, className) => {
+                    renderBullet: (className) => {
                       return `
-                      <span 
-                        class="${className}" 
-                        style="
-                          display:inline-block;
-                          width:clamp(12px, 4vw, 24px);
-                          height:clamp(12px, 4vw, 24px);
-                          background:url('/circle.png') no-repeat center center / contain;
-                          margin:0 3px;
-                        ">
-                      </span>
-                    `;
+                        <span 
+                          class="${className}" 
+                          style="
+                            display:inline-block;
+                            width:clamp(12px, 4vw, 24px);
+                            height:clamp(12px, 4vw, 24px);
+                            background:url('/global/circle.png') no-repeat center center / contain;
+                            margin:0 3px;
+                          ">
+                        </span>
+                      `;
                     },
                   }}
                   className="w-full h-auto mx-auto relative"
                 >
-                  {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                    <SwiperSlide key={num}>
-                      <img
-                        src={`/${bookId}-book-${num}.avif`}
-                        alt={`Diffrun personalized books - Book ${num}`}
-                        className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
-                      />
-                    </SwiperSlide>
-                  ))}
+                  {[1, 2, 3, 4, 5, 6, 7].map((num) => {
+                    const fallbackOrder = ["GB", "US", "IN"];
+                    const countryFolder = fallbackOrder.includes(locale) ? locale : "GB";
+                    const imagePath = `/books/${bookId}/${countryFolder}/${bookId}-book-${num}.avif`;
+
+                    return (
+                      <SwiperSlide key={num}>
+                        <img
+                          src={imagePath}
+                          alt={`Diffrun personalized books - Book ${num}`}
+                          className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
+                          onError={(e) => {
+                            const fallbackIndex = fallbackOrder.indexOf(countryFolder);
+                            if (fallbackIndex < fallbackOrder.length - 1) {
+                              const nextFallback = fallbackOrder[fallbackIndex + 1];
+                              e.currentTarget.src = `/books/${bookId}/${nextFallback}/${bookId}-book-${num}.avif`;
+                            } else {
+                              e.currentTarget.src = `/books/${bookId}/IN/${bookId}-book-${num}.avif`;
+                            }
+                          }}
+                        />
+                      </SwiperSlide>
+                    );
+                  })}
                 </Swiper>
                 <div className="flex justify-start mt-5 mb-6 lg:mb-0">
 
@@ -711,7 +737,7 @@ const Form: React.FC = () => {
 
                 <div className="relative inline-block">
                   <img
-                    src="/instructions.jpg"
+                    src="/global/instructions.jpg"
                     alt="Diffrun personalized books - Instructions"
                     className="w-auto h-70 border border-gray-200"
                   />
@@ -764,98 +790,114 @@ const Form: React.FC = () => {
                 </p>
               </form>
             </div>
-
           </div>
 
           <div className="w-full max-w-7xl mx-auto px-4 py-8">
             <h2 className="text-3xl font-libre font-medium mb-6 text-gray-800 text-left">
               Explore More Books
             </h2>
+
             <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
-              {Cards.map((card, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
-                >
-                  <Link
-                    href={`/child-details?job_type=story&book_id=${card.bookKey}`}
-                    aria-label={`Personalize ${card.title} story for ages ${card.age}`}
-                    className="flex flex-col h-full"
+              {otherBooks.map((card, index) => {
+                const countryFolder = locale === 'IN' ? 'IN' : 'US';
+                const basePath = `/books/${card.bookKey}/${countryFolder}`;
+                const mainImage = `${basePath}/${card.bookKey}-book.avif`;
+                const hoverImage = `/books/${card.bookKey}/${countryFolder}/${card.hoverImageSrc}`;
+
+                return (
+                  <div
+                    key={index}
+                    className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                   >
-                    <div className="relative w-full pt-[75%] overflow-hidden">
-                      <img
-                        src={card.imageSrc}
-                        alt={card.title}
-                        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
-                        loading="lazy"
-                      />
+                    <Link
+                      href={`/child-details?job_type=story&book_id=${card.bookKey}`}
+                      aria-label={`Personalize ${card.title} story for ages ${card.age}`}
+                      className="flex flex-col h-full"
+                    >
+                      <div className="relative w-full pt-[75%] overflow-hidden">
+                        {/* Desktop - Default */}
+                        <img
+                          src={mainImage}
+                          alt={card.title}
+                          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                          loading="lazy"
+                          onError={(e) =>
+                            (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book.avif`)
+                          }
+                        />
 
-                      <img
-                        src={card.hoverImageSrc || card.imageSrc}
-                        alt={`${card.title} hover`}
-                        className="absolute inset-0 w-full h-full object-cover transform scale-100 transition-transform duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100 opacity-0"
-                        loading="lazy"
-                      />
-                    </div>
+                        {/* Desktop - Hover */}
+                        <img
+                          src={hoverImage}
+                          alt={`${card.title} hover`}
+                          className="absolute inset-0 w-full h-full object-cover transform scale-100 transition-transform duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100 opacity-0"
+                          loading="lazy"
+                          onError={(e) =>
+                            (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book-1.avif`)
+                          }
+                        />
+                      </div>
 
-                    <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
-                      <div className="flex justify-between items-center flex-wrap gap-y-1">
-                        <div className="flex flex-wrap gap-1">
-                          {Array.isArray(card.category) && card.category.length > 0 ? (
-                            card.category.map((tag, i) => (
+                      <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
+                        <div className="flex justify-between items-center flex-wrap gap-y-1">
+                          <div className="flex flex-wrap gap-1">
+                            {Array.isArray(card.category) && card.category.length > 0 ? (
+                              card.category.map((tag, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                    } whitespace-nowrap`}
+                                >
+                                  {tag}
+                                </span>
+                              ))
+                            ) : (
                               <span
-                                key={i}
-                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                  } whitespace-nowrap`}
+                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
+                                  }`}
                               >
-                                {tag}
+                                Storybook
                               </span>
-                            ))
-                          ) : (
-                            <span
-                              className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
-                                }`}
-                            >
-                              Storybook
-                            </span>
-                          )}
+                            )}
+                          </div>
+
+                          <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                            Ages {card.age}
+                          </span>
                         </div>
 
-                        <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                          Ages {card.age}
-                        </span>
+                        <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900 mt-2">
+                          {card.title}
+                        </h3>
+
+                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                          {card.description}
+                        </p>
+
+                        <div className="flex items-center justify-between mt-auto pt-4">
+                          <span className="text-base md:text-lg font-medium text-gray-800">
+                            {formatPrice(card, 'paperback')}
+                          </span>
+
+                          <button
+                            className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.location.href = `/child-details?job_type=story&book_id=${card.bookKey}`;
+                            }}
+                          >
+                            Personalize
+                          </button>
+                        </div>
                       </div>
-
-                      <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900 mt-2">
-                        {card.title}
-                      </h3>
-
-                      <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
-                        {card.description}
-                      </p>
-
-                      <div className="flex items-center justify-between mt-auto pt-4">
-                        <span className="text-base md:text-lg font-medium text-gray-800">
-                          {formatPrice(card, 'paperback')}
-                        </span>
-
-                        <button
-                          className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.location.href = `/child-details?job_type=story&book_id=${card.bookKey}`;
-                          }}
-                        >
-                          Personalize
-                        </button>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              ))}
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
           </div>
+
         </>
       ) : (
         <motion.div
@@ -912,7 +954,7 @@ const Form: React.FC = () => {
               ✕
             </button>
             <img
-              src="/instructions.jpg"
+              src="/global/instructions.jpg"
               alt="Diffrun personalized books - Expanded Instructions"
               className="w-full max-h-[80vh] object-contain rounded-lg"
             />

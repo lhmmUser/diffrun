@@ -1221,7 +1221,7 @@ const Preview: React.FC = () => {
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-8" style={{ backgroundImage: "url('/background-grid.jpg')" }} >
+      <div className="min-h-screen p-4 sm:p-8" style={{ backgroundImage: "url('/global/background-grid.jpg')" }} >
         <header className="max-w-4xl mx-auto mb-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
@@ -1278,7 +1278,7 @@ const Preview: React.FC = () => {
                     </div>
                     <div className="relative w-full aspect-square overflow-hidden shadow-[5px_5px_10px_rgba(0,0,0,0.5)] bg-white">
                       <div className="flex flex-col justify-center items-center w-full h-full">
-                        <img src="/lock.avif" alt="Locked" className="h-full w-full object-cover" />
+                        <img src="/global/lock.avif" alt="Locked" className="h-full w-full object-cover" />
                       </div>
                     </div>
                   </div>
@@ -1350,7 +1350,7 @@ const Preview: React.FC = () => {
                           renderBullet: (bulletIndex, className) => {
                             const isRegenerate = bulletIndex === carousel.images.length;
                             if (isRegenerate && !approved) return '';
-                            return `<img src="/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
+                            return `<img src="/global/circle.png" class="${className}" style="width: 10px; height: 10px; margin: 0 4px;" />`;
                           }
                         }}
                         onSlideChange={(swiper) => {
