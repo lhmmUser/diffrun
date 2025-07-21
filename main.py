@@ -1305,13 +1305,11 @@ async def store_user_details(
         "book_id": book_id,
         "paid": False,
         "approved": False,
-        "status": "initiated",
-       "created_at": datetime.now(timezone.utc), 
+        "created_at": datetime.now(timezone.utc), 
         "updated_at": datetime.now(timezone.utc)
     }
 
     try:
-        # Save to MongoDB (update your save_user_details function accordingly)
         save_user_details(response)
     except Exception as e:
         logger.error("❌ Could not save user details to MongoDB: %s", str(e))

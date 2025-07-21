@@ -1,7 +1,6 @@
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
-from models import UserDetails
 from datetime import datetime, timezone
 
 load_dotenv()
@@ -33,7 +32,6 @@ def save_user_details(data: dict):
     except Exception as e:
         print(f"❌ Failed to save user details: {e}")
         raise ValueError("Failed to save user details to the database.")
-
 
 def check_db_connection():
     try:
