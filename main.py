@@ -863,15 +863,15 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
             email=user.get("email", ""),
             preview_url=user.get("preview_url", ""),
             order_id=new_order_id,
-            total_price=update_data["total_price"],
+            total_price=float(update_data["total_price"]),
             currency_code=update_data["currency"],
             discount_code=discount_code,
             payment_id=capture_id,
             shipping_info=shipping_info,
-            discount_amount=user.get("discount_amount", ""),
-            shipping_price=user.get("shipping_price", ""),
-            taxes=user.get("taxes", ""),
-            actual_price=user.get("actual_price", "")
+            discount_amount=float(user.get("discount_amount", 0) or 0),
+            shipping_price=float(user.get("shipping_price", 0) or 0),
+            taxes=float(user.get("taxes", 0) or 0),
+            actual_price=float(user.get("actual_price", 0) or 0)
         )
 
         logger.info(f"📨 Sent payment_done_email_lock for job_id={job_id}")
@@ -1229,7 +1229,8 @@ async def store_user_details(
     images: List[UploadFile] = File(...)
 ):
     # Input validation and sanitization
-    name = name.strip().lower().capitalize()
+    name = name.strip()
+    first_name = name.split()[0].capitalize() if name else "User"
     email = email.strip().lower()  # Normalize email
     
     # Validate email format
@@ -1299,7 +1300,7 @@ async def store_user_details(
         "job_id": job_id,
         "saved_files": saved_filenames,
         "gender": gender.lower(),
-        "name": name.capitalize(),
+        "name": first_name,
         "email": email, 
         "preview_url": "",
         "book_id": book_id,
@@ -1318,7 +1319,7 @@ async def store_user_details(
             detail="Failed to save user details to database."
         )
 
-    logger.info("🚀 Returning response: %s", {**response, "email": "[REDACTED]"})  # Don't log full email
+    logger.info("🚀 Returning response: %s", {**response, "email": "[REDACTED]"})
     return response
 
 def get_sorted_workflow_files(book_id: str, gender: str) -> List[tuple[int, str]]:
@@ -2032,7 +2033,7 @@ async def execute_workflow_lock(
 ):
     logger.info("📩 [EXECUTE] Request received for job_id=%s", job_id)
 
-    name = name.strip().capitalize()
+    name = name.strip().split()[0].capitalize()
     gender = gender.lower()
     force_flag = force.lower() == "true"
     book_id = (book_id or "story1").lower()
@@ -2781,6 +2782,11 @@ async def payment_done_email_lock(username: str, child_name: str, email: str, pr
                        discount_amount: float, shipping_info: dict, actual_price: float):
     try:
         child_name = child_name.title()
+        actual_price = float(actual_price or 0)
+        discount_amount = float(discount_amount or 0)
+        shipping_price = float(shipping_price or 0)
+        taxes = float(taxes or 0)
+        total_price = float(total_price or 0)
         html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif; color: #333; max-width: 700px; margin: auto;">
