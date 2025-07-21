@@ -364,7 +364,6 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         # Step 5: Determine lock vs full preview
         workflows = user.get("workflows", {})
         workflow_keys = list(workflows.keys())
-        total_workflows = user.get("total_workflows", 0)
 
         if len(workflow_keys) == 10:
             logger.info(f"🔐 LOCKED preview detected (10 workflows). Sending locked email for job_id={job_id}")
@@ -655,6 +654,9 @@ async def create_order(request: Request):
         shipping_value = body.get("shipping", "0")
         currency_code = body.get("currency", "USD")
         request_id = body.get("request_id") or str(uuid.uuid4())
+        discount_code = body.get("discount_code", "").upper()
+        if not discount_code:
+            logger.warning(f"⚠️ No discount_code found for job_id={request_id}")
 
         if not cart:
             raise HTTPException(status_code=400, detail="Cart is empty")
@@ -724,8 +726,13 @@ async def create_order(request: Request):
         # Save to DB
         user_details_collection.update_one(
             {"job_id": request_id},
-            {"$set": {"order_id": order_data["id"],
-                      "payment_status": "CREATED"}}
+            {
+                "$set": {
+                    "order_id": order_data["id"],
+                    "payment_status": "CREATED",
+                    "discount_code": discount_code  
+                }
+            }
         )
 
         return JSONResponse(content=order_data)
@@ -735,7 +742,7 @@ async def create_order(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/paypal/store-capture")
-async def fetch_and_store_capture(request: Request):
+async def fetch_and_store_capture(request: Request, background_tasks: BackgroundTasks):
     try:
         body = await request.json()
         order_id = body.get("order_id")
@@ -744,25 +751,27 @@ async def fetch_and_store_capture(request: Request):
         if not order_id or not job_id:
             raise HTTPException(status_code=400, detail="Missing order_id or job_id")
 
+        logger.info(f"🔍 Starting PayPal capture for job_id={job_id}, order_id={order_id}")
+
         # Step 1: Get access token
         token = await get_paypal_access_token()
-        print("Access Token:", token)
-
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
 
-        # Step 2: ✅ Manually trigger capture
+        # Step 2: ✅ Trigger capture
         capture_url = f"{BASE_URL}/v2/checkout/orders/{order_id}/capture"
         capture_res = requests.post(capture_url, headers=headers)
         capture_res.raise_for_status()
         capture_data = capture_res.json()
 
-        # Step 3: Extract capture ID and details
+        # Step 3: Extract capture details
         purchase_unit = capture_data["purchase_units"][0]
-        capture_id = purchase_unit["payments"]["captures"][0]["id"]
-        capture_details = purchase_unit["payments"]["captures"][0]
+        capture = purchase_unit["payments"]["captures"][0]
+        capture_id = capture["id"]
+
+        logger.info(f"💳 Capture successful: capture_id={capture_id}")
 
         # Step 4: Extract shipping info
         shipping_address = purchase_unit.get("shipping", {}).get("address", {})
@@ -776,35 +785,110 @@ async def fetch_and_store_capture(request: Request):
             "province": shipping_address.get("admin_area_1", ""),
             "zip": shipping_address.get("postal_code", ""),
             "country": shipping_address.get("country_code", ""),
-            "phone": ""  
+            "phone": ""
         }
 
-        # Step 5: Store in MongoDB
-        user_details_collection.update_one(
-            {"job_id": job_id},
-            {"$set": {
-                "paid": True,
-                "paypal_order_id": order_id,
-                "paypal_capture_id": capture_id,
-                "payment_status": capture_details.get("status"),
-                "email": capture_details.get("payer", {}).get("email_address", ""),
-                "total_price": capture_details.get("amount", {}).get("value"),
-                "currency": capture_details.get("amount", {}).get("currency_code"),
-                "processed_at": capture_details.get("create_time"),
-                "updated_at": datetime.now(timezone.utc),
-                "shipping_address": shipping_info
-            }}
+        # Step 5: Find user and resolve discount code
+        user = user_details_collection.find_one({"job_id": job_id})
+        if not user:
+            logger.error(f"❌ No user found for job_id={job_id}")
+            raise HTTPException(status_code=404, detail="User not found")
+
+        discount_code = (user.get("discount_code") or "").upper()
+        logger.info(f"🎟️ Using discount_code='{discount_code}' for job_id={job_id}")
+
+        # Step 6: Generate new order_id based on discount_code
+        try:
+            order_patterns = {
+                "TEST": {"regex": r"^TEST#(\d+)$", "prefix": "TEST#", "default": "TEST#0"},
+                "COLLAB": {"regex": r"^COLLAB#(\d+)$", "prefix": "COLLAB#", "default": "COLLAB#0"},
+                "DEFAULT": {"regex": r"^#(\d+)$", "prefix": "#", "default": "#1199"}
+            }
+
+            pattern_key = "DEFAULT"
+            if discount_code == "TEST":
+                pattern_key = "TEST"
+            elif discount_code == "COLLAB":
+                pattern_key = "COLLAB"
+
+            pattern = order_patterns[pattern_key]
+            logger.info(f"🔢 Generating order_id using pattern: {pattern_key}")
+
+            pipeline = [
+                {"$match": {"order_id": {"$regex": pattern["regex"]}}},
+                {"$project": {
+                    "order_num": {
+                        "$toInt": {
+                            "$arrayElemAt": [{"$split": ["$order_id", "#"]}, 1]
+                        }
+                    }
+                }},
+                {"$sort": {"order_num": -1}},
+                {"$limit": 1}
+            ]
+
+            result = list(user_details_collection.aggregate(pipeline))
+            highest_num = result[0]["order_num"] if result else int(pattern["default"].split("#")[1])
+            new_order_id = f"{pattern['prefix']}{highest_num + 1}"
+
+            logger.info(f"✅ Generated new_order_id: {new_order_id}")
+
+        except Exception as e:
+            logger.exception("❌ Failed to generate order ID")
+            raise HTTPException(status_code=500, detail="Failed to generate order ID")
+
+        # Step 7: Update MongoDB
+        update_data = {
+            "paid": True,
+            "paypal_order_id": order_id,
+            "paypal_capture_id": capture_id,
+            "payment_status": capture.get("status"),
+            "email": capture.get("payer", {}).get("email_address", ""),
+            "total_price": capture.get("amount", {}).get("value"),
+            "currency": capture.get("amount", {}).get("currency_code"),
+            "processed_at": capture.get("create_time"),
+            "updated_at": datetime.now(timezone.utc),
+            "shipping_address": shipping_info,
+            "order_id": new_order_id,
+            "discount_code": discount_code
+        }
+
+        user_details_collection.update_one({"job_id": job_id}, {"$set": update_data})
+        logger.info(f"📝 Updated MongoDB for job_id={job_id}")
+
+        # Step 8: Send confirmation email (locked preview)
+        await payment_done_email_lock(
+            username=user.get("user_name", ""),
+            child_name=user.get("name", ""),
+            email=user.get("email", ""),
+            preview_url=user.get("preview_url", ""),
+            order_id=new_order_id,
+            total_price=update_data["total_price"],
+            currency_code=update_data["currency"],
+            discount_code=discount_code,
+            payment_id=capture_id,
+            shipping_info=shipping_info,
+            discount_amount=user.get("discount_amount", ""),
+            shipping_price=user.get("shipping_price", ""),
+            taxes=user.get("taxes", ""),
+            actual_price=user.get("actual_price", "")
         )
+
+        logger.info(f"📨 Sent payment_done_email_lock for job_id={job_id}")
+
+        # Step 9: Trigger remaining workflows
+        background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=10)
+        logger.info(f"🚀 Background task triggered for job_id={job_id} starting from page 10")
 
         return {
             "status": "success",
             "capture_id": capture_id,
-            "details": capture_details,
+            "order_id": new_order_id,
             "shipping_info": shipping_info
         }
 
     except Exception as e:
-        logger.exception("❌ Error in fetch_and_store_capture")
+        logger.exception("❌ Error in /api/paypal/store-capture")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/update-preview-url")
@@ -2008,7 +2092,6 @@ async def execute_workflow_lock(
             {"job_id": job_id},
             {"$set": {
                 "total_workflows": total_workflows,
-                "workflows_completed": 0  # Initialize counter
             }}
         )
 

@@ -28,20 +28,20 @@ export const Cards: CardProps[] = [
     category: ["Inspiration", "Confidence"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$34.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
       GB: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+        paperback: { price: "£24.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£34.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$64.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -64,20 +64,20 @@ export const Cards: CardProps[] = [
     category: ["Fantasy", "Imagination"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$29.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$444.99", shipping: "$7.99", taxes: "0" },
       },
       GB: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+        paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£29.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
@@ -100,20 +100,20 @@ export const Cards: CardProps[] = [
     category: ["Adventure", "Sci-Fi"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$34.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$49.99", shipping: "$7.99", taxes: "0" },
       },
       GB: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+        paperback: { price: "£24.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£34.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$54.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$69.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,550", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹2,050", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,549", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹2,049", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -136,20 +136,20 @@ export const Cards: CardProps[] = [
     category: ["Early Learning", "Alphabet"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$29.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
       GB: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+        paperback: { price: "£24.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£34.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -172,20 +172,20 @@ export const Cards: CardProps[] = [
     category: ["Motivation", "Sports"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$29.99", shipping: "$0", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
       GB: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+        paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£29.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
@@ -214,11 +214,6 @@ export const faqData = [
     "id": "delivery-timeline",
     "question": "🚚 Delivery Timeline",
     "answer": "Our custom-made books require 8–10 days for printing and delivery, as each one is created especially for you."
-  },
-  {
-    "id": "price-books",
-    "question": "💰 Price of the Books",
-    "answer": "🇮🇳 India • Paperback – ₹1,450 📄 • Hardcover – ₹1,950 📘 Shipping included 🎯 | 🇺🇸 United States • Paperback – $19.32 📖 • Hardcover – $26.33 📘 Shipping: $7.99 🚚 | 🇬🇧 United Kingdom • Paperback – £14.27 📖 • Hardcover – £19.46 📘 Shipping: £4.99 🚚"
   },
   {
     "id": "ordering-multiple",
