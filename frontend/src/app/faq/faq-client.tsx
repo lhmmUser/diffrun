@@ -17,7 +17,7 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
     <main className="bg-white py-0 sm:py-10 md:py-20">
       <div className="mx-auto max-w-7xl px-3 md:px-0 space-y-8">
         <div className="text-left pb-6">
-          <h1 className="text-2xl md:text-4xl font-medium tracking-tight text-gray-800 font-libre">
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-medium tracking-tight text-gray-800 font-libre">
             Frequently Asked Questions
           </h1>
         </div>

@@ -17,6 +17,7 @@ import "swiper/css/navigation";
 import { Autoplay, Pagination } from "swiper/modules";
 import { FiUser, FiEye, FiTruck, FiImage } from 'react-icons/fi';
 import { Cards } from "@/data/data";
+import { IoCloudUploadOutline } from "react-icons/io5";
 
 interface ImageFile {
   file: File;
@@ -32,6 +33,8 @@ interface FormGuide {
   message: string;
   type: 'info' | 'success' | 'warning';
 }
+
+type CountryCode = 'US' | 'UK' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
 
 const TypingCycle: React.FC = () => {
   const texts = [
@@ -93,11 +96,35 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => (
   </div>
 );
 
+const pastelTags = [
+  "bg-pink-100 text-pink-700",
+  "bg-green-100 text-green-700",
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-purple-100 text-purple-700",
+  "bg-orange-100 text-orange-700",
+  "bg-rose-100 text-rose-700",
+  "bg-lime-100 text-lime-700",
+];
+
+const fallbackOrder = ["GB", "US", "IN"];
+
+const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  const currentIndex = parseInt(img.dataset.fallbackIndex || "0");
+  const nextIndex = currentIndex + 1;
+
+  if (nextIndex < fallbackOrder.length) {
+    const nextCountry = fallbackOrder[nextIndex];
+    img.src = `/books/${img.dataset.bookKey}/${nextCountry}/${img.dataset.fileName}`;
+    img.dataset.fallbackIndex = nextIndex.toString();
+  }
+};
+
 const Form: React.FC = () => {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const jobType = searchParams.get("job_type") || "story";
   const bookId = searchParams.get("book_id") || "story1";
 
   const [name, setName] = useState<string>("");
@@ -112,7 +139,6 @@ const Form: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [redirectData, setRedirectData] = useState<{
     jobId: string;
-    jobType: string;
     name: string;
     gender: string;
     bookId: string;
@@ -130,34 +156,141 @@ const Form: React.FC = () => {
   };
 
   const [imageToCrop, setImageToCrop] = useState<number | null>(null);
+  const [locale, setLocale] = useState<CountryCode>("IN");
+  const [isLocaleLoading, setIsLocaleLoading] = useState(true);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const GEO = process.env.GEO;
 
-  useEffect(() => {
-    const fetchCountry = async () => {
-      try {
-        const res = await fetch(`https://ipapi.co/json?token=${GEO}`);
-        const data = await res.json();
-        const locale = data.country || "";
+  const isValidCountryCode = (code: string): boolean => {
+    return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(code);
+  };
 
-        if (locale && redirectData?.jobId) {
-          await fetch(`${apiBaseUrl}/update-country`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              job_id: redirectData.jobId,
-              locale,
-            }),
-          });
-          console.log("✅ Locale sent:", locale);
+  const normalizeCountryCode = (code: string): CountryCode => {
+    if (!code) return 'IN';
+    const upperCode = code.toUpperCase();
+    return upperCode;
+  };
+
+  const getClientSideCountry = async (): Promise<string> => {
+    const apis = [
+      {
+        name: "ipapi.co",
+        fn: () => fetch(`https://ipapi.co/json?token=${GEO}`).then(res => res.json()),
+        extract: (data: any) => data.country
+      },
+      {
+        name: "api.country.is",
+        fn: () => fetch('https://api.country.is').then(res => res.json()),
+        extract: (data: any) => data.country
+      },
+      {
+        name: "geolocation-db.com",
+        fn: () => fetch('https://geolocation-db.com/json/').then(res => res.json()),
+        extract: (data: any) => data.country_code
+      }
+    ];
+
+    for (const api of apis) {
+      try {
+        console.log(`[Geo] Trying ${api.name} API`);
+        const response = await api.fn();
+        const countryCode = api.extract(response);
+
+        if (countryCode && isValidCountryCode(countryCode)) {
+          console.log(`[Geo] Success with ${api.name}:`, countryCode);
+          return countryCode;
         }
-      } catch (err) {
-        console.error("🌐 Failed to fetch locale:", err);
+      } catch (e) {
+        console.error(`[Geo] Failed with ${api.name}:`, e);
+        continue;
+      }
+    }
+    throw new Error("[Geo] All geolocation APIs failed");
+  };
+
+  const updateBackendLocale = async (locale: string, jobId?: string) => {
+    if (!apiBaseUrl) return;
+
+    try {
+      const payload = jobId ? { locale, job_id: jobId } : { locale };
+      console.log("[Geo] Updating backend with:", payload);
+
+      await fetch(`${apiBaseUrl}/update-country`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error("[Geo] Backend update failed:", err);
+    }
+  };
+
+  useEffect(() => {
+    const determineLocale = async () => {
+      setIsLocaleLoading(true);
+      console.log("[Geo] Starting locale detection");
+
+      try {
+        const cachedLocale = localStorage.getItem("userLocale");
+        if (cachedLocale && isValidCountryCode(cachedLocale)) {
+          const normalized = normalizeCountryCode(cachedLocale);
+          setLocale(normalized);
+          await updateBackendLocale(normalized);
+          setIsLocaleLoading(false);
+          return;
+        }
+
+        const countryCode = await getClientSideCountry();
+        const normalized = normalizeCountryCode(countryCode);
+
+        setLocale(normalized);
+        localStorage.setItem("userLocale", normalized);
+        await updateBackendLocale(normalized);
+      } catch (error) {
+        console.error("[Geo] Geolocation failed, using default IN", error);
+        setLocale("IN");
+      } finally {
+        setIsLocaleLoading(false);
       }
     };
 
-    fetchCountry();
-  }, [redirectData]);
+    determineLocale();
+  }, []);
+
+  useEffect(() => {
+    if (redirectData?.jobId && locale) {
+      updateBackendLocale(locale, redirectData.jobId);
+    }
+  }, [redirectData, locale]);
+
+  const formatPrice = (card: typeof Cards[0], bookType: 'paperback' | 'hardcover') => {
+    if (isLocaleLoading) {
+      return <span className="h-4 w-20 bg-gray-200 animate-pulse rounded"></span>;
+    }
+
+    const countryKey = Object.keys(card.prices).find(
+      key => key.toUpperCase() === locale.toUpperCase()
+    ) as keyof typeof card.prices || 'IN';
+
+    const countryPrices = card.prices[countryKey] || card.prices.IN;
+    const priceData = countryPrices[bookType];
+
+    const currencyMatch = priceData.price.match(/[A-Z]{2,3}$/);
+    const currencyCode = currencyMatch ? currencyMatch[0] :
+      countryKey === 'US' ? 'USD' :
+        countryKey === 'GB' ? 'GBP' :
+          countryKey === 'CA' ? 'CAD' :
+            countryKey === 'AU' ? 'AUD' :
+              countryKey === 'NZ' ? 'NZD' : 'INR';
+
+    return (
+      <span>
+        From {priceData.price.includes(currencyCode)
+          ? priceData.price
+          : `${priceData.price} ${currencyCode}`}
+      </span>
+    );
+  };
 
   const handleFileProcessing = async (file: File): Promise<{ file: File } | null> => {
     if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
@@ -229,7 +362,25 @@ const Form: React.FC = () => {
     disabled: imageToCrop !== null,
   });
 
+  useEffect(() => {
+    if (loadingProgress === 100 && redirectData) {
+      router.push(
+        `/preview?job_id=${redirectData.jobId}&name=${encodeURIComponent(redirectData.name)}&gender=${redirectData.gender}&book_id=${redirectData.bookId}&approved=false&paid=false`
+      );
+    }
+  }, [loadingProgress, redirectData, router]);
+
+  const formatName = (name: string) =>
+    name
+      .trim()
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
+  const openCropModal = (index: number) => setImageToCrop(index);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+
     e.preventDefault();
 
     if (!name.trim() || !email || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
@@ -243,24 +394,24 @@ const Form: React.FC = () => {
     }
 
     if (!gender) {
-    showFormGuide("Please select your child's gender", 'warning');
-    return;
-  }
+      showFormGuide("Please select your child's gender", 'warning');
+      return;
+    }
 
-  if (!email) {
-    showFormGuide("We need your email to send the preview", 'warning');
-    return;
-  }
+    if (!email) {
+      showFormGuide("We need your email to send the preview", 'warning');
+      return;
+    }
 
-  if (images.length < 1 || images.length > 3) {
-    showFormGuide("Please upload between 1-3 photos of your child", 'warning');
-    return;
-  }
+    if (images.length < 1 || images.length > 3) {
+      showFormGuide("Please upload between 1-3 photos of your child", 'warning');
+      return;
+    }
 
-  if (!isConfirmed) {
-    showFormGuide("Please confirm you have consent to use these photos", 'warning');
-    return;
-  }
+    if (!isConfirmed) {
+      showFormGuide("Please confirm you have consent to use these photos", 'warning');
+      return;
+    }
 
     setError(null);
     setLoading(true);
@@ -270,7 +421,6 @@ const Form: React.FC = () => {
       formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
       formData.append("gender", gender.toLowerCase());
       formData.append("email", email.trim().toLowerCase());
-      formData.append("job_type", jobType);
       formData.append("book_id", bookId);
       images.forEach(({ file }) => formData.append("images", file));
       console.log("📤 Sending form data to /store-user-details");
@@ -287,7 +437,6 @@ const Form: React.FC = () => {
       const data = await storeResponse.json();
       const redirectPayload = {
         jobId: data.job_id,
-        jobType,
         name,
         gender,
         email,
@@ -298,14 +447,13 @@ const Form: React.FC = () => {
       console.log("✅ User details stored:", data);
       console.log("📤 Triggering workflow execution");
 
-      const workflowResponse = await fetch(`${apiBaseUrl}/execute-workflow`, {
+      const workflowResponse = await fetch(`${apiBaseUrl}/execute-workflow-lock`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           job_id: data.job_id,
           name: name.trim(),
           gender: gender.toLowerCase(),
-          job_type: jobType,
           book_id: bookId,
         }).toString(),
       });
@@ -320,7 +468,7 @@ const Form: React.FC = () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
 
       let progress = 0;
-      const duration = 65000;
+      const duration = 50000;
       const startTime = Date.now();
 
       const step = () => {
@@ -331,7 +479,7 @@ const Form: React.FC = () => {
         if (remainingProgress <= 0 || remainingTime <= 0) {
           setLoadingProgress(100);
           router.push(
-            `/preview?job_id=${redirectPayload.jobId}&job_type=${redirectPayload.jobType}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
+            `/preview?job_id=${redirectPayload.jobId}&name=${encodeURIComponent(redirectPayload.name)}&gender=${redirectPayload.gender}&book_id=${redirectPayload.bookId}&approved=false&paid=false`
           );
           return;
         }
@@ -354,26 +502,10 @@ const Form: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (loadingProgress === 100 && redirectData) {
-      router.push(
-        `/preview?job_id=${redirectData.jobId}&job_type=${redirectData.jobType}&name=${encodeURIComponent(redirectData.name)}&gender=${redirectData.gender}&book_id=${redirectData.bookId}&approved=false&paid=false`
-      );
-    }
-  }, [loadingProgress, redirectData, router]);
-
-  const formatName = (name: string) =>
-    name
-      .trim()
-      .split(/\s+/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-
-  const openCropModal = (index: number) => setImageToCrop(index);
+  }
 
   const selectedBook = Cards.find((b) => b.bookKey === bookId) ?? Cards[0];
+  const otherBooks = Cards.filter((b) => b.bookKey !== selectedBook.bookKey);
   const title = selectedBook?.title || "";
   const description = selectedBook?.description || "";
 
@@ -393,42 +525,61 @@ const Form: React.FC = () => {
                   spaceBetween={20}
                   slidesPerView={1}
                   loop={true}
-                  autoplay={{ delay: 5000, disableOnInteraction: false }}
+                  autoplay={{ delay: 4000, disableOnInteraction: false }}
                   pagination={{
                     clickable: true,
-                    renderBullet: (index, className) => {
+                    renderBullet: (className) => {
                       return `
-                      <span 
-                        class="${className}" 
-                        style="
-                          display:inline-block;
-                          width:clamp(12px, 4vw, 24px);
-                          height:clamp(12px, 4vw, 24px);
-                          background:url('/circle.png') no-repeat center center / contain;
-                          margin:0 6px;
-                        ">
-                      </span>
-                    `;
+                        <span 
+                          class="${className}" 
+                          style="
+                            display:inline-block;
+                            width:clamp(12px, 4vw, 24px);
+                            height:clamp(12px, 4vw, 24px);
+                            background:url('/global/circle.png') no-repeat center center / contain;
+                            margin:0 3px;
+                          ">
+                        </span>
+                      `;
                     },
                   }}
                   className="w-full h-auto mx-auto relative"
                 >
-                  {[1, 2].map((num) => (
-                    <SwiperSlide key={num}>
-                      <img
-                        src={`/${bookId}-book-${num}.avif`}
-                        alt={`Diffrun personalized books - Book ${num}`}
-                        className="w-full h-auto mx-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
-                      />
-                    </SwiperSlide>
-                  ))}
-                </Swiper>
-                <div className="flex justify-center lg:justify-start mx-auto mt-4 lg:ml-8 mb-6 lg:mb-0">
+                  {[1, 2, 3, 4, 5, 6, 7].map((num) => {
+                    const fallbackOrder = ["GB", "US", "IN"];
+                    const countryFolder = fallbackOrder.includes(locale) ? locale : "GB";
+                    const imagePath = `/books/${bookId}/${countryFolder}/${bookId}-book-${num}.avif`;
 
-                  <ul className="text-left text-sm sm:text-lg text-gray-700 md:text-base font-poppins">
+                    return (
+                      <SwiperSlide key={num}>
+                        <img
+                          src={imagePath}
+                          alt={`Diffrun personalized books - Book ${num}`}
+                          className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
+                          onError={(e) => {
+                            const fallbackIndex = fallbackOrder.indexOf(countryFolder);
+                            if (fallbackIndex < fallbackOrder.length - 1) {
+                              const nextFallback = fallbackOrder[fallbackIndex + 1];
+                              e.currentTarget.src = `/books/${bookId}/${nextFallback}/${bookId}-book-${num}.avif`;
+                            } else {
+                              e.currentTarget.src = `/books/${bookId}/IN/${bookId}-book-${num}.avif`;
+                            }
+                          }}
+                        />
+                      </SwiperSlide>
+                    );
+                  })}
+                </Swiper>
+                <div className="flex justify-start mt-5 mb-6 lg:mb-0">
+
+                  <ul className="text-left text-sm sm:text-lg text-gray-700 md:text-base font-poppins font-medium space-y-1">
                     <li className="flex items-center space-x-2">
                       <FiUser aria-hidden="true" />
-                      <span>Perfect for children aged 0 to 6</span>
+                      <span>Perfect for children aged {selectedBook.age}</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <FiImage aria-hidden="true" />
+                      <span>Personalize with your child’s special photo</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FiEye aria-hidden="true" />
@@ -436,11 +587,7 @@ const Form: React.FC = () => {
                     </li>
                     <li className="flex items-center space-x-2">
                       <FiTruck aria-hidden="true" />
-                      <span>Printed and shipped within 2–4 business days</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <FiImage aria-hidden="true" />
-                      <span>Personalize with your child’s special photo</span>
+                      <span>Printed and shipped within 7–8 business days</span>
                     </li>
                   </ul>
                 </div>
@@ -464,7 +611,7 @@ const Form: React.FC = () => {
                   Personalize your Child's Book
                 </h2>
 
-                <div className="flex flex-col md:flex-row gap-4 md:gap-12 mt-4">
+                <div className="flex flex-col md:flex-row gap-4 mt-4">
                   <div className="">
                     <input
                       type="text"
@@ -479,7 +626,7 @@ const Form: React.FC = () => {
                   </div>
 
                   <div className="">
-                    <div className="flex space-x-6">
+                    <div className="flex space-x-4">
                       <label className="flex items-center space-x-2 cursor-pointer">
                         <input
                           type="radio"
@@ -529,9 +676,10 @@ const Form: React.FC = () => {
                       }`}
                   >
                     <input {...getInputProps()} disabled={imageToCrop !== null} />
-                    <button className="">
-                      <span className="text-left font-medium ml-4">
-                        Upload upto 3 Images of Your Child
+                    <button className="flex items-center justify-center w-full gap-4 font-poppins">
+                      <IoCloudUploadOutline className="text-lg md:text-2xl text-blue-50 flex-shrink-0" />
+                      <span className="text-sm md:text-lg font-medium text-blue-50 text-center">
+                        Upload upto 3 Child Images
                       </span>
                     </button>
                     {imageToCrop !== null && (
@@ -589,9 +737,9 @@ const Form: React.FC = () => {
 
                 <div className="relative inline-block">
                   <img
-                    src="/instructions.jpg"
+                    src="/global/instructions.jpg"
                     alt="Diffrun personalized books - Instructions"
-                    className="w-auto h-60 border border-gray-200"
+                    className="w-auto h-70 border border-gray-200"
                   />
                   <button
                     type="button"
@@ -610,7 +758,7 @@ const Form: React.FC = () => {
                     checked={isConfirmed}
                     onChange={(e) => setIsConfirmed(e.target.checked)}
                     disabled={loading}
-                    className="mt-1 h-5 w-5 accent-pastel-purple"
+                    className="h-5 w-5 accent-pastel-purple"
                   />
                   <label htmlFor="confirmation" className="text-sm leading-5">
                     I confirm that I am at least 18 years old and have obtained consent from the child's parent or guardian to share this information for the purpose of creating a personalized storybook, in accordance with the{" "}
@@ -642,41 +790,114 @@ const Form: React.FC = () => {
                 </p>
               </form>
             </div>
-
           </div>
 
-          <div className="w-full max-w-5xl mx-auto px-4 py-8">
+          <div className="w-full max-w-7xl mx-auto px-4 py-8">
             <h2 className="text-3xl font-libre font-medium mb-6 text-gray-800 text-left">
               Explore More Books
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Cards.filter(book => book.bookKey !== bookId).map((book, index) => (
-                <div
-                  key={index}
-                  className="bg-white overflow-hidden"
-                >
-                  <img
-                    src={book.imageSrc}
-                    alt={book.title}
-                    width={400}
-                    height={400}
-                    className="w-full h-64 object-cover object-left"
-                  />
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-medium font-libre text-gray-800 my-2">{book.title}</h3>
-                    <p className="text-sm text-gray-600 font-poppins my-2">Age : {book.age}</p>
-                    <p className="text-gray-700 font-poppins my-2 text-sm">{book.description}</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
+              {otherBooks.map((card, index) => {
+                const countryFolder = locale === 'IN' ? 'IN' : 'US';
+                const basePath = `/books/${card.bookKey}/${countryFolder}`;
+                const mainImage = `${basePath}/${card.bookKey}-book.avif`;
+                const hoverImage = `/books/${card.bookKey}/${countryFolder}/${card.hoverImageSrc}`;
+
+                return (
+                  <div
+                    key={index}
+                    className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
+                  >
                     <Link
-                      href={`/child-details?book_id=${book.bookKey}&job_type=story`}
-                      className="inline-block mb-4 text-indigo-600 font-play font-medium"
+                      href={`/child-details?job_type=story&book_id=${card.bookKey}`}
+                      aria-label={`Personalize ${card.title} story for ages ${card.age}`}
+                      className="flex flex-col h-full"
                     >
-                      Personalize this book →
+                      <div className="relative w-full pt-[75%] overflow-hidden">
+                        {/* Desktop - Default */}
+                        <img
+                          src={mainImage}
+                          alt={card.title}
+                          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                          loading="lazy"
+                          onError={(e) =>
+                            (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book.avif`)
+                          }
+                        />
+
+                        {/* Desktop - Hover */}
+                        <img
+                          src={hoverImage}
+                          alt={`${card.title} hover`}
+                          className="absolute inset-0 w-full h-full object-cover transform scale-100 transition-transform duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100 opacity-0"
+                          loading="lazy"
+                          onError={(e) =>
+                            (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book-1.avif`)
+                          }
+                        />
+                      </div>
+
+                      <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
+                        <div className="flex justify-between items-center flex-wrap gap-y-1">
+                          <div className="flex flex-wrap gap-1">
+                            {Array.isArray(card.category) && card.category.length > 0 ? (
+                              card.category.map((tag, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                    } whitespace-nowrap`}
+                                >
+                                  {tag}
+                                </span>
+                              ))
+                            ) : (
+                              <span
+                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
+                                  }`}
+                              >
+                                Storybook
+                              </span>
+                            )}
+                          </div>
+
+                          <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                            Ages {card.age}
+                          </span>
+                        </div>
+
+                        <h3 className="text-lg sm:text-xl font-medium font-libre text-gray-900 mt-2">
+                          {card.title}
+                        </h3>
+
+                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                          {card.description}
+                        </p>
+
+                        <div className="flex items-center justify-between mt-auto pt-4">
+                          <span className="text-base md:text-lg font-medium text-gray-800">
+                            {formatPrice(card, 'paperback')}
+                          </span>
+
+                          <button
+                            className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.location.href = `/child-details?job_type=story&book_id=${card.bookKey}`;
+                            }}
+                          >
+                            Personalize
+                          </button>
+                        </div>
+                      </div>
                     </Link>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
+
         </>
       ) : (
         <motion.div
@@ -733,7 +954,7 @@ const Form: React.FC = () => {
               ✕
             </button>
             <img
-              src="/instructions.jpg"
+              src="/global/instructions.jpg"
               alt="Diffrun personalized books - Expanded Instructions"
               className="w-full max-h-[80vh] object-contain rounded-lg"
             />

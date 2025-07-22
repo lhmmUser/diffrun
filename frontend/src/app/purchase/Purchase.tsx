@@ -23,6 +23,8 @@ const ALLOWED_COUNTRIES = ["US", "UK", "CA", "IN", "AU", "NZ"];
 
 const discountCodes: { [code: string]: number } = {
   LHMM: 99,
+  TEST: 99,
+  COLLAB: 99
 };
 
 const Purchase = () => {
@@ -37,6 +39,7 @@ const Purchase = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [locale, setLocale] = useState<string>(DEFAULT_COUNTRY);
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const [isApproving, setIsApproving] = useState(false);
 
   const currency = currencyMap[locale] || currencyMap[DEFAULT_COUNTRY];
 
@@ -55,15 +58,6 @@ const Purchase = () => {
     );
   };
 
-  const parseCurrency = (priceStr: string): { currency: string; amount: number } => {
-    const match = priceStr.match(/^([^\d\s.,]+)?\s?([\d,]+(?:\.\d+)?)/);
-    if (!match) return { currency: "", amount: 0 };
-
-    const currency = match[1] || "";
-    const amount = parseFloat(match[2].replace(/,/g, ""));
-    return { currency, amount };
-  };
-
   const calculateFinalAmount = (
     basePrice: string,
     shipping: string,
@@ -76,7 +70,7 @@ const Purchase = () => {
     const numericShipping = parseFloat(shipping.replace(/[^\d.]/g, ""));
 
     const discount = (numericBase * discountPercentage) / 100;
-    const discountedPrice =  (numericBase * (100 -  discountPercentage)) / 100;
+    const discountedPrice = (numericBase * (100 - discountPercentage)) / 100;
     const total = numericBase + numericShipping - discount;
 
     return {
@@ -90,9 +84,7 @@ const Purchase = () => {
   };
 
   const { price, shipping } = getFixedPriceByCountry(locale, selectedOption || "paperback");
-
-  const discountPercentage = appliedCoupon === "LHMM" ? 99 : 0;
-
+  const discountPercentage = discountCodes[appliedCoupon || ""] || 0;
   const finalAmount = calculateFinalAmount(price, shipping, discountPercentage);
 
   const initialOptions = {
@@ -129,7 +121,7 @@ const Purchase = () => {
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckoutShopify = async () => {
     if (!selectedOption) return;
     const variantId = selectedOption === "hardcover" ? "41626628128902" : "41626628161670";
 
@@ -160,63 +152,73 @@ const Purchase = () => {
   };
 
   const handleApply = () => {
-    const code = couponInput.trim().toUpperCase();
-    if (discountCodes[code]) {
-      setAppliedCoupon(code);
-    } else {
-      alert("Invalid coupon code");
-    }
-    setCouponInput("");
-  };
+  const code = couponInput.trim().toUpperCase();
+  if (discountCodes[code]) {
+    setAppliedCoupon(code);
+  } else {
+    alert("Invalid coupon code");
+  }
+  setCouponInput("");
+};
 
   const handleRemove = () => {
     setAppliedCoupon(null);
   };
 
   const handleCheckoutRZP = () => {
-      if (!selectedOption) return;
+    if (!selectedOption) return;
 
     const currentParams = new URLSearchParams(window.location.search);
     window.location.href = `/checkout?${currentParams.toString()}`;
   }
 
   return (
-    <div className="flex flex-col items-center min-h-screen mt-10">
-      {/* Book selection */}
+    <div className="flex flex-col items-center min-h-screen">
+
       <section className="w-full max-w-4xl mb-16 px-4 md:px-0">
-        <h1 className="text-2xl md:text-3xl font-libre font-medium text-gray-800 py-4 px-1">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-libre font-medium text-gray-800 py-4 px-1">
           {name.charAt(0).toUpperCase() + name.slice(1)}&apos;s Personalized Storybook
         </h1>
 
-        {/* Options */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-          {(["hardcover", "paperback"] as const).map((format) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          {(["paperback", "hardcover"] as const).map((format) => {
             const { price } = getFixedPriceByCountry(locale, format);
+            const isSelected = selectedOption === format;
+
             return (
               <div
                 key={format}
                 onClick={() => handleSelectOption(format)}
-                className={`relative flex flex-col items-start p-4 shadow-lg cursor-pointer ${selectedOption === format ? "bg-[#f7f6cf]" : "hover:bg-gray-100"}`}
+                className={`relative flex flex-col items-start p-5 rounded-2xl border border-gray-200 transition-all duration-200 shadow-md cursor-pointer ${isSelected
+                  ? "bg-[#f7f6cf] shadow-lg"
+                  : "bg-white hover:shadow-lg"
+                  }`}
               >
-                <div className="absolute top-2 right-2 bg-[#5784ba] text-white text-xs px-4 py-2">
-                  {selectedOption === format ? "Selected" : ""}
+
+                <div className={`absolute top-3 right-3 px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 ${isSelected ? "bg-[#5784ba] text-white" : "bg-gray-200 text-gray-600"
+                  }`}>
+                  {isSelected ? "Selected" : format.charAt(0).toUpperCase() + format.slice(1)}
                 </div>
+
                 <img
                   src={`/${format === "hardcover" ? "hardcover" : "softpaper"}-${bookId}.jpg`}
                   alt={`Diffrun book - ${format}`}
-                  className="w-auto h-48 object-cover mb-4"
+                  className="w-full h-52 object-cover rounded-lg mb-4"
                 />
-                <h2 className="text-xl font-poppins font-medium text-black capitalize">{format}</h2>
-                <p className="text-sm text-gray-700 mb-2">
-                  {format === "hardcover" ? "Durable, premium binding with matte finish." : "Lightweight and portable softcover edition."}
+
+                <h2 className="text-lg md:text-xl font-semibold text-gray-800 capitalize">{format}</h2>
+                <p className="text-sm text-gray-600 mb-3">
+                  {format === "hardcover"
+                    ? "Durable, premium binding with matte finish."
+                    : "Lightweight and portable softcover edition."}
                 </p>
-                <span className="text-lg font-bold">{price}</span>
+
+                <span className="text-lg font-bold text-gray-800">{price}</span>
               </div>
             );
           })}
         </div>
 
-        {/* Checkout */}
         <div className="mt-12 max-w-xs mx-auto">
           {locale === "IN" ? (
             <button
@@ -228,111 +230,142 @@ const Purchase = () => {
             </button>
           ) : (
             <>
-            <div className="flex flex-col justify-center items-center mx-auto w-full max-w-sm mt-10 bg-[#fce4ec] px-6 py-4 shadow-md text-gray-800 space-y-2">
-          {appliedCoupon && (
-            <p className="text-sm font-poppins text-gray-700">
-              <span className="text-base">Discount Applied: -{finalAmount.currency}{finalAmount.discount.toFixed(2)}</span>
-            </p>
-          )}
-          {appliedCoupon && (
-          <p className="text-base font-poppins text-gray-700">Discounted Price: ${finalAmount.discountPrice}</p>
-           )}
-          <p className="text-base font-poppins">
-            Shipping: <span className="text-base">{finalAmount.currency}{finalAmount.shipping.toFixed(2)}</span>
-          </p>
+              <div className="flex flex-col items-start mx-auto w-full max-w-sm mt-10 bg-white rounded-2xl shadow-lg px-6 py-5 space-y-3 border border-gray-200">
+                {appliedCoupon && (
+                  <div className="w-full flex justify-between text-sm text-green-700 font-medium">
+                    <span>Discount Applied</span>
+                    <span>-{finalAmount.currency}{finalAmount.discount.toFixed(2)}</span>
+                  </div>
+                )}
 
+                {appliedCoupon && (
+                  <div className="w-full flex justify-between text-sm text-gray-700">
+                    <span>Discounted Price</span>
+                    <span>${finalAmount.discountPrice.toFixed(2)}</span>
+                  </div>
+                )}
 
-          <hr className="w-full border-t my-3 border-gray-400" />
+                <div className="w-full flex justify-between text-sm text-gray-600">
+                  <span>Shipping</span>
+                  <span>{finalAmount.currency}{finalAmount.shipping.toFixed(2)}</span>
+                </div>
 
-          <p className="text-lg font-poppins text-black">
-            Total: {finalAmount.currency}{finalAmount.total}
-          </p>
-        </div>
+                <hr className="w-full border-t border-gray-300 my-2" />
 
-        {/* Discount + Summary */}
-        <div className="py-2 w-full">
-          <div
-            className="max-w-xs mx-auto flex justify-center items-center cursor-pointer gap-2"
-            onClick={() => setShowCouponInput(!showCouponInput)}
-          >
-            <h3 className="text-sm font-medium font-poppins text-blue-900">Have a coupon code?</h3>
-            {showCouponInput ? (
-              <FiChevronUp className="text-xl text-indigo-800" />
-            ) : (
-              <FiChevronDown className="text-xl text-indigo-800" />
-            )}
-          </div>
+                <div className="w-full flex justify-between text-lg font-semibold text-gray-900">
+                  <span>Total</span>
+                  <span>{finalAmount.currency}{finalAmount.total}</span>
+                </div>
+              </div>
 
-          {showCouponInput && (
-            <div className="w-60 mx-auto mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <input
-                type="text"
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value)}
-                placeholder="Enter coupon code"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm mb-2"
-              />
-              <button
-                onClick={handleApply}
-                className="w-full bg-[#5784ba] text-white py-1 rounded-md hover:bg-[#456ca0] transition"
-              >
-                Apply Coupon
-              </button>
-              {appliedCoupon && (
-                <div className="flex justify-between items-center text-sm text-gray-800 mt-3 bg-white p-2 rounded-md shadow">
-                  <span>
-                    Coupon applied: <strong>{appliedCoupon}</strong>
-                  </span>
-                  <FaTrash
-                    onClick={handleRemove}
-                    className="cursor-pointer text-[#5784ba] hover:text-[#5784ba]"
-                  />
+              <div className="py-4 w-full">
+                
+                <div
+                  onClick={() => setShowCouponInput(!showCouponInput)}
+                  className="max-w-xs mx-auto flex items-center justify-center gap-2 cursor-pointer hover:text-blue-800 transition"
+                >
+                  <h3 className="text-sm font-medium font-poppins text-blue-900">
+                    Have a coupon code?
+                  </h3>
+                  {showCouponInput ? (
+                    <FiChevronUp className="text-xl text-blue-800" />
+                  ) : (
+                    <FiChevronDown className="text-xl text-blue-800" />
+                  )}
+                </div>
+
+                {showCouponInput && (
+                  <div className="w-64 mx-auto mt-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm space-y-3">
+                    
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      placeholder="Enter coupon code"
+                      className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5784ba] transition"
+                    />
+
+                    <button
+                      onClick={handleApply}
+                      className="w-full bg-[#5784ba] text-white text-sm font-medium py-2 rounded-md hover:bg-[#456ca0] transition"
+                    >
+                      Apply Coupon
+                    </button>
+
+                    {appliedCoupon && (
+                      <div className="flex items-center justify-between text-sm bg-[#f0f4ff] text-[#333] px-3 py-2 rounded-md shadow-inner">
+                        <span>
+                          Coupon applied: <span className="font-semibold">{appliedCoupon}</span>
+                        </span>
+                        <FaTrash
+                          onClick={handleRemove}
+                          className="cursor-pointer text-[#5784ba] hover:text-[#456ca0]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <PayPalScriptProvider options={initialOptions}>
+                <PayPalButtons
+                  style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
+                  disabled={!selectedOption}
+                  createOrder={async () => {
+                    if (!selectedOption) return;
+                    const res = await fetch(`${apiBaseUrl}/api/orders`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        cart: [{
+                          id: `${bookId}_${selectedOption}`,
+                          name: `${bookId}_${selectedOption}`,
+                          quantity: 1,
+                          price: finalAmount.discountPrice.toFixed(2),
+                        }],
+                        shipping: finalAmount.shipping.toFixed(2),
+                        currency,
+                        locale,
+                        preview_url: previewUrl,
+                        request_id: jobId,
+                        discount_code: appliedCoupon || "",
+                      }),
+                    });
+                    const order = await res.json();
+                    return order.id;
+                  }}
+                  onApprove={async (data) => {
+                    setIsApproving(true);
+                    try {
+                      await new Promise((r) => setTimeout(r, 1500));
+                      await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ order_id: data.orderID, job_id: jobId }),
+                      });
+                      window.location.href = `/confirmation?job_id=${jobId}`;
+                    } catch (err) {
+                      console.error("❌ PayPal onApprove error:", err);
+                      alert("Something went wrong while processing your payment.");
+                    } finally {
+                      setIsApproving(false);
+                    }
+                  }}
+                />
+              </PayPalScriptProvider>
+              {isApproving && (
+                <div className="fixed inset-0 bg-white bg-opacity-80 flex justify-center items-center z-50">
+                  <div className="text-center">
+                    <div className="loader mb-4" />
+                    <p className="text-lg text-gray-700 font-medium">Processing your payment...</p>
+                  </div>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-            <PayPalScriptProvider options={initialOptions}>
-              <PayPalButtons
-                style={{ shape: "pill", layout: "vertical", color: "gold", label: "paypal" }}
-                createOrder={async () => {
-                  if (!selectedOption) return;
-                  const res = await fetch(`${apiBaseUrl}/api/orders`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      cart: [{
-                        id: `${bookId}_${selectedOption}`,
-                        name: `${bookId}_${selectedOption}`,
-                        quantity: 1,
-                        price: finalAmount.discountPrice.toFixed(2),
-                      }],
-                      shipping: finalAmount.shipping.toFixed(2),
-                      currency,
-                      locale,
-                      preview_url: previewUrl,
-                      request_id: jobId,
-                    }),
-                  });
-                  const order = await res.json();
-                  return order.id;
-                }}
-                onApprove={async (data) => {
-                  await new Promise((r) => setTimeout(r, 1500));
-                  await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ order_id: data.orderID, job_id: jobId }),
-                  });
-                  window.location.href = `/confirmation?job_id=${jobId}`;
-                }}
-              />
-            </PayPalScriptProvider>
             </>
           )}
         </div>
 
-        <div className="mr-20 py-6 text-center text-sm text-gray-600">You can still make edits within 12 hours after ordering.</div>
+        <div className="py-6 text-center text-sm text-gray-700">You can still make edits within 12 hours after ordering.</div>
       </section>
 
       <section className="w-full max-w-5xl px-4">

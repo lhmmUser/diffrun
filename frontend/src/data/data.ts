@@ -2,6 +2,7 @@ export interface CardProps {
   bookKey: string;
   title: string;
   imageSrc: string;
+  hoverImageSrc?: string;
   age?: string;
   description?: string;
   category?: string[];
@@ -17,33 +18,34 @@ export interface CardProps {
 
 export const Cards: CardProps[] = [
   {
-     bookKey: "sports",
-    title: "Amaira is a born Sportstar",
-    imageSrc: "/sports-book.avif",
-    age: "4 - 10",
+    bookKey: "wigu",
+    title: "When Sara Grows Up",
+    imageSrc: "books/wigu/wigu-book.avif",
+    hoverImageSrc: "/wigu-book-1.avif",
+    age: "3 - 7",
     description:
-     "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
-    category: ["Motivation", "Sports"],
+      "All the amazing things a child can grow up to be. This book inspires big dreams.",
+    category: ["Inspiration", "Confidence"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$34.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      GB: {
+        paperback: { price: "£24.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£34.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$64.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
-        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
-        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
       },
       NZ: {
         paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
@@ -54,27 +56,28 @@ export const Cards: CardProps[] = [
   {
     bookKey: "dream",
     title: "Many Dreams of Zohaan",
-    imageSrc: "/dream-book.png",
+    imageSrc: "/books/dream/dream-book.png",
+    hoverImageSrc: "/dream-book-1.avif",
     age: "2 - 6",
     description:
       "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests.",
     category: ["Fantasy", "Imagination"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$29.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$444.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      GB: {
+        paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£29.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
@@ -87,29 +90,30 @@ export const Cards: CardProps[] = [
     },
   },
   {
-    bookKey: "wigu",
-    title: "When Sara Grows Up",
-    imageSrc: "/wigu-book.avif",
-    age: "3 - 7",
+    bookKey: "astro",
+    title: "Zoey's Space Adventure",
+    imageSrc: "/books/astro/astro-book.avif",
+    hoverImageSrc: "/astro-book-1.avif",
+    age: "4 - 10",
     description:
-      "All the amazing things a child can grow up to be. This book inspires big dreams.",
-    category: ["Inspiration", "Confidence"],
+      "The Child blasts off into space as the hero of their own mission, exploring the wonders of the galaxy.",
+    category: ["Adventure", "Sci-Fi"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$34.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$49.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      GB: {
+        paperback: { price: "£24.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£34.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$54.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$69.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,549", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹2,049", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -124,27 +128,28 @@ export const Cards: CardProps[] = [
   {
     bookKey: "abcd",
     title: "Max meets ABC",
-    imageSrc: "/abcd-book.avif",
+    imageSrc: "/books/abcd/abcd-book.avif",
+    hoverImageSrc: "/abcd-book-1.avif",
     age: "2 - 4",
     description:
       "Introduction to the alphabet through playful rhymes, colorful characters that makes learning fun and memorable.",
     category: ["Early Learning", "Alphabet"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$29.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      GB: {
+        paperback: { price: "£24.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£34.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -157,33 +162,34 @@ export const Cards: CardProps[] = [
     },
   },
   {
-    bookKey: "astro",
-    title: "Zoey's Space Adventure",
-    imageSrc: "/astronaut-book.avif",
+     bookKey: "sports",
+    title: "Game On Amaira",
+    imageSrc: "books/sports/sports-book.avif",
+    hoverImageSrc: "/sports-book-2.avif",
     age: "4 - 10",
     description:
-      "The Child blasts off into space as the hero of their own mission, exploring the wonders of the galaxy.",
-    category: ["Adventure", "Sci-Fi"],
+     "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
+    category: ["Motivation", "Sports"],
     prices: {
       US: {
-        paperback: { price: "$39.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$54.99", shipping: "$7.99", taxes: "0" },
+        paperback: { price: "$29.99", shipping: "$0", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
-      UK: {
-        paperback: { price: "£29.99", shipping: "£4.99", taxes: "0" },
-        hardcover: { price: "£39.99", shipping: "£4.99", taxes: "0" },
+      GB: {
+        paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£29.99", shipping: "£4.99", taxes: "0" },
       },
       CA: {
-        paperback: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
-        hardcover: { price: "$79.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,450", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,950", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
       },
       AU: {
-        paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
-        hardcover: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
+        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
       },
       NZ: {
         paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
@@ -208,11 +214,6 @@ export const faqData = [
     "id": "delivery-timeline",
     "question": "🚚 Delivery Timeline",
     "answer": "Our custom-made books require 8–10 days for printing and delivery, as each one is created especially for you."
-  },
-  {
-    "id": "price-books",
-    "question": "💰 Price of the Books",
-    "answer": "🇮🇳 India • Paperback – ₹1,450 📄 • Hardcover – ₹1,950 📘 Shipping included 🎯 | 🇺🇸 United States • Paperback – $19.32 📖 • Hardcover – $26.33 📘 Shipping: $7.99 🚚 | 🇬🇧 United Kingdom • Paperback – £14.27 📖 • Hardcover – £19.46 📘 Shipping: £4.99 🚚"
   },
   {
     "id": "ordering-multiple",
@@ -243,3 +244,36 @@ export const bookDetails: Record<string, { title: string; description: string }>
       "A magical journey through imagination—soar above clouds, tame dragons, and dive into a world where anything is possible and every dream feels real.",
   }
 };
+
+export const step = [
+        {
+            number: 1,
+            title: 'Tell us about your child',
+            description: 'Share their name, gender, and a few clear photos to get started.',
+        },
+        {
+            number: 2,
+            title: 'Smart face recreation',
+            description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
+        },
+        {
+            number: 3,
+            title: 'Instant sample preview',
+            description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
+        },
+        {
+            number: 4,
+            title: 'Unlock and refine',
+            description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
+        },
+        {
+            number: 5,
+            title: 'Approve for print',
+            description: 'Review the complete book and approve it when you’re fully satisfied.',
+        },
+        {
+            number: 6,
+            title: 'Delivered to your door',
+            description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
+        }
+    ];
