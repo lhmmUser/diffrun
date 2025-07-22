@@ -38,7 +38,8 @@ const VALID_COUPONS: Record<string, number> = {
   TEST: 99.93,
   COLLAB: 99.93,
   BOOND5: 5,
-  SUKHKARMAN: 5
+  SUKHKARMAN5: 5,
+  WELCOME5: 5
 };
 
 const DEFAULT_COUNTRY = "IN";
