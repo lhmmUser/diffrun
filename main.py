@@ -655,6 +655,7 @@ async def create_order(request: Request):
         currency_code = body.get("currency", "USD")
         request_id = body.get("request_id") or str(uuid.uuid4())
         discount_code = body.get("discount_code", "").upper()
+
         if not discount_code:
             logger.warning(f"⚠️ No discount_code found for job_id={request_id}")
 
@@ -730,7 +731,7 @@ async def create_order(request: Request):
                 "$set": {
                     "order_id": order_data["id"],
                     "payment_status": "CREATED",
-                    "discount_code": discount_code  
+                    "discount_code": discount_code,
                 }
             }
         )
@@ -843,7 +844,7 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
             "paypal_order_id": order_id,
             "paypal_capture_id": capture_id,
             "payment_status": capture.get("status"),
-            "email": capture.get("payer", {}).get("email_address", ""),
+            "paypal_email": capture.get("payer", {}).get("email_address", ""),
             "total_price": capture.get("amount", {}).get("value"),
             "currency": capture.get("amount", {}).get("currency_code"),
             "processed_at": capture.get("create_time"),
