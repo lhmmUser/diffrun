@@ -36,7 +36,9 @@ const VALID_COUPONS: Record<string, number> = {
   LHMM: 99.93,
   SPECIAL10: 10,
   TEST: 99.93,
-  COLLAB: 99.93
+  COLLAB: 99.93,
+  BOOND5: 5,
+  SUKHKARMAN: 5
 };
 
 const DEFAULT_COUNTRY = "IN";
