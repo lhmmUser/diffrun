@@ -2055,8 +2055,8 @@ async def update_country(data: dict):
     job_id = data.get("job_id")
     locale = data.get("locale", "").upper()
 
-    if locale == "GB":
-        locale = "UK"
+    if locale == "UK":
+        locale = "GB"
 
     job = user_details_collection.find_one({"job_id": job_id})
     if not job:
