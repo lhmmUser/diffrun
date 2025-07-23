@@ -34,7 +34,7 @@ interface FormGuide {
   type: 'info' | 'success' | 'warning';
 }
 
-type CountryCode = 'US' | 'UK' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
+type CountryCode = 'US' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
 
 const TypingCycle: React.FC = () => {
   const texts = [
@@ -162,12 +162,15 @@ const Form: React.FC = () => {
   const GEO = process.env.GEO;
 
   const isValidCountryCode = (code: string): boolean => {
-    return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(code);
+    const normalized = normalizeCountryCode(code);
+    return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(normalized);
   };
 
   const normalizeCountryCode = (code: string): CountryCode => {
     if (!code) return 'IN';
     const upperCode = code.toUpperCase();
+    if (upperCode === 'UK') return 'GB';
+
     return upperCode;
   };
 
@@ -194,7 +197,8 @@ const Form: React.FC = () => {
       try {
         console.log(`[Geo] Trying ${api.name} API`);
         const response = await api.fn();
-        const countryCode = api.extract(response);
+        let countryCode = api.extract(response);
+        countryCode = normalizeCountryCode(countryCode);
 
         if (countryCode && isValidCountryCode(countryCode)) {
           console.log(`[Geo] Success with ${api.name}:`, countryCode);
