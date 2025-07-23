@@ -20,8 +20,8 @@ export const Cards: CardProps[] = [
   {
     bookKey: "wigu",
     title: "When Sara Grows Up",
-    imageSrc: "books/wigu/wigu-book.avif",
-    hoverImageSrc: "/wigu-book-1.avif",
+    imageSrc: "/books/wigu/IN/wigu-book.avif",
+    hoverImageSrc: "/books/wigu/IN/wigu-book-1.avif",
     age: "3 - 7",
     description:
       "All the amazing things a child can grow up to be. This book inspires big dreams.",
@@ -56,8 +56,8 @@ export const Cards: CardProps[] = [
   {
     bookKey: "dream",
     title: "Many Dreams of Zohaan",
-    imageSrc: "/books/dream/dream-book.png",
-    hoverImageSrc: "/dream-book-1.avif",
+    imageSrc: "/books/dream/IN/dream-book.avif",
+    hoverImageSrc: "/books/dream/IN/dream-book-1.avif",
     age: "2 - 6",
     description:
       "A magical journey through imagination—soar above clouds, tame dragons, and conquer wild quests.",
@@ -92,8 +92,8 @@ export const Cards: CardProps[] = [
   {
     bookKey: "astro",
     title: "Zoey's Space Adventure",
-    imageSrc: "/books/astro/astro-book.avif",
-    hoverImageSrc: "/astro-book-1.avif",
+    imageSrc: "/books/astro/IN/astro-book.avif",
+    hoverImageSrc: "/books/astro/IN/astro-book-1.avif",
     age: "4 - 10",
     description:
       "The Child blasts off into space as the hero of their own mission, exploring the wonders of the galaxy.",
@@ -128,8 +128,8 @@ export const Cards: CardProps[] = [
   {
     bookKey: "abcd",
     title: "Max meets ABC",
-    imageSrc: "/books/abcd/abcd-book.avif",
-    hoverImageSrc: "/abcd-book-1.avif",
+    imageSrc: "/books/abcd/IN/abcd-book.avif",
+    hoverImageSrc: "/books/abcd/IN/abcd-book-1.avif",
     age: "2 - 4",
     description:
       "Introduction to the alphabet through playful rhymes, colorful characters that makes learning fun and memorable.",
@@ -164,8 +164,8 @@ export const Cards: CardProps[] = [
   {
      bookKey: "sports",
     title: "Game On Amaira",
-    imageSrc: "books/sports/sports-book.avif",
-    hoverImageSrc: "/sports-book-2.avif",
+    imageSrc: "/books/sports/IN/sports-book.avif",
+    hoverImageSrc: "/books/sports/IN/sports-book-1.avif",
     age: "4 - 10",
     description:
      "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
@@ -197,6 +197,42 @@ export const Cards: CardProps[] = [
       },
     },
   },
+  {
+     bookKey: "sports_us",
+    title: "Game On Sophia",
+    imageSrc: "/books/sports_us/US/sports_us-book.avif",
+    hoverImageSrc: "/books/sports_us/US/sports_us-book-1.avif",
+    age: "4 - 10",
+    description:
+     "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
+    category: ["Motivation", "Sports"],
+    prices: {
+      US: {
+        paperback: { price: "$29.99", shipping: "$0", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
+      },
+      GB: {
+        paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
+  }
 ];
 
 export const faqData = [
