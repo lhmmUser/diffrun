@@ -77,7 +77,7 @@ export default function Confirmation() {
 
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({
-              event: "purchase_ready",
+              event: "purchase",
               transaction_id: data.job_id,
               value: data.value,
               currency: data.currency,
@@ -132,8 +132,8 @@ export default function Confirmation() {
   console.log("🎉 Rendering confirmation UI for job:", jobData.job_id);
 
   return (
-    <div className="w-full min-h-[80vh] bg-white flex flex-col text-center items-center py-20">
-      <div className="max-w-3xl bg-gray-100 shadow-md rounded-md p-8 overflow-hidden px-2">
+    <div className="w-full min-h-[80vh] bg-white flex flex-col text-center items-center py-20 px-4">
+      <div className="max-w-3xl bg-gray-100 shadow-md rounded-md p-8 overflow-hidden px-2 mt-0 md:mt-10">
         <p className="mb-6 font-poppins">
           Thank you for your order! <strong>{jobData.child_name}</strong>'s magical storybook is now ready for your review. ✨
         </p>
@@ -146,13 +146,11 @@ export default function Confirmation() {
           Once you're happy with the final result, please click the <strong>"Approve for printing"</strong> button on the preview page. This step is essential to finalize your book and prepare it for printing.
         </p>
 
-        <h3 className="text-lg font-bold mb-6">📖 Preview & Refine Your Book:</h3>
-
         <a
           href={jobData.preview_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block px-6 py-3 bg-[#5784ba] text-white font-medium mb-6 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"
+          className="inline-block px-6 py-3 rounded-xl bg-[#5784ba] text-white font-medium mb-6 hover:bg-transparent hover:border hover:border-black hover:text-black cursor-pointer"
         >
           View & Refine Storybook
         </a>

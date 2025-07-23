@@ -58,7 +58,7 @@ export default function Home() {
 
                 <div className="w-1/2 h-full">
                     <img
-                        src="/banner-gif.avif"
+                        src="/banners/banner-gif.avif"
                         alt="Diffrun personalized books - banner"
                         width="600"
                         height="400"
@@ -69,7 +69,7 @@ export default function Home() {
 
             <div className="block md:hidden w-full">
                 <img
-                    src="/mobile-banner.avif"
+                    src="/banners/mobile-banner.avif"
                     alt="Diffrun personalized books - Mobile Banner Diffrun"
                     width="640"
                     height="640"
