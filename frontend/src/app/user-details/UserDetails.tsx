@@ -3,8 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-const UserDetails: React.FC = () => {
+const COUNTRIES = [
+  { code: "+91", name: "India", flag: "🇮🇳" },
+  { code: "+1", name: "USA", flag: "🇺🇸" },
+  { code: "+1", name: "Canada", flag: "🇨🇦" },
+  { code: "+44", name: "GB", flag: "🇬🇧" },
+  { code: "+61", name: "Australia", flag: "🇦🇺" }
+];
 
+const UserDetails: React.FC = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
@@ -21,6 +28,8 @@ const UserDetails: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [selectedCountry, setSelectedCountry] = useState<string>(COUNTRIES[0].code);
+  const [locale, setLocale] = useState<string>("IN");
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   useEffect(() => {
@@ -35,6 +44,18 @@ const UserDetails: React.FC = () => {
         console.log("🔗 Preview URL fetched:", data.preview_url);
         setEmail(data.email || "");
         setPreviewUrl(data.preview_url || "");
+
+        if (data.locale) {
+          setLocale(data.locale.toUpperCase());
+          // Find matching country based on locale
+          const matchedCountry = COUNTRIES.find(country =>
+            country.name.toUpperCase() === data.locale.toUpperCase() ||
+            country.code === `+${getCountryCodeFromLocale(data.locale)}`
+          );
+          if (matchedCountry) {
+            setSelectedCountry(matchedCountry.code);
+          }
+        }
       } catch (err: any) {
         console.error("⚠️ Error fetching preview URL:", err.message);
         setError("Unable to fetch preview URL.");
@@ -43,6 +64,36 @@ const UserDetails: React.FC = () => {
 
     fetchPreviewUrl();
   }, [jobId]);
+
+  const getCountryCodeFromLocale = (loc: string) => {
+    const countryMap: Record<string, string> = {
+      IN: "91",
+      US: "1",
+      CA: "1",
+      GB: "44",
+      AU: "61"
+    };
+
+    return countryMap[loc.toUpperCase()] || "91";
+  };
+
+  const parsePhoneNumber = (input: string) => {
+    const matchedCountry = COUNTRIES.find(country =>
+      input.startsWith(country.code.replace(/\s/g, ''))
+    );
+
+    if (matchedCountry) {
+      setSelectedCountry(matchedCountry.code);
+      return input.replace(matchedCountry.code, '').trim();
+    }
+    return input;
+  };
+
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    const parsedNumber = parsePhoneNumber(input);
+    setPhoneNumber(parsedNumber);
+  };
 
   const handleSubmit = async () => {
     try {
@@ -54,8 +105,10 @@ const UserDetails: React.FC = () => {
         return;
       }
 
-      if (!/^[\d\s+-]{10,15}$/.test(phoneNumber)) {
-        setError("Please enter a valid phone number (10-15 digits)");
+      const fullPhoneNumber = `${selectedCountry} ${phoneNumber.trim()}`;
+
+      if (!/^\+[\d\s-]{8,20}$/.test(fullPhoneNumber)) {
+        setError("Please enter a valid phone number (8-15 digits after country code)");
         return;
       }
 
@@ -70,7 +123,7 @@ const UserDetails: React.FC = () => {
         name,
         gender,
         preview_url: safePreviewUrl,
-        phone_number: phoneNumber.trim(),
+        phone_number: fullPhoneNumber,
         user_name: username,
         email: email
       };
@@ -125,7 +178,6 @@ const UserDetails: React.FC = () => {
 
         <div className="space-y-4">
           <div>
-
             <input
               type="text"
               id="name"
@@ -137,16 +189,34 @@ const UserDetails: React.FC = () => {
             />
           </div>
 
-          <div>
+          <div className="md:flex space-x-2 space-y-2 md:space-y-0">
+           
+            <div className="relative md:w-1/3">
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                className="w-full pl-3 pr-8 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 appearance-none bg-white"
+              >
+                {COUNTRIES.map((country) => (
+                  <option key={`${country.code}-${country.name}`} value={country.code}>
+                    {country.flag} {country.code}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
 
             <input
               type="tel"
               id="phone"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
+              onChange={handlePhoneNumberChange}
+              className="w-full flex-1 px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
               placeholder="Phone Number"
-              pattern="[\d\s+-]{10,15}"
               required
             />
           </div>
@@ -156,8 +226,8 @@ const UserDetails: React.FC = () => {
           onClick={handleSubmit}
           disabled={loading || !phoneNumber.trim() || !username.trim()}
           className={`w-full py-3 rounded-md text-white font-medium transition-colors ${!phoneNumber.trim() || !username.trim()
-              ? "bg-gray-300 cursor-not-allowed"
-              : "bg-[#5784ba] hover:bg-[#547096]"
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-[#5784ba] hover:bg-[#547096]"
             }`}
         >
           {loading ? (
