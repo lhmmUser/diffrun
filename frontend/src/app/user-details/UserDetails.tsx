@@ -2,14 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-
-const COUNTRIES = [
-  { code: "+91", name: "India", flag: "🇮🇳" },
-  { code: "+1", name: "USA", flag: "🇺🇸" },
-  { code: "+1", name: "Canada", flag: "🇨🇦" },
-  { code: "+44", name: "GB", flag: "🇬🇧" },
-  { code: "+61", name: "Australia", flag: "🇦🇺" }
-];
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 const UserDetails: React.FC = () => {
   const searchParams = useSearchParams();
@@ -24,11 +18,10 @@ const UserDetails: React.FC = () => {
   const bookId = searchParams.get("book_id") || "";
   const selected = searchParams.get("selected") || "";
 
-  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string | undefined>("");
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [selectedCountry, setSelectedCountry] = useState<string>(COUNTRIES[0].code);
   const [locale, setLocale] = useState<string>("IN");
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -47,14 +40,6 @@ const UserDetails: React.FC = () => {
 
         if (data.locale) {
           setLocale(data.locale.toUpperCase());
-          // Find matching country based on locale
-          const matchedCountry = COUNTRIES.find(country =>
-            country.name.toUpperCase() === data.locale.toUpperCase() ||
-            country.code === `+${getCountryCodeFromLocale(data.locale)}`
-          );
-          if (matchedCountry) {
-            setSelectedCountry(matchedCountry.code);
-          }
         }
       } catch (err: any) {
         console.error("⚠️ Error fetching preview URL:", err.message);
@@ -65,50 +50,13 @@ const UserDetails: React.FC = () => {
     fetchPreviewUrl();
   }, [jobId]);
 
-  const getCountryCodeFromLocale = (loc: string) => {
-    const countryMap: Record<string, string> = {
-      IN: "91",
-      US: "1",
-      CA: "1",
-      GB: "44",
-      AU: "61"
-    };
-
-    return countryMap[loc.toUpperCase()] || "91";
-  };
-
-  const parsePhoneNumber = (input: string) => {
-    const matchedCountry = COUNTRIES.find(country =>
-      input.startsWith(country.code.replace(/\s/g, ''))
-    );
-
-    if (matchedCountry) {
-      setSelectedCountry(matchedCountry.code);
-      return input.replace(matchedCountry.code, '').trim();
-    }
-    return input;
-  };
-
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    const parsedNumber = parsePhoneNumber(input);
-    setPhoneNumber(parsedNumber);
-  };
-
   const handleSubmit = async () => {
     try {
       setError(null);
       setSuccessMessage(null);
 
-      if (!phoneNumber.trim() || !username.trim()) {
+      if (!phoneNumber || !username.trim()) {
         setError("Please fill in all fields.");
-        return;
-      }
-
-      const fullPhoneNumber = `${selectedCountry} ${phoneNumber.trim()}`;
-
-      if (!/^\+[\d\s-]{8,20}$/.test(fullPhoneNumber)) {
-        setError("Please enter a valid phone number (8-15 digits after country code)");
         return;
       }
 
@@ -123,7 +71,7 @@ const UserDetails: React.FC = () => {
         name,
         gender,
         preview_url: safePreviewUrl,
-        phone_number: fullPhoneNumber,
+        phone_number: phoneNumber,
         user_name: username,
         email: email
       };
@@ -162,10 +110,10 @@ const UserDetails: React.FC = () => {
     <div className="flex flex-col items-center justify-center h-[80vh] p-6">
       <div className="w-full max-w-md rounded-lg shadow-lg border border-gray-200 p-8 space-y-6">
         <div className="text-center space-y-2">
-          <p className="text-gray-500 text-sm font-medium font-poppins">
+          <p className="text-gray-500 text-xs md:text-sm font-medium font-poppins">
             You'll recieve the preview link on your email
           </p>
-          <h2 className="text-2xl font-light text-gray-800">
+          <h2 className="text-lg md:text-2xl font-light text-gray-800">
             Continue to Purchase
           </h2>
         </div>
@@ -183,49 +131,48 @@ const UserDetails: React.FC = () => {
               id="name"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
               placeholder="Your Name"
               required
             />
           </div>
 
-          <div className="md:flex space-x-2 space-y-2 md:space-y-0">
-           
-            <div className="relative md:w-1/3">
-              <select
-                value={selectedCountry}
-                onChange={(e) => setSelectedCountry(e.target.value)}
-                className="w-full pl-3 pr-8 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 appearance-none bg-white"
-              >
-                {COUNTRIES.map((country) => (
-                  <option key={`${country.code}-${country.name}`} value={country.code}>
-                    {country.flag} {country.code}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
-
-            <input
-              type="tel"
-              id="phone"
+          <div className="w-full">
+            <PhoneInput
+              country={'in'}
               value={phoneNumber}
-              onChange={handlePhoneNumberChange}
-              className="w-full flex-1 px-4 py-3 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-300 focus:border-blue-300 transition"
-              placeholder="Phone Number"
-              required
+              onChange={(phone) => setPhoneNumber(phone)}
+              enableSearch
+              inputStyle={{
+                width: '100%',
+                paddingLeft: '60px',
+                padding: '12px 14px',
+                border: '1px solid #d1d5db', 
+                borderRadius: '0.375rem',   
+                fontSize: '16px',
+                outline: 'none',
+              }}
+              buttonStyle={{
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem 0 0 0.375rem',
+                backgroundColor: '#f9fafb', 
+              }}
+              containerStyle={{
+                width: '100%',
+              }}
+              dropdownStyle={{
+                maxHeight: '180px',
+                overflowY: 'auto',
+              }}
             />
           </div>
+
         </div>
 
         <button
           onClick={handleSubmit}
-          disabled={loading || !phoneNumber.trim() || !username.trim()}
-          className={`w-full py-3 rounded-md text-white font-medium transition-colors ${!phoneNumber.trim() || !username.trim()
+          disabled={loading || !phoneNumber || !username.trim()}
+          className={`w-full py-3 rounded-md text-white font-medium transition-colors ${!phoneNumber || !username.trim()
             ? "bg-gray-300 cursor-not-allowed"
             : "bg-[#5784ba] hover:bg-[#547096]"
             }`}

@@ -65,7 +65,7 @@ export const Cards: CardProps[] = [
     prices: {
       US: {
         paperback: { price: "$29.99", shipping: "$7.99", taxes: "0" },
-        hardcover: { price: "$444.99", shipping: "$7.99", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
       },
       GB: {
         paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
