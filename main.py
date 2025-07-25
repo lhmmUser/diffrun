@@ -436,7 +436,7 @@ async def get_order_status(job_id: str):
         "job_id": job_id,
         "dlv_purchase_event_fired": order.get("dlv_purchase_event_fired", False),
         "value": order.get("total_price") or order.get("final_amount"),
-        "currency": order.get("currency", "INR"),
+        "currency": order.get("currency"),
         "gender": order.get("gender"),
         "city": shipping.get("city"),
         "country": shipping.get("country"),
