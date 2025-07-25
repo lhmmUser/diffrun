@@ -72,20 +72,7 @@ RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
-PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "live")
-BASE_URL = "https://api-m.paypal.com"
-
-environment = LiveEnvironment(
-    client_id=PAYPAL_CLIENT_ID,
-    client_secret=PAYPAL_CLIENT_SECRET
-)
-
-print(WATERMARK_PATH)
-print("PayPal client ID:", PAYPAL_CLIENT_ID)
-print("PayPal secret:", PAYPAL_CLIENT_SECRET)
-print("PayPal environment:", PAYPAL_ENVIRONMENT)
-
-paypal_client = PayPalHttpClient(environment)
+PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox")
 
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
@@ -449,7 +436,7 @@ async def get_order_status(job_id: str):
         "job_id": job_id,
         "dlv_purchase_event_fired": order.get("dlv_purchase_event_fired", False),
         "value": order.get("total_price") or order.get("final_amount"),
-        "currency": order.get("currency_code", "INR"),
+        "currency": order.get("currency", "INR"),
         "gender": order.get("gender"),
         "city": shipping.get("city"),
         "country": shipping.get("country"),
@@ -581,12 +568,33 @@ async def shopify_webhook(request: Request):
         print("❌ Webhook Handling Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+def get_paypal_base_url():
+    return "https://api-m.sandbox.paypal.com" if os.getenv("PAYPAL_ENVIRONMENT") == "sandbox" else "https://api-m.paypal.com"
+
+def get_paypal_client():
+    client_id = PAYPAL_CLIENT_ID
+    client_secret = PAYPAL_CLIENT_SECRET
+    env_mode = PAYPAL_ENVIRONMENT
+
+    if env_mode == "sandbox":
+        environment = SandboxEnvironment(client_id=client_id, client_secret=client_secret)
+    else:
+        environment = LiveEnvironment(client_id=client_id, client_secret=client_secret)
+
+    logger.info(f"Using PayPal environment: {env_mode}")
+    logger.info(f"PayPal Client ID: {client_id}")
+    logger.info(f"PayPal Client Secret: {client_secret}")
+    if not client_id or not client_secret:
+        raise RuntimeError("PayPal client ID or secret is not set in environment variables")
+
+    return PayPalHttpClient(environment)
+
 @app.post("/api/orders/capture/{order_id}/")
 async def capture_order(order_id: str):
     try:
         capture_request = OrdersCaptureRequest(order_id)
         capture_request.prefer('return=representation')
-        response = paypal_client.execute(capture_request)
+        response = get_paypal_client().execute(capture_request)
         order = response.result
 
         purchase_unit = order.purchase_units[0]
@@ -709,7 +717,7 @@ async def create_order(request: Request):
         })
 
         # Execute request with PayPal SDK
-        response = paypal_client.execute(order_request)
+        response = get_paypal_client().execute(order_request)
         print("Response: ", response)
         order_data = {
             "id": response.result.id,
@@ -763,7 +771,7 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
         }
 
         # Step 2: ✅ Trigger capture
-        capture_url = f"{BASE_URL}/v2/checkout/orders/{order_id}/capture"
+        capture_url = f"{get_paypal_base_url()}/v2/checkout/orders/{order_id}/capture"
         capture_res = requests.post(capture_url, headers=headers)
         capture_res.raise_for_status()
         capture_data = capture_res.json()
@@ -845,7 +853,7 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
             "paypal_order_id": order_id,
             "paypal_capture_id": capture_id,
             "payment_status": capture.get("status"),
-            "email": capture.get("payer", {}).get("email_address", ""),
+            "paypal_email": capture.get("payer", {}).get("email_address", ""),
             "total_price": capture.get("amount", {}).get("value"),
             "currency": capture.get("amount", {}).get("currency_code"),
             "processed_at": capture.get("create_time"),
@@ -2381,28 +2389,25 @@ def regenerate_workflow_lock(
             file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
         ]
 
-        if not saved_filenames:
-            raise HTTPException(
-                status_code=404, detail="No input images found.")
-        
+        if not saved_filenames: 
         # S3 download logic
-        s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("AWS_REGION")
-        )
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                region_name=os.getenv("AWS_REGION")
+            )
 
-        for i in range(1, 4):
-            s3_key = f"input/{job_id}_{i:02d}.jpg"
-            local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
+            for i in range(1, 4):
+                s3_key = f"input/{job_id}_{i:02d}.jpg"
+                local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
 
-            try:
-                logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
-                s3_client.download_file("replicacomfy", s3_key, local_path)
-                logger.info(f"✅ Downloaded {s3_key}")
-            except Exception as e:
-                logger.warning(f"⚠️ Could not download {s3_key}: {e}")
+                try:
+                    logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
+                    s3_client.download_file("replicacomfy", s3_key, local_path)
+                    logger.info(f"✅ Downloaded {s3_key}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not download {s3_key}: {e}")
 
         # Reload saved_filenames after download attempt
         saved_filenames = [
