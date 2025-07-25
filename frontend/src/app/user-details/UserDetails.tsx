@@ -18,7 +18,7 @@ const UserDetails: React.FC = () => {
   const bookId = searchParams.get("book_id") || "";
   const selected = searchParams.get("selected") || "";
 
-  const [phoneNumber, setPhoneNumber] = useState<string | undefined>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -137,36 +137,43 @@ const UserDetails: React.FC = () => {
             />
           </div>
 
-          <div className="w-full">
+          <div className="relative">
             <PhoneInput
               country={'in'}
               value={phoneNumber}
               onChange={(phone) => setPhoneNumber(phone)}
               enableSearch
+              inputClass="w-full !pl-20 !py-3 !border-gray-300 !rounded-md focus:!ring-1 focus:!ring-blue-300 focus:!border-blue-300"
+              buttonClass="!bg-white !border-gray-300 !rounded-l-md !px-4"
+              dropdownClass="!border-gray-300 !rounded-md !shadow-lg"
+              containerClass="!w-full"
               inputStyle={{
-                width: '100%',
-                paddingLeft: '60px',
-                padding: '12px 14px',
-                border: '1px solid #d1d5db', 
-                borderRadius: '0.375rem',   
+                height: '48px',
                 fontSize: '16px',
-                outline: 'none',
+                width: '100%',
               }}
               buttonStyle={{
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem 0 0 0.375rem',
-                backgroundColor: '#f9fafb', 
-              }}
-              containerStyle={{
-                width: '100%',
+                height: '48px',
+                borderRight: 'none',
+                borderTopRightRadius: '0',
+                borderBottomRightRadius: '0',
+                backgroundColor: 'white',
               }}
               dropdownStyle={{
-                maxHeight: '180px',
+                maxHeight: '300px',
                 overflowY: 'auto',
               }}
+              searchStyle={{
+                padding: '8px',
+                marginBottom: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+              }}
             />
+            <div className="absolute inset-y-0 left-16 flex items-center pointer-events-none">
+              <span className="text-gray-400">|</span>
+            </div>
           </div>
-
         </div>
 
         <button
