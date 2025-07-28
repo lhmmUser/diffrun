@@ -1634,54 +1634,50 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
             book_style=book_style,
             cover_input_filename=cover_input_filename
         )
+
         # --- DB update ---
         approved_at = datetime.now(timezone.utc)
-        user_details_collection.update_one(
-            {"job_id": job_id},
-            {"$set": {
-                "approved": True,
-                "approved_at": approved_at,
-                "book_url": interior_url,
-                "updated_at": datetime.now(timezone.utc)
-            }}
-        )
-        logger.info(f"✅ Marked job_id={job_id} as approved")
+        update_data = {
+            "approved": True,
+            "approved_at": approved_at,
+            "book_url": interior_url,
+            "updated_at": datetime.now(timezone.utc)
+        }
 
-    
         # --- Email ---
         try:
             username = user.get("user_name") or user.get("name", "").capitalize()
             child_name = user.get("name", "").capitalize()
             email = user.get("email") or user.get("shopify_email")
+            approval_email_sent = user.get("approval_email_sent", False)
 
             if username and child_name and email:
-                approval_confirmation_email(
-                    username=username, child_name=child_name, email=email)
-                logger.info(f"📧 Email sent to {email}")
-                
+                if not approval_email_sent:
+                    approval_confirmation_email(
+                        username=username, 
+                        child_name=child_name, 
+                        email=email
+                    )
+                    logger.info(f"📧 Approval email sent to {email}")
+                    update_data["approval_email_sent"] = True
+                    update_data["approval_email_sent_at"] = datetime.now(timezone.utc)
+                else:
+                    logger.info("📧 Approval email was already sent - skipping")
             else:
                 logger.warning("⚠️ Missing user data for email")
                 
         except Exception as e:
             logger.error(f"❌ Email error: {e}")
-            
+
+        # Perform the DB update with all fields
+        user_details_collection.update_one(
+            {"job_id": job_id},
+            {"$set": update_data}
+        )
+        logger.info(f"✅ Marked job_id={job_id} as approved")
 
     except Exception as e:
         logger.exception("❌ Approval background task failed")
-
-@app.get("/get-workflow-status/{job_id}")
-async def get_workflow_status(job_id: str):
-    try:
-        user_details = user_details_collection.find_one(
-            {"job_id": job_id},
-            {"_id": 0, "workflow_status": 1}
-        )
-        if not user_details:
-            raise HTTPException(status_code=404, detail="Job ID not found.")
-        return user_details
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve workflow status: {str(e)}")
 
 def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
     for node_id, node_data in workflow_data.items():
