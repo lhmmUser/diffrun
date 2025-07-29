@@ -34,7 +34,7 @@ interface FormGuide {
   type: 'info' | 'success' | 'warning';
 }
 
-type CountryCode = 'US' | 'UK' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
+type CountryCode = 'US' | 'CA' | 'IN' | 'AU' | 'NZ' | 'GB' | string;
 
 const TypingCycle: React.FC = () => {
   const texts = [
@@ -162,12 +162,15 @@ const Form: React.FC = () => {
   const GEO = process.env.GEO;
 
   const isValidCountryCode = (code: string): boolean => {
-    return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(code);
+    const normalized = normalizeCountryCode(code);
+    return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(normalized);
   };
 
   const normalizeCountryCode = (code: string): CountryCode => {
     if (!code) return 'IN';
     const upperCode = code.toUpperCase();
+    if (upperCode === 'UK') return 'GB';
+
     return upperCode;
   };
 
@@ -194,7 +197,8 @@ const Form: React.FC = () => {
       try {
         console.log(`[Geo] Trying ${api.name} API`);
         const response = await api.fn();
-        const countryCode = api.extract(response);
+        let countryCode = api.extract(response);
+        countryCode = normalizeCountryCode(countryCode);
 
         if (countryCode && isValidCountryCode(countryCode)) {
           console.log(`[Geo] Success with ${api.name}:`, countryCode);
@@ -509,6 +513,23 @@ const Form: React.FC = () => {
   const title = selectedBook?.title || "";
   const description = selectedBook?.description || "";
 
+  const CountryBookAvailability: Record<CountryCode, string[]> = {
+    US: ["wigu", "dream", "astro", "abcd", "sports_us"],
+    GB: ["wigu", "dream", "astro", "abcd", "sports_us"],
+    IN: ["wigu", "dream", "astro", "abcd", "sports"],
+    CA: ["wigu", "dream", "astro", "abcd", "sports"],
+    AU: ["wigu", "dream", "astro", "abcd", "sports"],
+    NZ: ["wigu", "dream", "astro", "abcd", "sports"]
+  };
+
+  function buildImagePath(card: typeof Cards[0], country: CountryCode, type: "main" | "hover") {
+    const file = type === "main"
+      ? card.imageSrc.split("/").pop()
+      : card.hoverImageSrc?.split("/").pop();
+
+    return `/books/${card.bookKey}/${country}/${file}`;
+  }
+
   return (
     <main className="w-full min-h-screen flex flex-col items-center bg-white">
       {showContent ? (
@@ -798,15 +819,17 @@ const Form: React.FC = () => {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
-              {otherBooks.map((card, index) => {
-                const countryFolder = locale === 'IN' ? 'IN' : 'US';
-                const basePath = `/books/${card.bookKey}/${countryFolder}`;
-                const mainImage = `${basePath}/${card.bookKey}-book.avif`;
-                const hoverImage = `/books/${card.bookKey}/${countryFolder}/${card.hoverImageSrc}`;
+              {otherBooks.filter(card =>
+                CountryBookAvailability[locale as CountryCode]?.includes(card.bookKey) ?? true
+              ).map((card, index) => {
+                const supportedCountries = ["IN", "US", "GB"];
+                const countryFolder = supportedCountries.includes(locale) ? locale : "US";
+                const mainImage = buildImagePath(card, countryFolder, "main");
+                const hoverImage = buildImagePath(card, countryFolder, "hover");
 
                 return (
                   <div
-                    key={index}
+                    key={card.bookKey}
                     className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                   >
                     <Link
@@ -815,52 +838,54 @@ const Form: React.FC = () => {
                       className="flex flex-col h-full"
                     >
                       <div className="relative w-full pt-[75%] overflow-hidden">
-                        {/* Desktop - Default */}
+
                         <img
                           src={mainImage}
                           alt={card.title}
-                          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 lg:group-hover:opacity-0 lg:opacity-100 hidden md:block"
                           loading="lazy"
-                          onError={(e) =>
-                            (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book.avif`)
-                          }
+                          data-book-key={card.bookKey}
+                          data-file-name={`${card.bookKey}-book.avif`}
+                          data-fallback-index="0"
+                          onError={handleImageError}
                         />
 
-                        {/* Desktop - Hover */}
                         <img
                           src={hoverImage}
                           alt={`${card.title} hover`}
-                          className="absolute inset-0 w-full h-full object-cover transform scale-100 transition-transform duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100 opacity-0"
+                          className="absolute inset-0 w-full h-full object-cover hidden md:block opacity-0 transition-opacity duration-500 lg:group-hover:opacity-100"
                           loading="lazy"
-                          onError={(e) =>
-                            (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book-1.avif`)
-                          }
+                          data-book-key={card.bookKey}
+                          data-file-name={card.hoverImageSrc?.split('/').pop() || ''}
+                          data-fallback-index="0"
+                          onError={handleImageError}
+                        />
+
+                        <img
+                          src={hoverImage}
+                          alt={`${card.title} mobile`}
+                          className="absolute inset-0 w-full h-full object-cover md:hidden"
+                          loading="lazy"
+                          data-book-key={card.bookKey}
+                          data-file-name={card.hoverImageSrc?.split('/').pop() || ''}
+                          data-fallback-index="0"
+                          onError={handleImageError}
                         />
                       </div>
 
                       <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
                         <div className="flex justify-between items-center flex-wrap gap-y-1">
                           <div className="flex flex-wrap gap-1">
-                            {Array.isArray(card.category) && card.category.length > 0 ? (
-                              card.category.map((tag, i) => (
-                                <span
-                                  key={i}
-                                  className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                    } whitespace-nowrap`}
-                                >
-                                  {tag}
-                                </span>
-                              ))
-                            ) : (
+                            {card.category?.map((tag, i) => (
                               <span
-                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
-                                  }`}
+                                key={`${card.bookKey}-${tag}`}
+                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                  } whitespace-nowrap`}
                               >
-                                Storybook
+                                {tag}
                               </span>
-                            )}
+                            ))}
                           </div>
-
                           <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                             Ages {card.age}
                           </span>
@@ -876,9 +901,8 @@ const Form: React.FC = () => {
 
                         <div className="flex items-center justify-between mt-auto pt-4">
                           <span className="text-base md:text-lg font-medium text-gray-800">
-                            {formatPrice(card, 'paperback')}
+                            {formatPrice(card, "paperback")}
                           </span>
-
                           <button
                             className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
                             onClick={(e) => {

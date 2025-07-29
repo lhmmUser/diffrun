@@ -14,23 +14,31 @@ export default function Books() {
     useEffect(() => {
         const determineLocale = async () => {
             setIsLocaleLoading(true);
-            
+
             const cachedLocale = localStorage.getItem("userLocale");
-            if (cachedLocale && isValidCountryCode(cachedLocale)) {
-                setLocale(normalizeCountryCode(cachedLocale));
-                setIsLocaleLoading(false);
-                return;
+            if (cachedLocale) {
+                const normalized = normalizeCountryCode(cachedLocale);
+                if (isValidCountryCode(normalized)) {
+                    setLocale(normalized);
+                    setIsLocaleLoading(false);
+                    return;
+                }
             }
 
             try {
                 const countryCode = await getClientSideCountry();
                 const normalized = normalizeCountryCode(countryCode);
-                
-                setLocale(normalized);
-                localStorage.setItem("userLocale", normalized);
+
+                if (isValidCountryCode(normalized)) {
+                    setLocale(normalized);
+                    localStorage.setItem("userLocale", normalized);
+                } else {
+                    throw new Error("Invalid country code received");
+                }
             } catch (error) {
                 console.error("Geolocation failed, using default", error);
                 setLocale("IN");
+                localStorage.setItem("userLocale", "IN");
             } finally {
                 setIsLocaleLoading(false);
             }
@@ -39,6 +47,20 @@ export default function Books() {
         determineLocale();
     }, []);
 
+    const fallbackOrder = ["GB", "US", "IN"];
+
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        const img = e.currentTarget;
+        const currentIndex = parseInt(img.dataset.fallbackIndex || "0");
+        const nextIndex = currentIndex + 1;
+
+        if (nextIndex < fallbackOrder.length) {
+            const nextCountry = fallbackOrder[nextIndex];
+            img.src = `/books/${img.dataset.bookKey}/${nextCountry}/${img.dataset.fileName}`;
+            img.dataset.fallbackIndex = nextIndex.toString();
+        }
+    };
+
     const isValidCountryCode = (code: string): boolean => {
         return ['US', 'CA', 'IN', 'AU', 'NZ', 'GB'].includes(code);
     };
@@ -46,6 +68,7 @@ export default function Books() {
     const normalizeCountryCode = (code: string): CountryCode => {
         if (!code) return 'IN';
         const upperCode = code.toUpperCase();
+        if (upperCode === 'UK') return 'GB';
         return upperCode;
     };
 
@@ -59,7 +82,8 @@ export default function Books() {
         for (const api of apis) {
             try {
                 const response = await api();
-                return response.country || response.country_code;
+                const countryCode = response.country || response.country_code;
+                return normalizeCountryCode(countryCode);
             } catch (e) {
                 continue;
             }
@@ -71,26 +95,26 @@ export default function Books() {
         if (isLocaleLoading) {
             return <span className="h-4 w-20 bg-gray-200 animate-pulse rounded"></span>;
         }
-        
+
         const countryKey = Object.keys(card.prices).find(
             key => key.toUpperCase() === locale.toUpperCase()
         ) as keyof typeof card.prices || 'IN';
-        
+
         const countryPrices = card.prices[countryKey] || card.prices.IN;
         const priceData = countryPrices[bookType];
-     
+
         const currencyMatch = priceData.price.match(/[A-Z]{2,3}$/);
-        const currencyCode = currencyMatch ? currencyMatch[0] : 
-                           countryKey === 'US' ? 'USD' :
-                           countryKey === 'GB' ? 'GBP' :
-                           countryKey === 'CA' ? 'CAD' :
-                           countryKey === 'AU' ? 'AUD' :
-                           countryKey === 'NZ' ? 'NZD' : 'INR';
-    
+        const currencyCode = currencyMatch ? currencyMatch[0] :
+            countryKey === 'US' ? 'USD' :
+                countryKey === 'GB' ? 'GBP' :
+                    countryKey === 'CA' ? 'CAD' :
+                        countryKey === 'AU' ? 'AUD' :
+                            countryKey === 'NZ' ? 'NZD' : 'INR';
+
         return (
             <span>
-                From {priceData.price.includes(currencyCode) 
-                    ? priceData.price 
+                From {priceData.price.includes(currencyCode)
+                    ? priceData.price
                     : `${priceData.price} ${currencyCode}`}
             </span>
         );
@@ -107,26 +131,43 @@ export default function Books() {
         "bg-lime-100 text-lime-700",
     ];
 
+    const CountryBookAvailability: Record<CountryCode, string[]> = {
+            US: ["wigu", "dream", "astro", "abcd", "sports_us"],
+            GB: ["wigu", "dream", "astro", "abcd", "sports_us"],
+            IN: ["wigu", "dream", "astro", "abcd", "sports"],
+            CA: ["wigu", "dream", "astro", "abcd", "sports"],
+            AU: ["wigu", "dream", "astro", "abcd", "sports"],
+            NZ: ["wigu", "dream", "astro", "abcd", "sports"]
+        };
+    
+        function buildImagePath(card: typeof Cards[0], country: CountryCode, type: "main" | "hover") {
+            const file = type === "main"
+                ? card.imageSrc.split("/").pop()
+                : card.hoverImageSrc?.split("/").pop();
+    
+            return `/books/${card.bookKey}/${country}/${file}`;
+        }
+
     return (
-        <main className="w-full min-h-screen bg-white px-4 md:px-16 lg:px-40 xl:px-60 py-4">
+        <main className="w-full min-h-screen bg-white px-4 md:px-16 lg:px-40 xl:px-60 py-2">
 
-            <section className="flex flex-col">
-
+            <section className="flex flex-col px-4 sm:px-6 md:px-0">
                     <p className="w-full text-left text-lg sm:text-2xl lg:text-3xl text-gray-700 font-medium font-libre mb-5">
                         Choose your story and start personalizing
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
-                        {Cards.map((card, index) => {
+                        {Cards.filter(card =>
+                            CountryBookAvailability[locale as CountryCode]?.includes(card.bookKey) ?? true
+                        ).map((card, index) => {
                             const supportedCountries = ["IN", "US", "GB"];
                             const countryFolder = supportedCountries.includes(locale) ? locale : "US";
-                            const basePath = `/books/${card.bookKey}/${countryFolder}`;
-                            const mainImage = `${basePath}/${card.bookKey}-book.avif`;
-                            const hoverImage = `/books/${card.bookKey}/${countryFolder}/${card.hoverImageSrc}`;
+                            const mainImage = buildImagePath(card, countryFolder, "main");
+                            const hoverImage = buildImagePath(card, countryFolder, "hover");
 
                             return (
                                 <div
-                                    key={index}
+                                    key={card.bookKey}
                                     className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                                 >
                                     <Link
@@ -135,15 +176,16 @@ export default function Books() {
                                         className="flex flex-col h-full"
                                     >
                                         <div className="relative w-full pt-[75%] overflow-hidden">
-                                            {/* Desktop - Default */}
+
                                             <img
                                                 src={mainImage}
                                                 alt={card.title}
                                                 className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 lg:group-hover:opacity-0 lg:opacity-100 hidden md:block"
                                                 loading="lazy"
-                                                onError={(e) =>
-                                                    (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.bookKey}-book.avif`)
-                                                }
+                                                data-book-key={card.bookKey}
+                                                data-file-name={`${card.bookKey}-book.avif`}
+                                                data-fallback-index="0"
+                                                onError={handleImageError}
                                             />
 
                                             <img
@@ -151,9 +193,10 @@ export default function Books() {
                                                 alt={`${card.title} hover`}
                                                 className="absolute inset-0 w-full h-full object-cover hidden md:block opacity-0 transition-opacity duration-500 lg:group-hover:opacity-100"
                                                 loading="lazy"
-                                                onError={(e) =>
-                                                    (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.hoverImageSrc || `${card.bookKey}-book.avif`}`)
-                                                }
+                                                data-book-key={card.bookKey}
+                                                data-file-name={card.hoverImageSrc?.split('/').pop() || ''}
+                                                data-fallback-index="0"
+                                                onError={handleImageError}
                                             />
 
                                             <img
@@ -161,35 +204,26 @@ export default function Books() {
                                                 alt={`${card.title} mobile`}
                                                 className="absolute inset-0 w-full h-full object-cover md:hidden"
                                                 loading="lazy"
-                                                onError={(e) =>
-                                                    (e.currentTarget.src = `/books/${card.bookKey}/IN/${card.hoverImageSrc || `${card.bookKey}-book.avif`}`)
-                                                }
+                                                data-book-key={card.bookKey}
+                                                data-file-name={card.hoverImageSrc?.split('/').pop() || ''}
+                                                data-fallback-index="0"
+                                                onError={handleImageError}
                                             />
                                         </div>
 
                                         <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
                                             <div className="flex justify-between items-center flex-wrap gap-y-1">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {Array.isArray(card.category) && card.category.length > 0 ? (
-                                                        card.category.map((tag, i) => (
-                                                            <span
-                                                                key={i}
-                                                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                                                    } whitespace-nowrap`}
-                                                            >
-                                                                {tag}
-                                                            </span>
-                                                        ))
-                                                    ) : (
+                                                    {card.category?.map((tag, i) => (
                                                         <span
-                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
-                                                                }`}
+                                                            key={`${card.bookKey}-${tag}`}
+                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                                                } whitespace-nowrap`}
                                                         >
-                                                            Storybook
+                                                            {tag}
                                                         </span>
-                                                    )}
+                                                    ))}
                                                 </div>
-
                                                 <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                                                     Ages {card.age}
                                                 </span>
@@ -207,7 +241,6 @@ export default function Books() {
                                                 <span className="text-base md:text-lg font-medium text-gray-800">
                                                     {formatPrice(card, "paperback")}
                                                 </span>
-
                                                 <button
                                                     className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
                                                     onClick={(e) => {
@@ -225,6 +258,7 @@ export default function Books() {
                             );
                         })}
                     </div>
+
                 </section>
 
             <div className="w-full my-20">

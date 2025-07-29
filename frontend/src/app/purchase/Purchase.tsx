@@ -11,7 +11,7 @@ import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 const currencyMap: { [countryCode: string]: string } = {
   US: "USD",
-  UK: "GBP",
+  GB: "GBP",
   IN: "INR",
   CA: "CAD",
   AU: "AUD",
@@ -19,7 +19,7 @@ const currencyMap: { [countryCode: string]: string } = {
 };
 
 const DEFAULT_COUNTRY = "IN";
-const ALLOWED_COUNTRIES = ["US", "UK", "CA", "IN", "AU", "NZ"];
+const ALLOWED_COUNTRIES = ["US", "GB", "CA", "IN", "AU", "NZ"];
 
 const discountCodes: { [code: string]: number } = {
   LHMM: 99,

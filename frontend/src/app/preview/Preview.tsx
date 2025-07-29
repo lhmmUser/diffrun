@@ -15,6 +15,19 @@ import TextSwipe from "@/components/animated/TextSwipe";
 
 const Preview: React.FC = () => {
 
+  function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+    let timeoutId: NodeJS.Timeout;
+
+    const debounced = (...args: Parameters<T>) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn(...args), delay);
+    };
+
+    debounced.cancel = () => clearTimeout(timeoutId);
+
+    return debounced;
+  }
+
   const router = useRouter();
   const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
   const forceContinueUntil = useRef<number>(Date.now() + 10000);
@@ -51,6 +64,7 @@ const Preview: React.FC = () => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedSlidesRef = useRef(selectedSlides);
   const [isHydrated, setIsHydrated] = useState(false);
   const searchParams = useSearchParams();
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -68,6 +82,10 @@ const Preview: React.FC = () => {
   const [totalWorkflows, setTotalWorkflows] = useState<number>(0);
   const [userEmail, setUserEmail] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  useEffect(() => {
+    selectedSlidesRef.current = selectedSlides;
+  }, [selectedSlides]);
 
   type CarouselChange = {
     workflowIndex: number;
@@ -89,23 +107,26 @@ const Preview: React.FC = () => {
     reason: string;
   } | null>(null);
 
+  const debouncedSave = useRef(
+    debounce(() => saveCurrentState(), 1000)
+  ).current;
+
   const saveCurrentState = useCallback(async () => {
     if (!jobId) return;
 
     try {
       setIsSaving(true);
-      const currentSelections = pendingUpdateRef.current?.selections || selectedSlides;
+      const currentSelections = selectedSlidesRef.current;
 
       const selectedParam = LZString.compressToEncodedURIComponent(
         JSON.stringify(currentSelections)
       );
 
       const previewUrl = `${window.location.origin}/preview?job_id=${jobId}&job_type=${jobType}&name=${name}&gender=${gender}&book_id=${bookId}&selected=${selectedParam}`;
-      
-      console.log("💾 Saving state:", {
-        selections: currentSelections.join(','),
-        url: previewUrl,
-        timestamp: new Date().toISOString()
+
+      console.log("🟢 Instant DB update:", {
+        selections: selectedSlides,
+        preview_url: previewUrl
       });
 
       const updateResponse = await fetch(`${apiBaseUrl}/update-preview-url`, {
@@ -114,13 +135,10 @@ const Preview: React.FC = () => {
         body: JSON.stringify({
           job_id: jobId,
           preview_url: previewUrl,
-          current_state: currentSelections.map((selection, index) => ({
-            workflowIndex: index,
-            selectedImage: selection,
-            totalImages: carousels[index]?.images.length || 0
-          }))
         }),
       });
+
+      console.log("New Preview Url: ", previewUrl);
 
       if (!updateResponse.ok) {
         throw new Error(`Failed to save state: ${updateResponse.status}`);
@@ -131,7 +149,7 @@ const Preview: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [jobId, name, gender, bookId, jobType, selectedSlides, carousels]);
+  }, [jobId, name, gender, bookId, jobType, selectedSlides]);
 
   const updateSelections = useCallback((newSelections: number[], reason: string) => {
     const validatedSelections = validateSelectionArray(newSelections);
@@ -147,6 +165,7 @@ const Preview: React.FC = () => {
       const { selections, reason } = pendingUpdateRef.current;
 
       setSelectedSlides(selections);
+      syncRef(selections);
 
       const newSearchParams = new URLSearchParams(window.location.search);
       const selectedParam = LZString.compressToEncodedURIComponent(JSON.stringify(selections));
@@ -383,6 +402,18 @@ const Preview: React.FC = () => {
   }, [jobId, workflowStatus]);
 
   useEffect(() => {
+    if (!jobId || !carousels.length) return;
+
+    const saveInterval = setInterval(() => {
+      if (regeneratingIndexes.length === 0) {
+        saveCurrentState();
+      }
+    }, 3000);
+
+    return () => clearInterval(saveInterval);
+  }, [jobId, carousels.length, regeneratingIndexes]);
+
+  useEffect(() => {
     const checkUserDetailsAndRedirect = async () => {
       try {
         if (!jobId) return;
@@ -485,25 +516,8 @@ const Preview: React.FC = () => {
     try {
       if (!isMountedRef.current) return;
 
-      console.log("🔄 Starting poll cycle:", {
-        jobId,
-        regeneratingIndexes: regeneratingIndexesRef.current.join(','),
-        regeneratingCount: regeneratingIndexesRef.current.length,
-        env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString(),
-        currentlyLoadingIndex
-      });
-
       const response = await fetch(`${apiBaseUrl}/poll-images-lock?job_id=${jobId}&t=${Date.now()}`);
       const data = await response.json();
-
-      console.log("📥 Poll response received:", {
-        carouselsLength: data.carousels?.length,
-        regeneratingIndexes: regeneratingIndexesRef.current.join(','),
-        regeneratingCount: regeneratingIndexesRef.current.length,
-        env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      });
 
       if (data.total_workflows) {
         setTotalWorkflows(data.total_workflows);
@@ -516,47 +530,13 @@ const Preview: React.FC = () => {
         setWorkflowStatus("completed");
       }
 
-      if (!slidesLengthInitialized && data.carousels?.length > 0 && !hasInitializedFromUrl.current) {
-        const length = data.carousels.length;
-        const urlSelections = parsedSelectionsRef.current;
-
-        console.log("🎯 Initialization check:", {
-          length,
-          urlSelections: urlSelections ? {
-            length: urlSelections.length,
-            sample: urlSelections.slice(0, 3)
-          } : null,
-          isInitialized: slidesLengthInitialized
-        });
-
-        if (urlSelections && urlSelections.length === length) {
-          console.log("📏 Setting selections from URL:", urlSelections);
-          isInitializingFromUrl.current = true;
-          if (isMountedRef.current) {
-            setSelectedSlides(urlSelections);
-            setSlidesLengthInitialized(true);
-            hasInitializedFromUrl.current = true;
-          }
-          setTimeout(() => {
-            isInitializingFromUrl.current = false;
-          }, 500);
-        } else {
-          console.log("📏 Setting default zeros");
-          if (isMountedRef.current) {
-            setSelectedSlides(Array(length).fill(0));
-            setSlidesLengthInitialized(true);
-            hasInitializedFromUrl.current = true;
-          }
-        }
-      }
-
       if (isMountedRef.current) {
         setCarousels((prev) => {
           const workflowMap = new Map<string, ImageType[]>();
-          let hasNewImages = false;
           const newImageWorkflows = new Set<number>();
           const newlyCompletedWorkflows: number[] = [];
 
+          // 1. First pass: Build the new state and detect changes
           prev.forEach((c) => {
             workflowMap.set(c.workflow, c.images.filter(img =>
               typeof img === 'object' ? img.url : img
@@ -567,12 +547,14 @@ const Preview: React.FC = () => {
             const workflowKey = newC.workflow;
             const prevImages = workflowMap.get(workflowKey) || [];
 
+            // Filter out loading placeholders and invalid images
             const cleanedPrev = prevImages.filter(
               (img) =>
                 (typeof img === "string" && !img.startsWith("loading-placeholder")) ||
                 (typeof img === "object" && img !== null && "filename" in img)
             );
 
+            // Track existing filenames to detect new images
             const existingFilenames = new Set(
               cleanedPrev
                 .filter((img): img is { filename: string; url: string } => typeof img === "object" && "filename" in img)
@@ -584,27 +566,17 @@ const Preview: React.FC = () => {
             );
 
             if (newImgs.length > 0) {
-              hasNewImages = true;
               newImageWorkflows.add(index);
 
-              // Check if this workflow just completed
               if (!completedWorkflows.includes(index)) {
                 newlyCompletedWorkflows.push(index);
               }
-
-              console.log("🆕 New images detected:", {
-                workflowIndex: index,
-                newImagesCount: newImgs.length,
-                currentImages: cleanedPrev.length,
-                willUpdateTo: cleanedPrev.length + newImgs.length - 1,
-                env: process.env.NODE_ENV,
-                timestamp: new Date().toISOString()
-              });
             }
 
-            const combined = [...cleanedPrev, ...newImgs];
-            workflowMap.set(workflowKey, combined);
+            // Combine existing and new images
+            workflowMap.set(workflowKey, [...cleanedPrev, ...newImgs]);
 
+            // Clear placeholders if we got the expected number of new images
             if (newImgs.length >= (placeholders[workflowKey] || 0)) {
               setPlaceholders((prev) => {
                 const updated = { ...prev };
@@ -614,33 +586,26 @@ const Preview: React.FC = () => {
             }
           });
 
-          // Update completed workflows if we found new ones
+          // 2. Update completed workflows
           if (newlyCompletedWorkflows.length > 0) {
             setCompletedWorkflows(prev => [...prev, ...newlyCompletedWorkflows]);
-
-            // Advance the loading index if the current one completed
-            if (newlyCompletedWorkflows.includes(currentlyLoadingIndex)) {
-              setCurrentlyLoadingIndex(prev => {
-                const nextIndex = prev + 1;
-                // Don't go beyond total workflows
-                return nextIndex < totalWorkflows ? nextIndex : prev;
-              });
-            }
+            setCurrentlyLoadingIndex(prev => {
+              const nextIndex = prev + 1;
+              return nextIndex < totalWorkflows ? nextIndex : prev;
+            });
           }
 
-          // Handle regenerating indexes
+          // 3. Handle regenerating indexes
           const newRegeneratingIndexes = [...regeneratingIndexesRef.current];
           const newRegeneratingWorkflows = [...regeneratingWorkflowRef.current];
 
           workflowMap.forEach((images, workflow, idx) => {
             const workflowIndex = Array.from(workflowMap.keys()).indexOf(workflow);
             if (images.length > (imageCounts[workflowIndex] || 0)) {
-              // If we have new images, remove from regenerating indexes
               const regeneratingIdx = newRegeneratingIndexes.indexOf(workflowIndex);
               if (regeneratingIdx > -1) {
                 newRegeneratingIndexes.splice(regeneratingIdx, 1);
               }
-
               const regeneratingWorkflowIdx = newRegeneratingWorkflows.indexOf(workflowIndex);
               if (regeneratingWorkflowIdx > -1) {
                 newRegeneratingWorkflows.splice(regeneratingWorkflowIdx, 1);
@@ -648,82 +613,41 @@ const Preview: React.FC = () => {
             }
           });
 
-          if (newRegeneratingIndexes.length !== regeneratingIndexesRef.current.length) {
-            setRegeneratingIndexes(newRegeneratingIndexes);
-            regeneratingIndexesRef.current = newRegeneratingIndexes;
-          }
+          setRegeneratingIndexes(newRegeneratingIndexes);
+          regeneratingIndexesRef.current = newRegeneratingIndexes;
 
-          if (newRegeneratingWorkflows.length !== regeneratingWorkflowRef.current.length) {
-            setRegeneratingWorkflow(newRegeneratingWorkflows);
-            regeneratingWorkflowRef.current = newRegeneratingWorkflows;
-          }
+          setRegeneratingWorkflow(newRegeneratingWorkflows);
+          regeneratingWorkflowRef.current = newRegeneratingWorkflows;
 
-          // Update image counts
-          const newImageCounts = Array.from(workflowMap.values()).map(images => images.length);
-          if (!deepEqual(newImageCounts, imageCounts)) {
-            setImageCounts(newImageCounts);
-          }
-
+          // 4. Create new carousels state
           const newCarousels = Array.from(workflowMap.entries()).map(([workflow, images]) => ({
             workflow,
             images,
           }));
 
-          if (hasNewImages && !isInitializingFromUrl.current) {
-            console.log("📈 State update cycle:", {
-              before: selectedSlides.join(','),
-              after: newCarousels.map((c, i) => c.images.length - 1).join(','),
-              env: process.env.NODE_ENV,
-              timestamp: new Date().toISOString()
-            });
+          // 5. Update image counts
+          const newImageCounts = newCarousels.map(c => c.images.length);
+          setImageCounts(newImageCounts);
 
-            const updatedSelections = selectedSlides.map((current, workflowIndex) => {
+          // 6. Update selections if we have new images
+          if (newImageWorkflows.size > 0 && !isInitializingFromUrl.current) {
+            const currentSelections = [...selectedSlidesRef.current];
+            const updatedSelections = currentSelections.map((current, workflowIndex) => {
               if (!newImageWorkflows.has(workflowIndex)) return current;
 
               const carousel = newCarousels[workflowIndex];
               if (!carousel || carousel.images.length === 0) return current;
 
+              // Always select the last valid image
               const validImages = carousel.images.filter(img =>
                 img !== "loading-placeholder" &&
                 (typeof img === "string" ? true : img.url)
               );
 
-              const newIndex = validImages.length - 1;
-
-              // ✅ NEW: prevent auto-slide if user is on regenerate and regen still in progress
-              const swiper = swiperRefs.current[workflowIndex];
-              const isOnRegenerate = swiper?.activeIndex === carousel.images.length;
-              const isRegenerating = regeneratingWorkflow.includes(workflowIndex);
-
-              if (isOnRegenerate && isRegenerating) {
-                console.log(`🕒 Staying on regenerate for workflow ${workflowIndex}`);
-                return current;
-              }
-
-              if (newIndex !== current) {
-                console.log(`✨ Selection update for workflow ${workflowIndex}:`, {
-                  from: current,
-                  to: newIndex,
-                  reason: 'New images detected',
-                  env: process.env.NODE_ENV,
-                  timestamp: new Date().toISOString()
-                });
-              }
-
-              return newIndex;
+              return validImages.length - 1;
             });
 
-
-            if (!deepEqual(selectedSlides, updatedSelections)) {
-              console.log("🔄 Applying selection updates:", {
-                from: selectedSlides.join(','),
-                to: updatedSelections.join(','),
-                hasChanges: true,
-                affectedWorkflows: Array.from(newImageWorkflows).join(','),
-                env: process.env.NODE_ENV,
-                timestamp: new Date().toISOString()
-              });
-
+            if (!deepEqual(currentSelections, updatedSelections)) {
               updateSelections(updatedSelections, 'New images detected');
             }
           }
@@ -732,61 +656,18 @@ const Preview: React.FC = () => {
         });
       }
 
-      setActiveRegenerationIndex(null);
-
       if (isMountedRef.current) {
         pollingRef.current = setTimeout(pollImages, 2000);
       }
 
     } catch (err: any) {
-      console.error("⚠️ Poll error:", {
-        error: err.message,
-        env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      });
+      console.error("Poll error:", err.message);
       if (isMountedRef.current) {
         setError("An error occurred while fetching images.");
         setLoading(false);
       }
     }
   };
-
-  useEffect(() => {
-    if (!jobId) return;
-
-    const fetchJobStatus = async () => {
-      try {
-        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch job status.");
-        }
-
-        const data = await response.json();
-        const backendPaid = data.paid || false;
-        const backendApproved = data.approved || false;
-
-        if (urlPaid !== backendPaid || urlApproved !== backendApproved) {
-          const newSearchParams = new URLSearchParams(window.location.search);
-          newSearchParams.set("paid", backendPaid.toString());
-          newSearchParams.set("approved", backendApproved.toString());
-          router.replace(`/preview?${newSearchParams.toString()}`, { scroll: false });
-        }
-
-        setPaid(backendPaid);
-        setApproved(backendApproved);
-        setWorkflowStatus(data.workflow_status);
-
-        if (backendPaid && !backendApproved && data.total_workflows > 10) {
-          setRemainingWorkflowsLoading(true);
-        }
-      } catch (err: any) {
-        console.error("Error fetching job status:", err.message);
-        setError(err.message || "An error occurred while fetching job status.");
-      }
-    };
-
-    fetchJobStatus();
-  }, [jobId, urlPaid, urlApproved, router]);
 
   useEffect(() => {
     if (!carousels.length) return;
@@ -800,7 +681,6 @@ const Preview: React.FC = () => {
       setVisibleCarousels((prev) => prev + 1);
     }
   }, [carousels, visibleCarousels, totalWorkflows, paid]);
-
 
   useEffect(() => {
     if (!jobId) return;
@@ -1051,10 +931,12 @@ const Preview: React.FC = () => {
       timestamp: new Date().toISOString()
     });
 
+    setRegeneratingIndexes(prev => [...prev, workflowIndex]);
+
     const swiper = swiperRefs.current[workflowIndex];
     if (swiper) {
-      swiper.slideTo(carousels[workflowIndex].images.length); // Last slide is regenerate slide
-      swiper.allowTouchMove = false; // Disable swiping
+      swiper.slideTo(carousels[workflowIndex].images.length);
+      swiper.allowTouchMove = false;
     }
 
     setActiveRegenerationIndex(workflowIndex);
@@ -1130,11 +1012,11 @@ const Preview: React.FC = () => {
       });
       setRegeneratingIndexes(prev => prev.filter(i => i !== workflowIndex));
     } finally {
-      // Re-enable swiping when done
       const swiper = swiperRefs.current[workflowIndex];
       if (swiper) {
         swiper.allowTouchMove = true;
       }
+      setRegeneratingIndexes(prev => prev.filter(i => i !== workflowIndex));
       setActiveRegenerationIndex(null);
     }
   };
@@ -1173,6 +1055,9 @@ const Preview: React.FC = () => {
     };
 
     queueSelectionUpdate(workflowIndex, Math.max(0, index));
+    saveCurrentState();
+    debouncedSave();
+
   }, [selectedSlides, queueSelectionUpdate, isInitializingFromUrl]);
 
   useEffect(() => {
@@ -1218,6 +1103,12 @@ const Preview: React.FC = () => {
     return carousels.length >= 10 &&
       carousels.slice(0, 10).every(c => c?.images?.length > 0);
   }, [carousels]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -1370,11 +1261,16 @@ const Preview: React.FC = () => {
                               return;
                             }
 
-                            if (!isRegenerateSlide && swiper.activeIndex !== selectedSlides[index]) {
+                            if (isInitializingFromUrl.current) {
+                              return;
+                            }
+
+                            if (!isRegenerateSlide) {
                               requestAnimationFrame(() => {
                                 updateSelectedSlide(index, swiper.activeIndex);
                               });
                             }
+
                           }
                         }}
                         onInit={(swiper) => {
@@ -1422,7 +1318,7 @@ const Preview: React.FC = () => {
                                     <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
                                     <span className="block w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
                                   </div>
-                                  <p className="text-sm sm:text-base font-semibold text-gray-800">Regenerating...</p>
+                                  <p className="text-sm sm:text-base font-medium text-gray-800">Regenerating...</p>
                                 </div>
                               ) : (
                                 <>
@@ -1538,12 +1434,12 @@ const Preview: React.FC = () => {
                     !first10WorkflowsCompleted
                   }
                   className={`relative overflow-hidden shine px-6 py-3 rounded-[1rem] text-sm sm:text-base font-medium text-white transition-colors duration-200 ${!jobId ||
-                      loading ||
-                      submitting ||
-                      regeneratingIndexes.length > 0 ||
-                      !first10WorkflowsCompleted
-                      ? 'bg-indigo-400 cursor-not-allowed opacity-75'
-                      : 'bg-[#5784ba] hover:bg-[#5784bc] active:bg-[#5784bd] shadow-md cursor-pointer'
+                    loading ||
+                    submitting ||
+                    regeneratingIndexes.length > 0 ||
+                    !first10WorkflowsCompleted
+                    ? 'bg-indigo-400 cursor-not-allowed opacity-75'
+                    : 'bg-[#5784ba] hover:bg-[#5784bc] active:bg-[#5784bd] shadow-md cursor-pointer'
                     }`}
                 >
                   {submitting

@@ -20,45 +20,44 @@ export default function Home() {
     useEffect(() => {
         const determineLocale = async () => {
             setIsLocaleLoading(true);
-
             try {
                 const ipapiRes = await fetch(`https://ipapi.co/json?token=${GEO || "tryit"}`);
                 if (ipapiRes.ok) {
                     const ipapiData = await ipapiRes.json();
-
-                    if (ipapiData.country && isValidCountryCode(ipapiData.country)) {
+                    if (ipapiData.country) {
                         const normalized = normalizeCountryCode(ipapiData.country);
-                        setLocale(normalized);
-                        localStorage.setItem("userLocale", normalized);
-                        return;
+                        if (isValidCountryCode(normalized)) {
+                            setLocale(normalized);
+                            localStorage.setItem("userLocale", normalized);
+                            return;
+                        }
                     }
                 }
 
-                console.log("[Geo] Falling back to ip-api.com");
                 const ipApiRes = await fetch('http://ip-api.com/json/?fields=countryCode');
                 if (ipApiRes.ok) {
                     const ipApiData = await ipApiRes.json();
-
-
-                    if (ipApiData.countryCode && isValidCountryCode(ipApiData.countryCode)) {
+                    if (ipApiData.countryCode) {
                         const normalized = normalizeCountryCode(ipApiData.countryCode);
+                        if (isValidCountryCode(normalized)) {
+                            setLocale(normalized);
+                            localStorage.setItem("userLocale", normalized);
+                            return;
+                        }
+                    }
+                }
+
+                const browserLang = navigator.language.split('-')[1];
+                if (browserLang) {
+                    const normalized = normalizeCountryCode(browserLang);
+                    if (isValidCountryCode(normalized)) {
                         setLocale(normalized);
                         localStorage.setItem("userLocale", normalized);
                         return;
                     }
                 }
 
-                console.log("[Geo] Falling back to browser language");
-                const browserLang = navigator.language.split('-')[1];
-                if (browserLang && isValidCountryCode(browserLang)) {
-                    const normalized = normalizeCountryCode(browserLang);
-                    setLocale(normalized);
-                    localStorage.setItem("userLocale", normalized);
-                    return;
-                }
-
                 throw new Error("All methods failed");
-
             } catch (error) {
                 setLocale("IN");
                 localStorage.setItem("userLocale", "IN");
@@ -79,6 +78,7 @@ export default function Home() {
     const normalizeCountryCode = (code: string): CountryCode => {
         if (!code) return 'IN';
         const upperCode = code.toUpperCase();
+        if (upperCode === 'UK') return 'GB';
         return upperCode;
     };
 
@@ -136,6 +136,22 @@ export default function Home() {
         }
     };
 
+    const CountryBookAvailability: Record<CountryCode, string[]> = {
+        US: ["wigu", "dream", "astro", "abcd", "sports_us"],
+        GB: ["wigu", "dream", "astro", "abcd", "sports_us"],
+        IN: ["wigu", "dream", "astro", "abcd", "sports"],
+        CA: ["wigu", "dream", "astro", "abcd", "sports"],
+        AU: ["wigu", "dream", "astro", "abcd", "sports"],
+        NZ: ["wigu", "dream", "astro", "abcd", "sports"]
+    };
+
+    function buildImagePath(card: typeof Cards[0], country: CountryCode, type: "main" | "hover") {
+        const file = type === "main"
+            ? card.imageSrc.split("/").pop()
+            : card.hoverImageSrc?.split("/").pop();
+
+        return `/books/${card.bookKey}/${country}/${file}`;
+    }
 
     return (
         <>
@@ -224,16 +240,17 @@ export default function Home() {
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
-                        {Cards.map((card, index) => {
+                        {Cards.filter(card =>
+                            CountryBookAvailability[locale as CountryCode]?.includes(card.bookKey) ?? true
+                        ).map((card, index) => {
                             const supportedCountries = ["IN", "US", "GB"];
                             const countryFolder = supportedCountries.includes(locale) ? locale : "US";
-                            const basePath = `/books/${card.bookKey}/${countryFolder}`;
-                            const mainImage = `${basePath}/${card.bookKey}-book.avif`;
-                            const hoverImage = `/books/${card.bookKey}/${countryFolder}/${card.hoverImageSrc}`;
+                            const mainImage = buildImagePath(card, countryFolder, "main");
+                            const hoverImage = buildImagePath(card, countryFolder, "hover");
 
                             return (
                                 <div
-                                    key={index}
+                                    key={card.bookKey}
                                     className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                                 >
                                     <Link
@@ -242,7 +259,7 @@ export default function Home() {
                                         className="flex flex-col h-full"
                                     >
                                         <div className="relative w-full pt-[75%] overflow-hidden">
-                                            {/* Desktop - Default */}
+
                                             <img
                                                 src={mainImage}
                                                 alt={card.title}
@@ -254,55 +271,42 @@ export default function Home() {
                                                 onError={handleImageError}
                                             />
 
-                                            {/* Desktop - Hover */}
                                             <img
                                                 src={hoverImage}
                                                 alt={`${card.title} hover`}
                                                 className="absolute inset-0 w-full h-full object-cover hidden md:block opacity-0 transition-opacity duration-500 lg:group-hover:opacity-100"
                                                 loading="lazy"
                                                 data-book-key={card.bookKey}
-                                                data-file-name={`${card.bookKey}-book.avif`}
+                                                data-file-name={card.hoverImageSrc?.split('/').pop() || ''}
                                                 data-fallback-index="0"
                                                 onError={handleImageError}
                                             />
 
-                                            {/* Mobile - show hover image */}
                                             <img
                                                 src={hoverImage}
                                                 alt={`${card.title} mobile`}
                                                 className="absolute inset-0 w-full h-full object-cover md:hidden"
                                                 loading="lazy"
                                                 data-book-key={card.bookKey}
-                                                data-file-name={`${card.bookKey}-book.avif`}
+                                                data-file-name={card.hoverImageSrc?.split('/').pop() || ''}
                                                 data-fallback-index="0"
                                                 onError={handleImageError}
                                             />
                                         </div>
 
-                                        {/* Info block (unchanged) */}
                                         <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
                                             <div className="flex justify-between items-center flex-wrap gap-y-1">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {Array.isArray(card.category) && card.category.length > 0 ? (
-                                                        card.category.map((tag, i) => (
-                                                            <span
-                                                                key={i}
-                                                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                                                    } whitespace-nowrap`}
-                                                            >
-                                                                {tag}
-                                                            </span>
-                                                        ))
-                                                    ) : (
+                                                    {card.category?.map((tag, i) => (
                                                         <span
-                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[index % pastelTags.length]
-                                                                }`}
+                                                            key={`${card.bookKey}-${tag}`}
+                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
+                                                                } whitespace-nowrap`}
                                                         >
-                                                            Storybook
+                                                            {tag}
                                                         </span>
-                                                    )}
+                                                    ))}
                                                 </div>
-
                                                 <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                                                     Ages {card.age}
                                                 </span>
@@ -320,7 +324,6 @@ export default function Home() {
                                                 <span className="text-base md:text-lg font-medium text-gray-800">
                                                     {formatPrice(card, "paperback")}
                                                 </span>
-
                                                 <button
                                                     className="bg-[#5784ba] hover:bg-[#406493] text-white py-2 px-4 sm:px-6 rounded-lg font-medium text-sm transition-colors duration-200"
                                                     onClick={(e) => {
@@ -338,6 +341,7 @@ export default function Home() {
                             );
                         })}
                     </div>
+
                 </section>
 
                 <section className="w-full my-10 md:my-20 px-3 md:px-0">
