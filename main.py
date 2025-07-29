@@ -1868,6 +1868,29 @@ def run_workflow_in_background_lock(
 ):
     name = name.capitalize()
     try:
+        #saved_filenames = [file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)]
+        logger.info(f"🔍 Checking saved filenames for job_id={job_id}, {saved_filenames}")
+        if not saved_filenames:
+            for i in range(1, 4):
+                s3_key = f"input/{job_id}_{i:02d}.jpg"
+                local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
+
+                try:
+                    logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
+                    s3.download_file("replicacomfy", s3_key, local_path)
+                    logger.info(f"✅ Downloaded {s3_key}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not download {s3_key}: {e}")
+
+        saved_filenames =  [
+            file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
+        ]
+
+        if not saved_filenames:
+            logger.error(f"❌ Failed to download any input images for job_id={job_id}")
+            raise HTTPException(
+                status_code=404, detail="No input images found locally or on S3.")
+    
         logger.info(
             f"🚀 Running workflow {workflow_filename} for job_id={job_id}")
 
@@ -2094,8 +2117,25 @@ def execute_remaining_workflows(job_id: str, start_from_pg: int = 10):
             file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
         ]
         if not saved_filenames:
-            logger.error(f"❌ No input images found for job_id: {job_id}")
-            return
+            logger.warning(f"❌ No input images found for job_id: {job_id}, downloading from S3")
+
+            for i in range(1, 4):
+                s3_key = f"input/{job_id}_{i:02d}.jpg"
+                local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
+
+                try:
+                    logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
+                    s3.download_file("replicacomfy", s3_key, local_path)
+                    saved_filenames.append(f"{job_id}_{i:02d}.jpg")
+                    logger.info(f"✅ Downloaded {s3_key}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not download {s3_key}: {e}")
+            
+    if not saved_filenames:
+        logger.error(f"❌ No input images found for job_id: {job_id} in both s3 or local storage")
+        raise HTTPException(
+            status_code=404, detail="No input images found for this job.")
+            
 
     total = user.get("total_workflows", 20)
 
@@ -2628,6 +2668,22 @@ def run_coverpage_workflow_in_background(
         if isinstance(workflow_data, list):
             workflow_data = workflow_data[0] if workflow_data else {}
 
+        allowed_values = workflow_data["73"].get(
+            "inputs", {}).get("instantid_file", [])
+        logger.info(f"📋 Allowed instantid_file values: {allowed_values}")
+        print(IP_ADAPTER, "IP_ADAPTER", PYTORCH_MODEL, "pytorchmodel")
+        
+        if "73" in workflow_data and "inputs" in workflow_data["73"]:
+            instantid_file_path = IP_ADAPTER
+            print(IP_ADAPTER, "IP_ADAPTER", instantid_file_path, "instantid_file_path")
+            workflow_data["73"]["inputs"]["instantid_file"] = instantid_file_path
+            logger.info(f"🧠 Injected instantid_file into node 73: {instantid_file_path}")
+
+        if "75" in workflow_data and "inputs" in workflow_data["75"]:
+            control_net_file_path = PYTORCH_MODEL
+            workflow_data["75"]["inputs"]["control_net_name"] = control_net_file_path
+            logger.info(f"🧠 Injected control_net_name into node 75: {control_net_file_path}")
+
         # ✅ Fetch user's name from DB
         user = user_details_collection.find_one({"job_id": job_id})
         if not user:
@@ -2641,8 +2697,27 @@ def run_coverpage_workflow_in_background(
             if f.startswith(job_id) and f.lower().endswith(".jpg")
         ])
         if not user_images:
-            raise HTTPException(
-                status_code=400, detail="User images not found")
+            logger.warning(f"⚠️ No user images found for job_id={job_id}. Using default images.")
+
+            for i in range(1, 4):
+                s3_key = f"input/{job_id}_{i:02d}.jpg"
+                local_path = os.path.join(INPUT_FOLDER, f"{job_id}_{i:02d}.jpg")
+
+                try:
+                    logger.info(f"⬇️ Downloading {s3_key} to {local_path}")
+                    s3.download_file("replicacomfy", s3_key, local_path)
+                    logger.info(f"✅ Downloaded {s3_key}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not download {s3_key}: {e}")
+                
+                saved_filenames = [
+                    file for file in os.listdir(INPUT_FOLDER) if file.startswith(job_id)
+                ]
+
+            if not saved_filenames:
+                logger.error(f"❌ No input images found for job_id={job_id}")
+                raise HTTPException(
+                    status_code=404, detail="No input images found.")
 
         for idx, node_id in enumerate(["91", "92", "93"][:len(user_images)]):
             full_path = os.path.join(INPUT_FOLDER, user_images[idx])
