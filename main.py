@@ -902,8 +902,7 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
 @app.post("/update-preview-url")
 async def update_preview_url(
     job_id: str = Body(...),
-    preview_url: str = Body(...),
-    preview_country: Optional[str] = Body(default=None)
+    preview_url: str = Body(...)
 ):
     if not preview_url or not preview_url.strip().lower().startswith("http"):
         print(f"⛔️ Invalid preview_url for job_id={job_id}: {preview_url}")
@@ -920,14 +919,9 @@ async def update_preview_url(
             detail="Job ID not found"
         )
 
-    update_fields = {"preview_url": preview_url.strip()}
-
-    if (not existing_job.get("preview_country")) and preview_country:
-        update_fields["preview_country"] = preview_country
-
     result = user_details_collection.update_one(
         {"job_id": job_id},
-        {"$set": update_fields}
+        {"$set": {"preview_url": preview_url.strip()}}
     )
 
     return {"message": "Preview URL updated successfully"}
@@ -1462,50 +1456,44 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
             cover_input_filename=cover_input_filename
         )
 
-        approved_at = datetime.now(timezone.utc)
+        # Check if email was already sent
+        approval_email_sent = user.get("approval_email_sent", False)
+        
+        try:
+            username = user.get("user_name").capitalize()
+            child_name = user.get("name", "").capitalize()
+            email = user.get("email")
+
+            if username and child_name and email:
+                if not approval_email_sent:  # Only send if not already sent
+                    approval_confirmation_email(
+                        username=username, child_name=child_name, email=email)
+                    logger.info(f"📧 Approval email sent to {email}")
+    
+                    user_details_collection.update_one(
+                        {"job_id": job_id},
+                        {"$set": {"approval_email_sent": True}}
+                    )
+                else:
+                    logger.info("📧 Approval email was already sent - skipping")
+            else:
+                logger.warning("⚠️ Missing data for approval email — skipping send")
+        except Exception as e:
+            logger.error(f"❌ Error while sending approval email: {e}")
+      
         user_details_collection.update_one(
             {"job_id": job_id},
             {"$set": {
                 "approved": True,
-                "approved_at": approved_at,
+                "approved_at": datetime.now(timezone.utc),
                 "book_url": interior_url,
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
         logger.info(f"✅ Marked job_id={job_id} as approved in database")
 
-        try:
-            username = user.get("user_name") or user.get(
-                "name", "").capitalize()
-            child_name = user.get("name", "").capitalize()
-            email = user.get("email") or user.get("shopify_email")
-
-            if username and child_name and email:
-                approval_confirmation_email(
-                    username=username, child_name=child_name, email=email)
-                logger.info(f"📧 Approval email sent to {email}")
-            else:
-                logger.warning(
-                    "⚠️ Missing data for approval email — skipping send")
-        except Exception as e:
-            logger.error(f"❌ Error while sending approval email: {e}")
-
     except Exception as e:
         logger.exception("❌ Approval background task failed")
-
-@app.get("/get-workflow-status/{job_id}")
-async def get_workflow_status(job_id: str):
-    try:
-        user_details = user_details_collection.find_one(
-            {"job_id": job_id},
-            {"_id": 0, "workflow_status": 1}
-        )
-        if not user_details:
-            raise HTTPException(status_code=404, detail="Job ID not found.")
-        return user_details
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve workflow status: {str(e)}")
 
 def find_job_id_node(workflow_data: dict, known_job_id: str) -> str | None:
     for node_id, node_data in workflow_data.items():
