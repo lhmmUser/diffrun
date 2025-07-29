@@ -341,7 +341,7 @@ const Purchase = () => {
                       await fetch(`${apiBaseUrl}/api/paypal/store-capture`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ order_id: data.orderID, job_id: jobId }),
+                        body: JSON.stringify({ order_id: data.orderID, job_id: jobId, discount_amount: finalAmount.discount.toFixed(2) }),
                       });
                       window.location.href = `/confirmation?job_id=${jobId}`;
                     } catch (err) {

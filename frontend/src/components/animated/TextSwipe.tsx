@@ -8,28 +8,11 @@ interface TextSwipeProps {
 
 const TextSwipe = ({ name }: TextSwipeProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [userLocale, setUserLocale] = useState("India");
-
-  const localeLabelMap: Record<string, string> = {
-    IN: "India",
-    US: "USA",
-    CA: "Canada",
-    AU: "Australia",
-    GB: "United Kingdom",
-    NZ: "New Zealand",
-  };
-
-  useEffect(() => {
-    const storedLocale = localStorage.getItem("userLocale");
-    if (storedLocale && localeLabelMap[storedLocale]) {
-      setUserLocale(localeLabelMap[storedLocale]);
-    }
-  }, []);
 
   const slides = [
     `✨ ${name}'s magical story begins here...`,
     "You can make unlimited refinements",
-    `7 Day Delivery anywhere in ${userLocale}`,
+    "A high quality print will be delivered to your doorstep",
     "One-of-a-kind gift they'll cherish forever ❤️",
     `Every page is crafted just for ${name}!`,
     "This preview is just the beginning..."

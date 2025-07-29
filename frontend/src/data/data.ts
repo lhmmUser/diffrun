@@ -162,13 +162,13 @@ export const Cards: CardProps[] = [
     },
   },
   {
-     bookKey: "sports",
+    bookKey: "sports",
     title: "Game On Amaira",
     imageSrc: "/books/sports/IN/sports-book.avif",
     hoverImageSrc: "/books/sports/IN/sports-book-1.avif",
     age: "4 - 10",
     description:
-     "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
+      "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
     category: ["Motivation", "Sports"],
     prices: {
       US: {
@@ -198,13 +198,13 @@ export const Cards: CardProps[] = [
     },
   },
   {
-     bookKey: "sports_us",
+    bookKey: "sports_us",
     title: "Game On Sophia",
     imageSrc: "/books/sports_us/US/sports_us-book.avif",
     hoverImageSrc: "/books/sports_us/US/sports_us-book-1.avif",
     age: "4 - 10",
     description:
-     "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
+      "A thrilling book that inspires and boosts confidence. Perfect for active kids chasing big dreams.",
     category: ["Motivation", "Sports"],
     prices: {
       US: {
@@ -249,7 +249,13 @@ export const faqData = [
   {
     "id": "delivery-timeline",
     "question": "🚚 Delivery Timeline",
-    "answer": "Our custom-made books require 8–10 days for printing and delivery, as each one is created especially for you."
+    "answer": `Each of our books is uniquely crafted to order, which requires a little extra time for printing and delivery. Here are the timelines:<br><br>
+        <ul class="list-disc pl-6 space-y-1">
+          <li>US – 12 to 16 days</li>
+          <li>UK – 8 to 12 days</li>
+          <li>Canada – 14 to 18 days</li>
+          <li>India – 6 to 10 days</li>
+        </ul>`
   },
   {
     "id": "ordering-multiple",
@@ -282,34 +288,34 @@ export const bookDetails: Record<string, { title: string; description: string }>
 };
 
 export const step = [
-        {
-            number: 1,
-            title: 'Tell us about your child',
-            description: 'Share their name, gender, and a few clear photos to get started.',
-        },
-        {
-            number: 2,
-            title: 'Smart face recreation',
-            description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
-        },
-        {
-            number: 3,
-            title: 'Instant sample preview',
-            description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
-        },
-        {
-            number: 4,
-            title: 'Unlock and refine',
-            description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
-        },
-        {
-            number: 5,
-            title: 'Approve for print',
-            description: 'Review the complete book and approve it when you’re fully satisfied.',
-        },
-        {
-            number: 6,
-            title: 'Delivered to your door',
-            description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
-        }
-    ];
+  {
+    number: 1,
+    title: 'Tell us about your child',
+    description: 'Share their name, gender, and a few clear photos to get started.',
+  },
+  {
+    number: 2,
+    title: 'Smart face recreation',
+    description: ' We use advanced AI to create vector embeddings of their face and recreate it on each story page with realistic context.',
+  },
+  {
+    number: 3,
+    title: 'Instant sample preview',
+    description: 'Get a free preview of the first 10 pages to see how well the personalization works.',
+  },
+  {
+    number: 4,
+    title: 'Unlock and refine',
+    description: 'Once you make a purchase, the full book is unlocked. You can also fine-tune any face generations as needed.',
+  },
+  {
+    number: 5,
+    title: 'Approve for print',
+    description: 'Review the complete book and approve it when you’re fully satisfied.',
+  },
+  {
+    number: 6,
+    title: 'Delivered to your door',
+    description: 'Your storybook is printed on premium 200GSM glossy paper and shipped to your doorstep in about 7 days.',
+  }
+];

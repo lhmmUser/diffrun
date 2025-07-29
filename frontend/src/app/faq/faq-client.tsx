@@ -62,13 +62,14 @@ export default function FAQClient({ items }: { items: FAQItem[] }) {
                   >
                     <div
                       id={`faq-answer-${item.id}`}
-                      className="p-6 pt-2 text-gray-700"
+                      className="p-6 pt-2 text-gray-700 text-left font-poppins"
                     >
                       {typeof item.answer === 'string' ? (
-                        <p>{item.answer}</p>
+                        <div dangerouslySetInnerHTML={{ __html: item.answer }} />
                       ) : (
                         item.answer
                       )}
+
                     </div>
                   </motion.div>
                 )}

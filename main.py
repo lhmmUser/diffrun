@@ -757,6 +757,7 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
         body = await request.json()
         order_id = body.get("order_id")
         job_id = body.get("job_id")
+        discount_amount = float(body.get("discount_amount", 0))
 
         if not order_id or not job_id:
             raise HTTPException(status_code=400, detail="Missing order_id or job_id")
@@ -860,7 +861,8 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
             "updated_at": datetime.now(timezone.utc),
             "shipping_address": shipping_info,
             "order_id": new_order_id,
-            "discount_code": discount_code
+            "discount_amount": discount_amount,
+            "discount_code": discount_code,
         }
 
         user_details_collection.update_one({"job_id": job_id}, {"$set": update_data})
