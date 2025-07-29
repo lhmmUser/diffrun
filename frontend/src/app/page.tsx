@@ -239,7 +239,19 @@ export default function Home() {
                         Choose your story and start personalizing
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full">
+                    <motion.div
+                        className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 lg:gap-10 w-full"
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                            hidden: {},
+                            visible: {
+                                transition: {
+                                    staggerChildren: 0.1,
+                                },
+                            },
+                        }}
+                    >
                         {Cards.filter(card =>
                             CountryBookAvailability[locale as CountryCode]?.includes(card.bookKey) ?? true
                         ).map((card, index) => {
@@ -249,8 +261,12 @@ export default function Home() {
                             const hoverImage = buildImagePath(card, countryFolder, "hover");
 
                             return (
-                                <div
+                                <motion.div
                                     key={card.bookKey}
+                                    variants={{
+                                        hidden: { opacity: 0, y: 20 },
+                                        visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+                                    }}
                                     className="flex flex-col bg-white shadow-md hover:shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
                                 >
                                     <Link
@@ -337,10 +353,10 @@ export default function Home() {
                                             </div>
                                         </div>
                                     </Link>
-                                </div>
+                                </motion.div>
                             );
                         })}
-                    </div>
+                    </ motion.div>
 
                 </section>
 
@@ -419,20 +435,44 @@ export default function Home() {
 
                 <section className="bg-[#f7f6cf] py-10 px-4">
                     <div className="mx-auto ml-4 space-y-8 text-center">
-                        <h2 className="text-2xl lg:text-3xl xl:text-4xl font-libre font-medium text-gray-900 leading-tight">
+                        <motion.h2
+                            className="text-2xl lg:text-3xl xl:text-4xl font-libre font-medium text-gray-900 leading-tight"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                        >
                             Meaningful gifts, made in minutes
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                        </motion.h2>
+
+                        <motion.div
+                            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8"
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                hidden: {},
+                                visible: {
+                                    transition: { staggerChildren: 0.15 },
+                                },
+                            }}
+                        >
                             {steps.map((step, index) => (
-                                <div key={index} className="flex flex-col items-center text-center space-y-1">
+                                <motion.div
+                                    key={index}
+                                    className="flex flex-col items-center text-center space-y-1"
+                                    variants={{
+                                        hidden: { opacity: 0, y: 30 },
+                                        visible: { opacity: 1, y: 0 },
+                                    }}
+                                    transition={{ duration: 0.4 }}
+                                >
                                     <div className="bg-[#5784ba] p-4 rounded-2xl w-12 h-12 flex items-center justify-center">
                                         {step.icon}
                                     </div>
                                     <p className="text-xl font-medium font-libre text-gray-800">{step.title}</p>
                                     <p className="text-sm text-gray-800 font-poppins">{step.description}</p>
-                                </div>
+                                </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
                     </div>
                 </section>
 
