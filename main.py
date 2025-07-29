@@ -952,6 +952,7 @@ async def get_job_status(job_id: str):
                 "book_style": 1,
                 "workflow_status": 1,
                 "locale": 1,
+                "phone_number": 1,
             }
         )
         if not user_details:

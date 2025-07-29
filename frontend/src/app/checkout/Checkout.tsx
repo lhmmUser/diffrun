@@ -80,41 +80,46 @@ export default function Checkout() {
   const [appliedCoupon, setAppliedCoupon] = useState<string>("");
   const [discountCode, setDiscountCode] = useState<string>("");
   const [message, setMessage] = useState<string>("");
-  const [error, setError] = useState<string>("");
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   useEffect(() => {
-  const fetchJobDetails = async () => {
-    const urlBookId = searchParams.get("book_id"); // ✅ fallback
-    if (!jobId) return;
+    const fetchJobDetails = async () => {
+      const urlBookId = searchParams.get("book_id");
+      if (!jobId) return;
 
-    try {
-      const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
-      const data = await response.json();
+      try {
+        const response = await fetch(`${apiBaseUrl}/get-job-status/${jobId}`);
+        const data = await response.json();
 
-      if (data.book_style === "hardcover" || data.book_style === "paperback") {
-        setBookStyle(data.book_style);
-      } else {
+        if (data.book_style === "hardcover" || data.book_style === "paperback") {
+          setBookStyle(data.book_style);
+        } else {
+          setBookStyle("paperback");
+        }
+
+        if (data.phone_number) {
+          const raw = data.phone_number.toString().replace(/^(\+91|91)/, '').trim();
+          setFormData((prev) => ({ ...prev, contact: raw }));
+        }
+
+        if (data.book_id) {
+          setBookKey(data.book_id);
+        } else if (urlBookId) {
+          setBookKey(urlBookId);
+        }
+
+      } catch (err) {
+        console.error("Error fetching job status:", err);
         setBookStyle("paperback");
+
+        if (urlBookId) {
+          setBookKey(urlBookId);
+        }
       }
+    };
 
-      if (data.book_id) {
-        setBookKey(data.book_id);
-      } else if (urlBookId) {
-        setBookKey(urlBookId); // ✅ use from URL if not present in DB
-      }
-
-    } catch (err) {
-      console.error("Error fetching job status:", err);
-      setBookStyle("paperback");
-
-      if (urlBookId) {
-        setBookKey(urlBookId); // ✅ fallback during error
-      }
-    }
-  };
-
-  fetchJobDetails();
-}, [jobId, searchParams]);
+    fetchJobDetails();
+  }, [jobId, searchParams]);
 
   const {
     price, shipping, taxes, numericPrice, numericShipping, numericTaxes
@@ -205,17 +210,33 @@ export default function Checkout() {
   };
 
   const validateForm = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[6-9]\d{9}$/;
-    const pincodeRegex = /^\d{6}$/;
-    if (!formData.email || !formData.firstName || !formData.lastName || !formData.address
-      || !formData.city || !formData.state || !formData.pincode || !formData.contact) {
-      setError("Please fill all mandatory fields."); return false;
+    const newErrors: Partial<Record<keyof FormData, string>> = {};
+
+    if (!formData.email) {
+      newErrors.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address.";
     }
-    if (!emailRegex.test(formData.email)) { setError("Please enter valid email."); return false; }
-    if (!phoneRegex.test(formData.contact)) { setError("Please enter valid 10-digit phone."); return false; }
-    if (!pincodeRegex.test(formData.pincode)) { setError("Please enter valid 6-digit PIN code."); return false; }
-    setError(""); return true;
+
+    if (!formData.firstName) newErrors.firstName = "First name is required.";
+    if (!formData.lastName) newErrors.lastName = "Last name is required.";
+    if (!formData.address) newErrors.address = "Address is required.";
+    if (!formData.city) newErrors.city = "City is required.";
+    if (!formData.state) newErrors.state = "State is required.";
+    if (!formData.pincode) {
+      newErrors.pincode = "PIN code is required.";
+    } else if (!/^\d{6}$/.test(formData.pincode)) {
+      newErrors.pincode = "Please enter a valid 6-digit PIN code.";
+    }
+
+    if (!formData.contact) {
+      newErrors.contact = "Mobile number is required.";
+    } else if (!/^[6-9]\d{9}$/.test(formData.contact)) {
+      newErrors.contact = "Please enter a valid 10-digit number.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   if (!bookStyle || !bookKey) {
@@ -233,31 +254,60 @@ export default function Checkout() {
 
           <h2 className="text-lg font-libre font-medium mb-2">Contact Information</h2>
           <div className="mb-4">
-
-            <input name="email" type="email" value={formData.email} onChange={handleChange}
-              className="border border-gray-300 p-2 rounded w-full" placeholder="Email" />
+            <input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full"
+              placeholder="Email*"
+            />
+            {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
           </div>
 
           <h2 className="text-lg font-libre font-medium mb-2">Shipping Address</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <input name="firstName" value={formData.firstName} onChange={handleChange}
-                className="border border-gray-300 p-2 rounded w-full" placeholder="First Name" />
+              <input
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full"
+                placeholder="First Name*"
+              />
+              {errors.firstName && <p className="text-red-400 text-sm mt-1">{errors.firstName}</p>}
             </div>
             <div>
-              <input name="lastName" value={formData.lastName} onChange={handleChange}
-                className="border border-gray-300 p-2 rounded w-full" placeholder="Last Name" />
+              <input
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                className="border border-gray-300 p-2 rounded w-full"
+                placeholder="Last Name*"
+              />
+              {errors.lastName && <p className="text-red-400 text-sm mt-1">{errors.lastName}</p>}
             </div>
           </div>
 
           <div className="mb-4">
-            <input name="address" value={formData.address} onChange={handleChange}
-              className="border border-gray-300 p-2 rounded w-full" placeholder="Address Line 1" />
+            <input
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full"
+              placeholder="Address Line 1*"
+            />
+            {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
           </div>
 
           <div className="mb-4">
-            <input name="apartment" value={formData.apartment} onChange={handleChange}
-              className="border border-gray-300 p-2 rounded w-full" placeholder="Address Line 2" />
+            <input
+              name="apartment"
+              value={formData.apartment}
+              onChange={handleChange}
+              className="border border-gray-300 p-2 rounded w-full"
+              placeholder="Address Line 2 ( Optional )"
+            />
           </div>
 
           <div className="mb-4">
@@ -266,8 +316,9 @@ export default function Checkout() {
               value={formData.city}
               onChange={handleChange}
               className="border border-gray-300 p-2 rounded w-full"
-              placeholder="City"
+              placeholder="City*"
             />
+            {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -280,8 +331,9 @@ export default function Checkout() {
                   setFormData((prev) => ({ ...prev, state: selected?.value || "" }));
                 }}
                 isSearchable
-                placeholder="Select State"
+                placeholder="Select State*"
               />
+              {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
             </div>
             <div>
               <input
@@ -289,8 +341,9 @@ export default function Checkout() {
                 value={formData.pincode}
                 onChange={handleChange}
                 className="border border-gray-300 p-2 rounded w-full"
-                placeholder="PIN Code"
+                placeholder="PIN Code*"
               />
+              {errors.pincode && <p className="text-red-400 text-sm mt-1">{errors.pincode}</p>}
             </div>
           </div>
 
@@ -300,9 +353,10 @@ export default function Checkout() {
                 <img
                   src="/global/india.png"
                   alt="India Flag"
-                  className="w-5 h-4 object-cover mr-1"
+                  className="w-5 h-4 object-contain mr-1"
+                  loading="lazy"
                 />
-                <span className="ml-1 font-medium text-sm mr-2">+91</span>
+                <span className="mx-2 mr-4 md:mt-1 font-medium text-sm">+91</span>
               </div>
               <input
                 name="contact"
@@ -312,13 +366,12 @@ export default function Checkout() {
                   setFormData((prev) => ({ ...prev, contact: numeric }));
                 }}
                 className="border border-gray-300 p-2 rounded-r w-full"
-                placeholder="Enter 10-digit mobile number"
+                placeholder="Enter 10-digit mobile number*"
                 maxLength={10}
               />
             </div>
+            {errors.contact && <p className="text-red-400 text-sm mt-1">{errors.contact}</p>}
           </div>
-
-          {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
 
           <h2 className="text-lg font-libre font-medium mb-2 mt-8">Shipping Method</h2>
           <div className="p-3 rounded mb-6 shadow-md">Standard - FREE</div>
@@ -327,7 +380,7 @@ export default function Checkout() {
             <h2 className="text-xl font-libre font-medium">Payment</h2>
             <div className="">
               <p className="font-poppins text-gray-600 text-sm">All transactions are secure and encrypted.</p>
-              <button onClick={handlePayment} className="bg-[#5784ba] text-white px-8 py-3 rounded-lg mt-4">Pay Now</button>
+              <button onClick={handlePayment} className="bg-[#5784ba] text-white px-8 py-3 rounded-xl hover:cursor-pointer mt-4 ">Pay Now</button>
             </div>
           </div>
 
@@ -338,8 +391,9 @@ export default function Checkout() {
 
             <img src="/all-books.jpg" alt="Book" className="w-40 h-auto rounded object-cover" />
             <div className="text-left">
-              <h3 className="font-libre font-medium text-xl">{bookStyle.charAt(0).toUpperCase() + bookStyle.slice(1)} Storybook</h3>
-              {/* <p className="line-through text-gray-600 font-libre text-sm">{price}</p> */}
+              <h3 className="font-libre font-medium text-xl">
+                {bookStyle.charAt(0).toUpperCase() + bookStyle.slice(1)} Storybook
+              </h3>
               <p className="text-lg font-poppins">₹{finalAmount.toFixed(2)}</p>
             </div>
           </div>
@@ -354,7 +408,7 @@ export default function Checkout() {
             <button
               disabled={!discountCode}
               onClick={applyDiscount}
-              className="py-2 px-4 rounded-lg bg-[#5784ba] text-white"
+              className="py-2 px-4 rounded-xl hover:cursor-pointer bg-[#5784ba] text-white"
             >
               Apply
             </button>
@@ -384,7 +438,6 @@ export default function Checkout() {
             <div className="flex justify-between"><span>Shipping</span><span>₹{numericShipping}</span></div>
             <div className="flex justify-between"><span>Taxes</span><span>₹{numericTaxes}</span></div>
             <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>₹{finalAmount.toFixed(2)}</span></div>
-
           </div>
 
           <div className="block lg:hidden mt-6">
