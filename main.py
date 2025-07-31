@@ -47,6 +47,7 @@ from typing import Optional
 from concurrent.futures import ProcessPoolExecutor
 from html import escape
 from email.header import Header
+from dateutil.parser import isoparse
 
 load_dotenv(dotenv_path=".env")
 executor = ProcessPoolExecutor(max_workers=2) 
@@ -239,7 +240,8 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         payment_details = razorpay_client.payment.fetch(razorpay_payment_id)
         notes = payment_details.get("notes", {})
         currency_code = payment_details.get("currency")
-        processed_at = payment_details.get("created_at")
+        payment_at = datetime.fromtimestamp(payment_details["created_at"], tz=timezone.utc)
+        processed_at = datetime.now(timezone.utc)
 
         payer_name = notes.get("name", "")
         payer_email = notes.get("email", "")
@@ -333,7 +335,8 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
             "transaction_id": razorpay_payment_id,
             "customer_email": payer_email,
             "discount_code": discount_code,
-            "processed_at": datetime.fromtimestamp(processed_at, tz=timezone.utc),
+            "processed_at": processed_at,
+            "payment_at": payment_at,
             "currency": currency_code,
             "total_price": final_amount,
             "shipping_address": shipping_info,
@@ -848,6 +851,9 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
             logger.exception("❌ Failed to generate order ID")
             raise HTTPException(status_code=500, detail="Failed to generate order ID")
 
+        payment_at = isoparse(capture["create_time"])
+        processed_at = datetime.now(timezone.utc)
+
         # Step 7: Update MongoDB
         update_data = {
             "paid": True,
@@ -857,7 +863,8 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
             "paypal_email": capture.get("payer", {}).get("email_address", ""),
             "total_price": capture.get("amount", {}).get("value"),
             "currency": capture.get("amount", {}).get("currency_code"),
-            "processed_at": capture.get("create_time"),
+            "processed_at": processed_at,
+            "payment_at": payment_at,
             "updated_at": datetime.now(timezone.utc),
             "shipping_address": shipping_info,
             "order_id": new_order_id,
