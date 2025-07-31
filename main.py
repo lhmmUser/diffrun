@@ -1269,15 +1269,14 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
 @app.post("/store-user-details")
 async def store_user_details(
     name: str = Form(...),
-    email: str = Form(...),  # New email field
+    email: str = Form(...),
     gender: str = Form(...),
     book_id: str = Form(...),
     images: List[UploadFile] = File(...)
 ):
     # Input validation and sanitization
-    name = name.strip()
-    first_name = name.split()[0].capitalize() if name else "User"
-    email = email.strip().lower()  # Normalize email
+    name = name.title()
+    email = email.strip().lower()
     
     # Validate email format
     if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email):
@@ -1408,7 +1407,7 @@ async def store_user_details(
         "job_id": job_id,
         "saved_files": saved_filenames,
         "gender": gender.lower(),
-        "name": first_name,
+        "name": name,
         "email": email, 
         "preview_url": "",
         "book_id": book_id,

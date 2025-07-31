@@ -420,9 +420,14 @@ const Form: React.FC = () => {
     setError(null);
     setLoading(true);
 
+    if (name.trim().length > 12) {
+      setError("Word Limit Exceed!");
+      return;
+    }
+
     try {
       const formData = new FormData();
-      formData.append("name", name.trim().charAt(0).toUpperCase() + name.trim().slice(1));
+      formData.append("name", formatName(name));
       formData.append("gender", gender.toLowerCase());
       formData.append("email", email.trim().toLowerCase());
       formData.append("book_id", bookId);
@@ -576,7 +581,7 @@ const Form: React.FC = () => {
                         <img
                           src={imagePath}
                           alt={`Diffrun personalized books - Book ${num}`}
-                          className="w-full h-auto object-contain aspect-square max-w-2xs md:max-w-sm lg:max-w-md"
+                          className="w-full h-auto object-contain aspect-square md:max-w-sm lg:max-w-md"
                           onError={(e) => {
                             const fallbackIndex = fallbackOrder.indexOf(countryFolder);
                             if (fallbackIndex < fallbackOrder.length - 1) {
@@ -616,6 +621,7 @@ const Form: React.FC = () => {
             </div>
 
             <div className="w-full lg:w-[50%]">
+
               <form
                 onSubmit={handleSubmit}
                 className="max-w-md mx-auto w-full space-y-4"
@@ -634,16 +640,29 @@ const Form: React.FC = () => {
 
                 <div className="flex flex-col md:flex-row gap-4 mt-4">
                   <div className="">
-                    <input
-                      type="text"
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      disabled={loading}
-                      className="block w-full px-4 md:py-1 text-lg bg-white border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-pastel-purple shadow-sm placeholder-gray-400"
-                      placeholder="Child's First Name"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="name"
+                        value={name}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setName(value);
+                          if (value.trim().length > 12) {
+                            setError("Heads up! Our personalization is optimized for names under 12 characters");
+                          } else {
+                            setError(null);
+                          }
+                        }}
+                        required
+                        disabled={loading}
+                        className="block w-full px-4 md:py-1 text-lg bg-white border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-pastel-purple shadow-sm placeholder-gray-400"
+                        placeholder="Child's First Name"
+                      />
+                    </div>
+                    {error === "Heads up! Our personalization is optimized for names under 12 characters" && (
+                      <p className="text-red-600 text-sm mt-1">{error}</p>
+                    )}
                   </div>
 
                   <div className="">
@@ -791,11 +810,34 @@ const Form: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={!name || !gender || !email || images.length < 1 || images.length > 3 || loading || !isConfirmed}
+                  onChange={(e: any) => {
+                    const value = e.target.value;
+                    setName(value);
+
+                    if (value.trim().length > 12) {
+                      setError("Word Limit Exceed!");
+                    } else {
+                      setError(null);
+                    }
+                  }}
+                  disabled={
+                    !name ||
+                    name.trim().length > 12 ||
+                    !gender ||
+                    !email ||
+                    images.length < 1 ||
+                    images.length > 3 ||
+                    loading ||
+                    !isConfirmed
+                  }
                   title={
-                    !name || !gender || !email || images.length < 1 || images.length > 3 || !isConfirmed
-                      ? "Fill all details and confirm consent to continue"
-                      : ""
+                    !name ? "Name is required" :
+                      name.trim().length > 12 ? "Name cannot exceed 12 characters" :
+                        !gender ? "Gender is required" :
+                          !email ? "Email is required" :
+                            images.length < 1 || images.length > 3 ? "Upload 1-3 images" :
+                              !isConfirmed ? "Consent required" :
+                                ""
                   }
                   className={`w-full py-3 text-lg font-bold rounded-sm shadow-sm transition-all duration-200 ${!name || !gender || images.length < 1 || images.length > 3 || !isConfirmed
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
