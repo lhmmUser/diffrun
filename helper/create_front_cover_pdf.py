@@ -26,18 +26,26 @@ def create_front_cover_pdf(job_id: str, book_style: str, book_id: str) -> str:
     if not image_paths:
         raise FileNotFoundError(f"No images found in {source_folder}")
     if len(image_paths) > 1:
-        def extract_index(p):
-            filename = os.path.basename(p)
-            parts = filename.rsplit('_', 2)
-            if len(parts) >= 2:
-                num_str = parts[-2]
-                try: 
-                    return int(num_str)
-                except ValueError:
-                    return -1
-            return -1
+        # def extract_index(p):
+        #     filename = os.path.basename(p)
+        #     parts = filename.rsplit('_', 2)
+        #     if len(parts) >= 2:
+        #         num_str = parts[-2]
+        #         try: 
+        #             return int(num_str)
+        #         except ValueError:
+        #             return -1
+        #     return -1
+        def extract_number(path):
+            filename = os.path.basename(path)
+            name, _ = os.path.splitext(filename)
+            parts = name.split('_')
+            for part in reversed(parts):
+                if part.isdigit():
+                    return int(part)
+            return -1 
         
-        image_paths = sorted(image_paths, key=extract_index)
+        image_paths = sorted(image_paths, key=extract_number, reverse=True)
 
     # choose page & target sizes
     if book_style == "hardcover":
