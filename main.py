@@ -130,6 +130,7 @@ class SaveUserDetailsRequest(BaseModel):
     name: str
     gender: str
     preview_url: str
+    approved_preview_url: Optional[str] = None
     phone_number: Optional[str] = Field(
         None,
         min_length=10,
@@ -414,10 +415,16 @@ async def save_user_details_endpoint(request: SaveUserDetailsRequest):
         data["paid"] = False
         data["approved"] = False
 
+         # Preserve approved_preview_url if it exists
+        existing = user_details_collection.find_one({"job_id": data["job_id"]})
+        if existing and "approved_preview_url" in existing:
+            data["approved_preview_url"] = existing["approved_preview_url"]
+
         save_user_details(data)
 
         return {
             "preview_url": data["preview_url"],
+            "approved_preview_url": data.get("approved_preview_url"),
             "phone_number": data.get("phone_number"),
             "email": data.get("email"),
             "user_name": data["user_name"],
@@ -932,6 +939,10 @@ async def update_preview_url(
         )
 
     update_fields = {"preview_url": preview_url.strip()}
+
+    # Only update approved_preview_url if it doesn't exist yet
+    if not existing_job.get("approved_preview_url"):
+        update_fields["approved_preview_url"] = preview_url.strip()
 
     if (not existing_job.get("preview_country")) and preview_country:
         update_fields["preview_country"] = preview_country
@@ -1483,7 +1494,6 @@ def extract_sorted_candidates_by_pg(keys, pg_label):
     sorted_keys = sorted(filtered, key=extract_timestamp)
     return sorted_keys
 
-
 @app.post("/approve")
 async def approve_for_printing(
     background_tasks: BackgroundTasks,
@@ -1651,6 +1661,7 @@ def process_approval_workflow(job_id: str, selectedSlides: str):
             "approved": True,
             "approved_at": approved_at,
             "book_url": interior_url,
+            "approved_preview_url": user.get("preview_url", ""),
             "updated_at": datetime.now(timezone.utc)
         }
 
@@ -2795,6 +2806,7 @@ def run_coverpage_workflow_in_background(
             user_details_collection.update_one(
                 {"job_id": job_id},
                 {"$set": {"cover_url": cover_url,
+                          "approved_preview_url": user.get("preview_url", ""),
                           "updated_at": datetime.now(timezone.utc)}}
             )
         except Exception as e:
