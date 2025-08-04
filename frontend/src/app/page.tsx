@@ -138,7 +138,7 @@ export default function Home() {
 
     const CountryBookAvailability: Record<CountryCode, string[]> = {
         US: ["wigu", "dream", "astro", "abcd", "sports_us"],
-        GB: ["wigu", "dream", "astro", "abcd", "sports_us"],
+        GB: ["wigu", "dream", "astro", "abcd", "sports"],
         IN: ["wigu", "dream", "astro", "abcd", "sports"],
         CA: ["wigu", "dream", "astro", "abcd", "sports"],
         AU: ["wigu", "dream", "astro", "abcd", "sports"],
