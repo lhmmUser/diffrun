@@ -38,43 +38,47 @@ def create_front_cover_pdf(job_id: str, book_style: str, book_id: str) -> str:
         image_paths = sorted(image_paths, key=extract_number, reverse=True)
 
         
-       
-
     # choose page & target sizes
     if book_style == "hardcover":
         if book_id == "wigu":
-            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1377, 731
-            TARGET_SIZE_PX = (5737, 3047)    
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1380, 731
+            TARGET_SIZE_PX = (5751, 3047)
         elif book_id == "abcd":
             PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1379, 731
-            TARGET_SIZE_PX = (5746, 3047)
+            TARGET_SIZE_PX = (5747, 3047)
         elif book_id == "astro":
             PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1381, 731
-            TARGET_SIZE_PX = (5756, 3047)
+            TARGET_SIZE_PX = (5754, 3047)
         elif book_id == "dream":
             PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1378, 731
             TARGET_SIZE_PX = (5743, 3047)
         elif book_id == "sports":
-            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1378, 731
-            TARGET_SIZE_PX = (5738, 3047)       
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1377, 731
+            TARGET_SIZE_PX = (5739, 3047)
+        elif book_id == "bloom":
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1377, 731
+            TARGET_SIZE_PX = (5739, 3047)
+
     elif book_style == "paperback":
-        # PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1156, 578
-        # TARGET_SIZE_PX = (4811, 2405)
         if book_id == "wigu":
-            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1218, 612
-            TARGET_SIZE_PX = (5076, 2551)    
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1219, 612
+            TARGET_SIZE_PX = (5078, 2551)
         elif book_id == "abcd":
-            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1217, 612
-            TARGET_SIZE_PX = (5073, 2551)
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1218, 612
+            TARGET_SIZE_PX = (5074, 2551)
         elif book_id == "astro":
-            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1220, 612
-            TARGET_SIZE_PX = (5082, 2551)
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1219, 612
+            TARGET_SIZE_PX = (5081, 2551)
         elif book_id == "dream":
             PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1217, 612
             TARGET_SIZE_PX = (5069, 2551)
         elif book_id == "sports":
-            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1215, 612
-            TARGET_SIZE_PX = (5065, 2551) 
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1216, 612
+            TARGET_SIZE_PX = (5066, 2551)
+        elif book_id == "bloom":
+            PAGE_WIDTH_PT, PAGE_HEIGHT_PT = 1216, 612
+            TARGET_SIZE_PX = (5066, 2551)
+
     else:
         raise ValueError(f"Unknown book_style: {book_style}")
 

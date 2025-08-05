@@ -18,6 +18,41 @@ export interface CardProps {
 
 export const Cards: CardProps[] = [
   {
+    bookKey: "bloom",
+    title: "Robin is growing up fast",
+    imageSrc: "/books/bloom/IN/bloom-book.avif",
+    hoverImageSrc: "/books/bloom/IN/bloom-book-1.avif",
+    age: "1 - 4",
+    description: "A heartwarming personalized book that celebrates your child's milestones. Perfect gift for birthdays and milestone celebrations. Make them feel extra special on their favourite day of the year",
+    category: ["Celebration", "Milestone", "Growth"],
+    prices: {
+      US: {
+        paperback: { price: "$29.99", shipping: "$0", taxes: "0" },
+        hardcover: { price: "$44.99", shipping: "$7.99", taxes: "0" },
+      },
+      GB: {
+        paperback: { price: "£22.99", shipping: "£4.99", taxes: "0" },
+        hardcover: { price: "£29.99", shipping: "£4.99", taxes: "0" },
+      },
+      CA: {
+        paperback: { price: "$49.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+        hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
+      },
+      IN: {
+        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+      },
+      AU: {
+        paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+        hardcover: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
+      },
+      NZ: {
+        paperback: { price: "$59.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+        hardcover: { price: "$79.99 NZD", shipping: "$9.99 NZD", taxes: "0" },
+      },
+    },
+  },
+  {
     bookKey: "wigu",
     title: "When Sara Grows Up",
     imageSrc: "/books/wigu/IN/wigu-book.avif",
@@ -55,7 +90,7 @@ export const Cards: CardProps[] = [
   },
   {
     bookKey: "dream",
-    title: "Many Dreams of Zohaan",
+    title: "The Many Dreams of Zohaan",
     imageSrc: "/books/dream/IN/dream-book.avif",
     hoverImageSrc: "/books/dream/IN/dream-book-1.avif",
     age: "2 - 6",
@@ -234,6 +269,29 @@ export const Cards: CardProps[] = [
     },
   }
 ];
+
+export const categoryColorMap: Record<string, string> = {
+  
+  "Celebration": "bg-rose-100 text-rose-800",      
+  "Milestone": "bg-indigo-100 text-indigo-800",   
+  "Growth": "bg-green-200 text-green-950",   
+
+  "Inspiration": "bg-sky-100 text-sky-800",     
+  "Confidence": "bg-teal-100 text-teal-800",      
+
+  "Fantasy": "bg-purple-100 text-purple-800",    
+  "Imagination": "bg-lime-100 text-lime-800",       
+
+  "Adventure": "bg-orange-100 text-orange-800",     
+  "Sci-Fi": "bg-pink-100 text-pink-800",         
+
+  "Early Learning": "bg-yellow-100 text-yellow-800", 
+  "Alphabet": "bg-red-100 text-red-800",            
+
+  "Sports": "bg-green-100 text-green-800",           
+  "Motivation": "bg-cyan-100 text-cyan-800",      
+};
+
 
 export const faqData = [
   {

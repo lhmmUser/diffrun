@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Cards } from "@/data/data";
 import FAQClient from "./faq/faq-client";
-import { faqData, step } from '@/data/data'
+import { faqData, step, categoryColorMap } from '@/data/data'
 import { steps } from "@/data/steps";
 import CookieConsent from "@/components/custom/CookieConsent";
 import { motion } from 'framer-motion'
@@ -16,6 +16,10 @@ export default function Home() {
     const GEO = process.env.NEXT_PUBLIC_GEO;
     const [locale, setLocale] = useState<CountryCode>("");
     const [isLocaleLoading, setIsLocaleLoading] = useState(true);
+
+    const getCategoryColor = (category: string): string => {
+        return categoryColorMap[category] || "bg-gray-100 text-gray-700";
+    };
 
     useEffect(() => {
         const determineLocale = async () => {
@@ -111,17 +115,6 @@ export default function Home() {
         );
     };
 
-    const pastelTags = [
-        "bg-pink-100 text-pink-700",
-        "bg-green-100 text-green-700",
-        "bg-blue-100 text-blue-700",
-        "bg-yellow-100 text-yellow-700",
-        "bg-purple-100 text-purple-700",
-        "bg-orange-100 text-orange-700",
-        "bg-rose-100 text-rose-700",
-        "bg-lime-100 text-lime-700",
-    ];
-
     const fallbackOrder = ["GB", "US", "IN"];
 
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -137,12 +130,12 @@ export default function Home() {
     };
 
     const CountryBookAvailability: Record<CountryCode, string[]> = {
-        US: ["wigu", "dream", "astro", "abcd", "sports_us"],
-        GB: ["wigu", "dream", "astro", "abcd", "sports"],
-        IN: ["wigu", "dream", "astro", "abcd", "sports"],
-        CA: ["wigu", "dream", "astro", "abcd", "sports"],
-        AU: ["wigu", "dream", "astro", "abcd", "sports"],
-        NZ: ["wigu", "dream", "astro", "abcd", "sports"]
+        US: ["wigu", "dream", "astro", "abcd", "sports_us", "bloom"],
+        GB: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+        IN: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+        CA: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+        AU: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+        NZ: ["wigu", "dream", "astro", "abcd", "sports", "bloom"]
     };
 
     function buildImagePath(card: typeof Cards[0], country: CountryCode, type: "main" | "hover") {
@@ -313,11 +306,10 @@ export default function Home() {
                                         <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
                                             <div className="flex justify-between items-center flex-wrap gap-y-1">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {card.category?.map((tag, i) => (
+                                                    {card.category?.map((tag) => (
                                                         <span
                                                             key={`${card.bookKey}-${tag}`}
-                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                                                } whitespace-nowrap`}
+                                                            className={`text-xs px-2 py-1 font-semibold rounded-full ${getCategoryColor(tag)}`}
                                                         >
                                                             {tag}
                                                         </span>
@@ -337,7 +329,7 @@ export default function Home() {
                                             </p>
 
                                             <div className="flex items-center justify-between mt-auto pt-4">
-                                                <span className="text-base md:text-lg font-medium text-gray-800">
+                                                <span className="text-sm md:text-base font-bold text-gray-800">
                                                     {formatPrice(card, "paperback")}
                                                 </span>
                                                 <button

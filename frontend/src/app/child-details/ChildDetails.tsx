@@ -16,7 +16,7 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import { Autoplay, Pagination } from "swiper/modules";
 import { FiUser, FiEye, FiTruck, FiImage } from 'react-icons/fi';
-import { Cards } from "@/data/data";
+import { Cards, categoryColorMap } from "@/data/data";
 import { IoCloudUploadOutline } from "react-icons/io5";
 
 interface ImageFile {
@@ -95,17 +95,6 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ progress }) => (
     />
   </div>
 );
-
-const pastelTags = [
-  "bg-pink-100 text-pink-700",
-  "bg-green-100 text-green-700",
-  "bg-blue-100 text-blue-700",
-  "bg-yellow-100 text-yellow-700",
-  "bg-purple-100 text-purple-700",
-  "bg-orange-100 text-orange-700",
-  "bg-rose-100 text-rose-700",
-  "bg-lime-100 text-lime-700",
-];
 
 const fallbackOrder = ["GB", "US", "IN"];
 
@@ -519,12 +508,12 @@ const Form: React.FC = () => {
   const description = selectedBook?.description || "";
 
   const CountryBookAvailability: Record<CountryCode, string[]> = {
-    US: ["wigu", "dream", "astro", "abcd", "sports_us"],
-    GB: ["wigu", "dream", "astro", "abcd", "sports_us"],
-    IN: ["wigu", "dream", "astro", "abcd", "sports"],
-    CA: ["wigu", "dream", "astro", "abcd", "sports"],
-    AU: ["wigu", "dream", "astro", "abcd", "sports"],
-    NZ: ["wigu", "dream", "astro", "abcd", "sports"]
+    US: ["wigu", "dream", "astro", "abcd", "sports_us", "bloom"],
+    GB: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+    IN: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+    CA: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+    AU: ["wigu", "dream", "astro", "abcd", "sports", "bloom"],
+    NZ: ["wigu", "dream", "astro", "abcd", "sports", "bloom"]
   };
 
   function buildImagePath(card: typeof Cards[0], country: CountryCode, type: "main" | "hover") {
@@ -542,7 +531,7 @@ const Form: React.FC = () => {
           <div className="flex flex-col lg:flex-row w-full max-w-5xl mx-auto justify-between items-start px-4 lg:px-0 py-2 md:py-8">
 
             <div className="w-full lg:w-[50%]">
-              <div className="max-w-md mx-auto w-full md:max-w-3xl">
+              <div className="max-w-md mx-auto w-full md:max-w-xl">
                 <h2 className="block lg:hidden text-left md:text-center text-gray-700 text-2xl md:text-3xl font-libre font-medium mb-4">
                   {title}
                 </h2>
@@ -553,21 +542,7 @@ const Form: React.FC = () => {
                   loop={true}
                   autoplay={{ delay: 4000, disableOnInteraction: false }}
                   pagination={{
-                    clickable: true,
-                    renderBullet: (className) => {
-                      return `
-                        <span 
-                          class="${className}" 
-                          style="
-                            display:inline-block;
-                            width:clamp(12px, 4vw, 24px);
-                            height:clamp(12px, 4vw, 24px);
-                            background:url('/global/circle.png') no-repeat center center / contain;
-                            margin:0 3px;
-                          ">
-                        </span>
-                      `;
-                    },
+                    clickable: true
                   }}
                   className="w-full h-auto mx-auto relative"
                 >
@@ -581,7 +556,7 @@ const Form: React.FC = () => {
                         <img
                           src={imagePath}
                           alt={`Diffrun personalized books - Book ${num}`}
-                          className="w-full h-auto object-contain aspect-square md:max-w-sm lg:max-w-md"
+                          className="w-full h-auto object-cover aspect-square md:max-w-sm lg:max-w-md"
                           onError={(e) => {
                             const fallbackIndex = fallbackOrder.indexOf(countryFolder);
                             if (fallbackIndex < fallbackOrder.length - 1) {
@@ -918,11 +893,10 @@ const Form: React.FC = () => {
                       <div className="flex flex-col flex-1 p-4 md:p-6 space-y-3">
                         <div className="flex justify-between items-center flex-wrap gap-y-1">
                           <div className="flex flex-wrap gap-1">
-                            {card.category?.map((tag, i) => (
+                            {card.category?.map((tag) => (
                               <span
-                                key={`${card.bookKey}-${tag}`}
-                                className={`text-xs px-2 py-1 font-semibold rounded-full ${pastelTags[(index + i) % pastelTags.length]
-                                  } whitespace-nowrap`}
+                                key={tag}
+                                className={`text-xs px-2 py-1 rounded-full font-semibold ${categoryColorMap[tag]}`}
                               >
                                 {tag}
                               </span>
@@ -942,7 +916,7 @@ const Form: React.FC = () => {
                         </p>
 
                         <div className="flex items-center justify-between mt-auto pt-4">
-                          <span className="text-base md:text-lg font-medium text-gray-800">
+                          <span className="text-base font-bold text-gray-800">
                             {formatPrice(card, "paperback")}
                           </span>
                           <button
