@@ -357,7 +357,7 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
         workflows = user.get("workflows", {})
         workflow_keys = list(workflows.keys())
 
-        if len(workflow_keys) == 10:
+        if len(workflow_keys) == 13:
             logger.info(f"🔐 LOCKED preview detected (10 workflows). Sending locked email for job_id={job_id}")
 
             await payment_done_email_lock(
@@ -378,7 +378,7 @@ async def verify_signature(request: Request, background_tasks: BackgroundTasks):
             )
 
             logger.info(f"📨 payment_done_email_lock sent for job_id={job_id}, triggering remaining workflows...")
-            background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=10)
+            background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=13)
 
         else:
             logger.info(f"📖 Full preview detected (len={len(workflow_keys)}). Sending standard email for job_id={job_id}")
@@ -896,8 +896,8 @@ async def fetch_and_store_capture(request: Request, background_tasks: Background
         logger.info(f"📨 Sent payment_done_email_lock for job_id={job_id}")
 
         # Step 9: Trigger remaining workflows
-        background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=10)
-        logger.info(f"🚀 Background task triggered for job_id={job_id} starting from page 10")
+        background_tasks.add_task(run_remaining_workflows_async, job_id, start_from_pg=13)
+        logger.info(f"🚀 Background task triggered for job_id={job_id} starting from page 13")
 
         return {
             "status": "success",
@@ -1912,7 +1912,7 @@ def run_workflow_in_background_lock(
                 status_code=400, detail="Invalid workflow filename format")
 
         page_num = int(match.group(1))
-        is_preview_workflow = page_num < 10 
+        is_preview_workflow = page_num < 13
         expected_filename = f"{page_num:02d}_{book_id}_{gender}.json"
 
         workflow_path = os.path.join(
@@ -2006,7 +2006,7 @@ def run_workflow_in_background_lock(
 
             # Check if all first 10 workflows are completed AND email hasn't been sent
             all_preview_completed = True
-            for i in range(10):  # Check pg0 to pg9
+            for i in range(13):  # Check pg0 to pg9
                 workflow_key = f"workflow_pg{i}"
                 if workflows.get(workflow_key, {}).get("status") != "completed":
                     all_preview_completed = False
@@ -2109,7 +2109,7 @@ async def update_country(data: dict):
 
     return {"status": "ok"}
 
-def execute_remaining_workflows(job_id: str, start_from_pg: int = 10):
+def execute_remaining_workflows(job_id: str, start_from_pg: int = 13):
     user = user_details_collection.find_one({"job_id": job_id})
     if not user:
         logger.error(f"❌ Job not found: {job_id}")
@@ -2159,7 +2159,7 @@ def execute_remaining_workflows(job_id: str, start_from_pg: int = 10):
         except Exception as e:
             logger.exception(f"❌ Failed to start workflow {workflow_filename}: {e}")
 
-async def run_remaining_workflows_async(job_id: str, start_from_pg: int = 10):
+async def run_remaining_workflows_async(job_id: str, start_from_pg: int = 13):
     loop = asyncio.get_event_loop()
     try:
         await loop.run_in_executor(
@@ -2327,7 +2327,9 @@ async def execute_workflow_lock(
         # Step 4: Load and sort story workflows (pgX)
         all_workflows = get_sorted_workflow_files(book_id, gender)
         total_workflows = len(all_workflows)
-        workflows_to_run = all_workflows[:10]
+        logger.info("🔢 Found %d total workflows, executing first 13...", total_workflows)
+
+        workflows_to_run = all_workflows[:13]
 
         if not workflows_to_run:
             logger.error("❌ No valid story workflow files found in pg0–pg9.")

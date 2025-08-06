@@ -361,9 +361,9 @@ const Preview: React.FC = () => {
           router.replace(`/preview?${newSearchParams.toString()}`, { scroll: false });
         }
 
-        if (backendPaid && !backendApproved && data.total_workflows > 10) {
+        if (backendPaid && !backendApproved && data.total_workflows > 13) {
           setRemainingWorkflowsLoading(true);
-          setCurrentlyLoadingIndex(10);
+          setCurrentlyLoadingIndex(13);
         }
 
         setPaid(backendPaid);
@@ -674,7 +674,7 @@ const Preview: React.FC = () => {
     if (visibleCarousels >= totalWorkflows) return;
 
     const nextIndex = visibleCarousels;
-    if (!paid && nextIndex >= 10) return;
+    if (!paid && nextIndex >= 13) return;
 
     const nextCarousel = carousels[nextIndex];
     if (nextCarousel && nextCarousel.images.length > 0) {
@@ -1100,8 +1100,8 @@ const Preview: React.FC = () => {
   }, [carousels, totalWorkflows]);
 
   const first10WorkflowsCompleted = useMemo(() => {
-    return carousels.length >= 10 &&
-      carousels.slice(0, 10).every(c => c?.images?.length > 0);
+    return carousels.length >= 13 &&
+      carousels.slice(0, 13).every(c => c?.images?.length > 0);
   }, [carousels]);
 
   useEffect(() => {
@@ -1152,11 +1152,11 @@ const Preview: React.FC = () => {
             {Array.from({ length: totalWorkflows }).map((_, index) => {
               const carousel = carousels[index];
               const isGenerated = carousel?.images?.length > 0;
-              const first10Rendered = carousels.slice(0, 10).every((c) => c?.images?.length > 0);
+              const first10Rendered = carousels.slice(0, 13).every((c) => c?.images?.length > 0);
 
               let workflowState = 'preparing';
               if (isGenerated) workflowState = 'ready';
-              else if (!paid && index >= 10) workflowState = 'locked';
+              else if (!paid && index >= 13) workflowState = 'locked';
               else if (index === visibleCarousels) workflowState = 'loading';
 
               if (workflowState === 'locked' && !remainingWorkflowsLoading && first10Rendered) {
@@ -1179,7 +1179,7 @@ const Preview: React.FC = () => {
               if (index > visibleCarousels) return null;
 
               if (!carousel || !carousel.images || carousel.images.length === 0) {
-                if (!paid && index >= 10) return null;
+                if (!paid && index >= 13) return null;
                 return (
                   <div key={`placeholder-${index}`} className="w-full max-w-md mx-auto mb-12 relative">
                     <div className="w-full text-center mb-2 flex justify-end">
@@ -1380,7 +1380,7 @@ const Preview: React.FC = () => {
           !approved &&
           !paid &&
           carousels.length > 0 &&
-          carousels.length < 10 && (
+          carousels.length < 13 && (
             <div
               className="max-w-xs md:max-w-md fixed z-50 bottom-30 left-1/2 transform -translate-x-1/2 bg-white border-2 border-gray-800 p-4 md:p-6 rounded-lg shadow-brutalist text-center"
               style={{
