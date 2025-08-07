@@ -1322,15 +1322,15 @@ async def store_user_details(
             # Convert to RGB and run face detection
             image_bytes = io.BytesIO(image_data)
             img = Image.open(image_bytes).convert("RGB")
-            np_img = np.array(img)
-            faces = face_app.get(np_img)
+            # np_img = np.array(img)
+            # faces = face_app.get(np_img)
 
-            if not faces:
-                logger.warning("❌ No face detected in image: %s", image.filename)
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"No face detected in image '{image.filename}'. Please upload a clearer photo."
-                )
+            # if not faces:
+            #     logger.warning("❌ No face detected in image: %s", image.filename)
+            #     raise HTTPException(
+            #         status_code=400,
+            #         detail=f"No face detected in image '{image.filename}'. Please upload a clearer photo."
+            #     )
 
             img.save(image_path, "JPEG", quality=95)
             logger.info("💾 Saved processed image as: %s", new_filename)
