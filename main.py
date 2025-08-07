@@ -130,7 +130,6 @@ class ApproveRequest(BaseModel):
 class SaveUserDetailsRequest(BaseModel):
     job_id: str
     name: str
-    age: Literal["<1", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]
     gender: str
     preview_url: str
     phone_number: Optional[str] = Field(
