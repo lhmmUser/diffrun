@@ -1,6 +1,5 @@
 import boto3
 import re
-from helper.prepare_cover_inputs_from_selected_slides import prepare_cover_inputs_from_selected_indices
 from helper.pdf_generator import create_interior_pdf
 from helper.random_seed import generate_random_seed
 from helper.create_front_cover_pdf import create_front_cover_pdf
@@ -13,7 +12,7 @@ import datetime
 import io
 import os
 import requests
-from typing import List, Optional
+from typing import List, Optional, Literal
 import uuid
 import json
 import asyncio
@@ -26,13 +25,11 @@ from fastapi import FastAPI, File, Form, Request, UploadFile, Query, HTTPExcepti
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
 import shutil
 from threading import Thread
 from database import save_user_details, user_details_collection
 from datetime import datetime, timezone
-from models import ItemShippedPayload, BookStylePayload
+from models import BookStylePayload
 from pathlib import Path
 import glob
 from dotenv import load_dotenv
@@ -48,6 +45,8 @@ from concurrent.futures import ProcessPoolExecutor
 from html import escape
 from email.header import Header
 from dateutil.parser import isoparse
+from insightface.app import FaceAnalysis
+import numpy as np
 
 load_dotenv(dotenv_path=".env")
 executor = ProcessPoolExecutor(max_workers=2) 
@@ -100,6 +99,9 @@ app = FastAPI()
 router = APIRouter()
 app.include_router(router)
 
+face_app = FaceAnalysis(name='buffalo_l')
+face_app.prepare(ctx_id=0, det_size=(640, 640))
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -128,6 +130,7 @@ class ApproveRequest(BaseModel):
 class SaveUserDetailsRequest(BaseModel):
     job_id: str
     name: str
+    age: Literal["<1", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]
     gender: str
     preview_url: str
     phone_number: Optional[str] = Field(
@@ -1255,24 +1258,35 @@ def get_images(ws, prompt, job_id, workflow_number, client_id):
     logger.info(f"📸 Done saving and uploading {image_index - 1} image(s) for workflow {workflow_id_str}")
     return output_images
 
+# This should be global (you already added this earlier)
+face_app = FaceAnalysis(name='buffalo_l')
+face_app.prepare(ctx_id=0, det_size=(640, 640))
+
 @app.post("/store-user-details")
 async def store_user_details(
     name: str = Form(...),
     email: str = Form(...),
     gender: str = Form(...),
     book_id: str = Form(...),
+    age: str = Form(...),
     images: List[UploadFile] = File(...)
 ):
-    # Input validation and sanitization
     name = name.title()
     email = email.strip().lower()
-    
-    # Validate email format
+
     if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email):
         logger.warning("❌ Invalid email format: %s", email)
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="Please provide a valid email address"
+        )
+    
+    valid_ages = ['<1'] + [str(i) for i in range(1, 16)]
+    if age not in valid_ages:
+        logger.warning("❌ Invalid age value: %s", age)
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid age. Please select a valid option from the dropdown."
         )
 
     logger.info("📥 Received user details: name=%s, email=%s, gender=%s", name, email, gender)
@@ -1281,7 +1295,7 @@ async def store_user_details(
     if not (1 <= len(images) <= 3):
         logger.warning("❌ Invalid number of images: %d", len(images))
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="You must upload between 1 and 3 images."
         )
 
@@ -1290,43 +1304,40 @@ async def store_user_details(
 
     saved_filenames = []
 
-    # Process images (unchanged from your original code)
     for i, image in enumerate(images):
         logger.info("🔍 Processing image %d: %s", i + 1, image.filename)
         image_data = await image.read()
         logger.debug("📏 Image size (bytes): %d", len(image_data))
 
-        debug_file_path = os.path.join(INPUT_FOLDER, f"debug_{image.filename}")
-        try:
-            with open(debug_file_path, "wb") as f:
-                f.write(image_data)
-            logger.info("✅ Saved debug image to: %s", debug_file_path)
-        except Exception as e:
-            logger.error("❌ Failed to save debug image: %s", str(e))
-            raise HTTPException(
-                status_code=500, 
-                detail="Failed to save debug file"
-            )
-
         new_filename = f"{job_id}_{i+1:02d}.jpg"
         image_path = os.path.join(INPUT_FOLDER, new_filename)
 
         try:
+            # Convert to RGB and run face detection
             image_bytes = io.BytesIO(image_data)
-            img = Image.open(image_bytes)
-            img = img.convert("RGB")
+            img = Image.open(image_bytes).convert("RGB")
+            np_img = np.array(img)
+            faces = face_app.get(np_img)
+
+            if not faces:
+                logger.warning("❌ No face detected in image: %s", image.filename)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No face detected in image '{image.filename}'. Please upload a clearer photo."
+                )
+
             img.save(image_path, "JPEG", quality=95)
             logger.info("💾 Saved processed image as: %s", new_filename)
+
         except Exception as e:
             logger.error("❌ Error processing image: %s", str(e))
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Invalid image file: {str(e)}"
             )
-        
+
         try:
             s3_key = f"input_images/{job_id}/{new_filename}"
-
             with open(image_path, "rb") as f:
                 s3.upload_fileobj(
                     f,
@@ -1337,8 +1348,7 @@ async def store_user_details(
                 logger.info("☁️ Uploaded image to S3: %s/%s", S3_DIFFRUN_GENERATIONS, s3_key)
         except (BotoCoreError, ClientError) as e:
             logger.error("❌ Failed to upload image to S3: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to S3")
+            raise HTTPException(status_code=500, detail="Failed to upload image to S3")
 
         try:
             replicacomfy_key = f"input/{new_filename}"
@@ -1346,63 +1356,31 @@ async def store_user_details(
                 s3.upload_fileobj(
                     f,
                     REPLICACOMFY_BUCKET,
-                    replicacomfy_key,   
+                    replicacomfy_key,
                     ExtraArgs={"ContentType": "image/jpeg"}
                 )
                 logger.info("📤 Also uploaded to replicacomfy: %s", replicacomfy_key)
         except (BotoCoreError, ClientError) as e:
             logger.error("❌ Failed to upload image to replicacomfy: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to replicacomfy S3 bucket.")        
-        try:
-            s3_key = f"input_images/{job_id}/{new_filename}"
-
-            with open(image_path, "rb") as f:
-                s3.upload_fileobj(
-                    f,
-                    S3_DIFFRUN_GENERATIONS,
-                    s3_key,
-                    ExtraArgs={"ContentType": "image/jpeg"}
-                )
-                logger.info("☁️ Uploaded image to S3: %s/%s", S3_DIFFRUN_GENERATIONS, s3_key)
-        except (BotoCoreError, ClientError) as e:
-            logger.error("❌ Failed to upload image to S3: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to S3")
-
-        try:
-            replicacomfy_key = f"input/{new_filename}"
-            with open(image_path, "rb") as f:
-                s3.upload_fileobj(
-                    f,
-                    REPLICACOMFY_BUCKET,
-                    replicacomfy_key,   
-                    ExtraArgs={"ContentType": "image/jpeg"}
-                )
-                logger.info("📤 Also uploaded to replicacomfy: %s", replicacomfy_key)
-        except (BotoCoreError, ClientError) as e:
-            logger.error("❌ Failed to upload image to replicacomfy: %s", str(e))
-            raise HTTPException(
-                status_code=500, detail="Failed to upload image to replicacomfy S3 bucket.")        
-
+            raise HTTPException(status_code=500, detail="Failed to upload image to replicacomfy S3 bucket.")
 
         saved_filenames.append(new_filename)
 
     logger.info("🎉 Successfully processed %d image(s)", len(saved_filenames))
     logger.debug("📝 Saved filenames: %s", saved_filenames)
 
-    # Prepare response with email included
     response = {
         "job_id": job_id,
         "saved_files": saved_filenames,
         "gender": gender.lower(),
         "name": name,
-        "email": email, 
+        "email": email,
+        "age": age,
         "preview_url": "",
         "book_id": book_id,
         "paid": False,
         "approved": False,
-        "created_at": datetime.now(timezone.utc), 
+        "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc)
     }
 
@@ -1411,7 +1389,7 @@ async def store_user_details(
     except Exception as e:
         logger.error("❌ Could not save user details to MongoDB: %s", str(e))
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Failed to save user details to database."
         )
 

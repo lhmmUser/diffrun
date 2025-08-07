@@ -119,6 +119,7 @@ const Form: React.FC = () => {
   const [name, setName] = useState<string>("");
   const [gender, setGender] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const [age, setAge] = useState<string>("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -138,11 +139,6 @@ const Form: React.FC = () => {
     message: '',
     type: 'info'
   });
-
-  const showFormGuide = (message: string, type: FormGuide['type'] = 'info') => {
-    setFormGuide({ visible: true, message, type });
-    setTimeout(() => setFormGuide(prev => ({ ...prev, visible: false })), 5000);
-  };
 
   const [imageToCrop, setImageToCrop] = useState<number | null>(null);
   const [locale, setLocale] = useState<CountryCode>("IN");
@@ -376,33 +372,8 @@ const Form: React.FC = () => {
 
     e.preventDefault();
 
-    if (!name.trim() || !email || !gender || !isConfirmed || images.length < 1 || images.length > 3) {
-      setError("Please fill all fields correctly and confirm consent.");
-      return;
-    }
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (!gender) {
-      showFormGuide("Please select your child's gender", 'warning');
-      return;
-    }
-
-    if (!email) {
-      showFormGuide("We need your email to send the preview", 'warning');
-      return;
-    }
-
-    if (images.length < 1 || images.length > 3) {
-      showFormGuide("Please upload between 1-3 photos of your child", 'warning');
-      return;
-    }
-
-    if (!isConfirmed) {
-      showFormGuide("Please confirm you have consent to use these photos", 'warning');
       return;
     }
 
@@ -419,6 +390,7 @@ const Form: React.FC = () => {
       formData.append("name", formatName(name));
       formData.append("gender", gender.toLowerCase());
       formData.append("email", email.trim().toLowerCase());
+      formData.append("age", age);
       formData.append("book_id", bookId);
       images.forEach(({ file }) => formData.append("images", file));
       console.log("📤 Sending form data to /store-user-details");
@@ -427,9 +399,16 @@ const Form: React.FC = () => {
         method: "POST",
         body: formData,
       });
+
       if (!storeResponse.ok) {
-        const errorData = await storeResponse.json();
-        throw new Error(errorData.detail || "Failed to upload images");
+        const errorText = await storeResponse.text();
+        if (errorText.includes("No face detected")) {
+          setError("Please upload images with a face clearly visible");
+        } else {
+          setError(null);
+        }
+        setLoading(false);
+        return;
       }
 
       const data = await storeResponse.json();
@@ -597,6 +576,7 @@ const Form: React.FC = () => {
 
             <div className="w-full lg:w-[50%]">
 
+
               <form
                 onSubmit={handleSubmit}
                 className="max-w-md mx-auto w-full space-y-4"
@@ -683,6 +663,31 @@ const Form: React.FC = () => {
                     placeholder="Your Email Address"
                   />
                 </div>
+
+                <div>
+                  <select
+                    id="age"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="block w-full px-4 md:py-2 text-lg text-gray-600 bg-white border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-pastel-purple shadow-sm"
+                  >
+                    <option value="" disabled hidden>
+                      Select Age
+                    </option>
+                    <option value="<1">&lt;1</option>
+                    {[...Array(15)].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>{i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {(error === "Please upload images with a face clearly visible") && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm mb-4">
+                    {error}
+                  </div>
+                )}
 
                 <div className="">
                   <div
@@ -803,7 +808,8 @@ const Form: React.FC = () => {
                     images.length < 1 ||
                     images.length > 3 ||
                     loading ||
-                    !isConfirmed
+                    !isConfirmed ||
+                    !age
                   }
                   title={
                     !name ? "Name is required" :
