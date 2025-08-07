@@ -74,6 +74,7 @@ PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
 PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox")
 ENV = os.getenv("ENV", "local")
+print("ENV: ", ENV)
 
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
@@ -100,7 +101,12 @@ app = FastAPI()
 router = APIRouter()
 app.include_router(router)
 
-face_app = FaceAnalysis(name='buffalo_l')
+if ENV == "production":
+    root_path = "/home/ubuntu/.insightface"
+else:
+    root_path = os.path.expanduser("~/.insightface")
+
+face_app = FaceAnalysis(name="buffalo_l", root=root_path)
 face_app.prepare(ctx_id=0, det_size=(640, 640))
 
 app.add_middleware(
