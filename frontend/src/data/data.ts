@@ -39,8 +39,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,499", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,999", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
@@ -75,8 +75,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$64.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,499", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,999", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -111,8 +111,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,499", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,999", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
@@ -147,8 +147,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$69.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,549", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹2,049", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,599", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹2,099", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -183,8 +183,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,499", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,999", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$1.00 AUD", shipping: "$0 AUD", taxes: "0" },
@@ -219,8 +219,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,499", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,999", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
@@ -255,8 +255,8 @@ export const Cards: CardProps[] = [
         hardcover: { price: "$59.99 CAD", shipping: "$9.99 CAD", taxes: "0" },
       },
       IN: {
-        paperback: { price: "₹1,449", shipping: "0", taxes: "0" },
-        hardcover: { price: "₹1,949", shipping: "0", taxes: "0" },
+        paperback: { price: "₹1,499", shipping: "0", taxes: "0" },
+        hardcover: { price: "₹1,999", shipping: "0", taxes: "0" },
       },
       AU: {
         paperback: { price: "$50.00 AUD", shipping: "$0.5 AUD", taxes: "0" },
