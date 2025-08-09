@@ -34,10 +34,10 @@ const extractNumericValue = (value: string): number => {
 
 const VALID_COUPONS: Record<string, number> = {
   LHMM: 99.93,
+  LHMM50: 50,
   SPECIAL10: 10,
   TEST: 99.93,
   COLLAB: 99.93,
-  BOOND5: 5,
   SUKHKARMAN5: 5,
   WELCOME5: 5,
   SAM5: 5
